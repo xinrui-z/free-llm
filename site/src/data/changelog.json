@@ -1,5 +1,25 @@
 [
   {
+    "id": "cl-auto-1743292818",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "ollama-cloud",
+    "provider_name": "Ollama Cloud",
+    "type": "provider_added",
+    "title": "Added Ollama Cloud provider",
+    "description": "Added Ollama Cloud. Free tier includes $10/month in shared inference credits with access to 400+ models via OpenAI-compatible API, no credit card required."
+  },
+  {
+    "id": "cl-auto-1743292817",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "nvidia-nim",
+    "provider_name": "NVIDIA NIM",
+    "type": "provider_added",
+    "title": "Added NVIDIA NIM provider",
+    "description": "Added NVIDIA NIM. NVIDIA's hosted inference platform — free trial tier provides access to high-quality open-weight models including Llama 3.1 70B and Mistral Large at 40 RPM."
+  },
+  {
     "id": "cl-auto-1743292816",
     "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
