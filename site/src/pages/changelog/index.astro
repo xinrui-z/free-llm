@@ -115,6 +115,9 @@ const typeDotColors: Record<string, string> = {
         const bg = typeBgColors[e.type] ?? 'bg-gray-500/10 border-gray-500/20 text-gray-400';
         const dot = typeDotColors[e.type] ?? 'bg-gray-500';
         const label = typeLabels[e.type] ?? e.type;
+        const timeStr = e.timestamp
+          ? new Date(e.timestamp).toISOString().slice(11, 16) + ' UTC'
+          : '';
         return `
           <div class="changelog-entry relative pl-6 py-3 hover:bg-slate-800/30 rounded-r-lg transition-colors duration-150"
                data-provider="${e.provider_id}" data-type="${e.type}">
@@ -124,6 +127,7 @@ const typeDotColors: Record<string, string> = {
               <span class="text-sm font-semibold text-slate-200">${e.provider_name}</span>
               <span class="text-slate-600">—</span>
               <span class="text-sm text-slate-300">${e.title}</span>
+              ${timeStr ? `<span class="text-xs text-slate-600 font-mono ml-auto">${timeStr}</span>` : ''}
             </div>
             <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">${e.description}</p>
           </div>`;

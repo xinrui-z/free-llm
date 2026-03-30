@@ -4,6 +4,8 @@
 
 免费大模型 API 服务商的实时状态监控。记录每个服务商的可用状态、响应延迟、速率限制和 90 天历史，每小时自动更新。
 
+**网站：https://free-llm-apis.pages.dev**
+
 [![在线站点](https://img.shields.io/badge/在线站点-free--llm--apis.pages.dev-22c55e?style=flat-square)](https://free-llm-apis.pages.dev)
 [![服务商数量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-apis.pages.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=%E6%9C%8D%E5%8A%A1%E5%95%86&style=flat-square&color=3b82f6)](https://free-llm-apis.pages.dev/providers)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)

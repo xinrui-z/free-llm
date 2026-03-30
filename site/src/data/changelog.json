@@ -1,6 +1,97 @@
 [
   {
+    "id": "cl-auto-1743292816",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "google-ai-studio",
+    "provider_name": "Google AI Studio",
+    "type": "provider_added",
+    "title": "Added Google AI Studio provider",
+    "description": "Added Google AI Studio. Google's free API gateway for Gemini models — Gemini 2.5 Flash and Flash-Lite are permanently free with no credit card required."
+  },
+  {
+    "id": "cl-auto-1743292815",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "aihubmix",
+    "provider_name": "AIHubMix",
+    "type": "model_added",
+    "title": "AIHubMix added 19 free models",
+    "description": "AIHubMix added 19 free models: GPT-4.1 Free (1M), GPT-4.1 Mini Free (1M), GPT-4.1 Nano Free (1M), GPT-4o Free (1M), Gemini 3 Flash Preview Free (1M), Gemini 2.0 Flash Free (1M), Coding GLM 5.1 Free (128K), Coding GLM 5 Free (128K), Coding GLM 5 Turbo Free (128K), Coding GLM 4.7 Free (128K), GLM-4.7 Flash Free (128K), Coding GLM 4.6 Free (200K), Coding MiniMax M2.7 Free (200K), Coding MiniMax M2.5 Free (200K), Coding MiniMax M2.1 Free (200K), Coding MiniMax M2 Free (200K), Step 3.5 Flash Free (256K), Kimi for Coding Free (256K), MiMo V2 Flash Free (256K)."
+  },
+  {
+    "id": "cl-auto-1743292814",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "groq",
+    "provider_name": "Groq",
+    "type": "model_added",
+    "title": "Groq added 14 free models",
+    "description": "Groq added 14 free models: Allam 2 7B (4K), Groq Compound (128K), Groq Compound Mini (128K), Llama 3.1 8B Instant (128K), Llama 3.3 70B Versatile (128K), Llama 4 Scout 17B (10M), Llama Prompt Guard 2 22M (512), Llama Prompt Guard 2 86M (512), Kimi K2 Instruct (128K), Kimi K2 Instruct (0905) (128K), GPT OSS 120B (128K), GPT OSS 20B (128K), GPT OSS Safeguard 20B (128K), Qwen3 32B (128K)."
+  },
+  {
+    "id": "cl-auto-1743292813",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "cohere",
+    "provider_name": "Cohere",
+    "type": "model_added",
+    "title": "Cohere added 6 free models",
+    "description": "Cohere added 6 free models: Command A (256K), Command R+ (128K), Command R (128K), Command R7B (128K), Aya Expanse 32B (128K), Aya Expanse 8B (8K)."
+  },
+  {
+    "id": "cl-auto-1743292812",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "huggingface",
+    "provider_name": "Hugging Face Inference",
+    "type": "model_added",
+    "title": "Hugging Face Inference added 6 free models",
+    "description": "Hugging Face Inference added 6 free models: Llama 3.3 70B Instruct (128K), DeepSeek V3 (0324) (128K), GPT OSS 120B (128K), DeepSeek R1 (128K), Qwen3 235B A22B (128K), Kimi K2 Instruct (128K)."
+  },
+  {
+    "id": "cl-auto-1743292811",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "cerebras",
+    "provider_name": "Cerebras",
+    "type": "model_added",
+    "title": "Cerebras added 4 free models",
+    "description": "Cerebras added 4 free models: Llama 3.1 8B (128K), GPT OSS 120B (128K), Qwen3 235B A22B Preview (128K), Z.ai GLM 4.7 Preview (128K)."
+  },
+  {
+    "id": "cl-auto-1743292810",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "sambanova",
+    "provider_name": "SambaNova Cloud",
+    "type": "model_added",
+    "title": "SambaNova Cloud added 8 free models",
+    "description": "SambaNova Cloud added 8 free models: Llama 3.3 70B Instruct (128K), Llama 3.1 8B Instruct (128K), Llama 3.1 70B Instruct (128K), Llama 3.1 405B Instruct (128K), Llama 3.2 1B Instruct (128K), Llama 3.2 3B Instruct (128K), Llama 3.2 11B Vision Instruct (128K), Llama 3.2 90B Vision Instruct (128K)."
+  },
+  {
+    "id": "cl-auto-1743292809",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "github-models",
+    "provider_name": "GitHub Models",
+    "type": "model_added",
+    "title": "GitHub Models added 5 free models",
+    "description": "GitHub Models added 5 free models: GPT-4o (8K), GPT-4o Mini (8K), Llama 3.3 70B Instruct (8K), DeepSeek R1 (8K), Phi-4 (8K)."
+  },
+  {
+    "id": "cl-auto-1743292808",
+    "timestamp": "2026-03-30T00:00:00.000Z",
+    "date": "2026-03-30",
+    "provider_id": "google-ai-studio",
+    "provider_name": "Google AI Studio",
+    "type": "model_added",
+    "title": "Google AI Studio added 3 free models",
+    "description": "Google AI Studio added 3 free models: Gemini 2.5 Flash-Lite (1M), Gemini 2.5 Flash (1M), Gemini 2.5 Pro (1M)."
+  },
+  {
     "id": "cl-auto-1743292807",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "aihubmix",
     "provider_name": "AIHubMix",
@@ -10,6 +101,7 @@
   },
   {
     "id": "cl-auto-1743292806",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "groq",
     "provider_name": "Groq",
@@ -19,6 +111,7 @@
   },
   {
     "id": "cl-auto-1743292805",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "cohere",
     "provider_name": "Cohere",
@@ -28,6 +121,7 @@
   },
   {
     "id": "cl-auto-1743292804",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "huggingface",
     "provider_name": "Hugging Face Inference",
@@ -37,6 +131,7 @@
   },
   {
     "id": "cl-auto-1743292803",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "cerebras",
     "provider_name": "Cerebras",
@@ -46,6 +141,7 @@
   },
   {
     "id": "cl-auto-1743292802",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "sambanova",
     "provider_name": "SambaNova Cloud",
@@ -55,6 +151,7 @@
   },
   {
     "id": "cl-auto-1743292801",
+    "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",
     "provider_id": "github-models",
     "provider_name": "GitHub Models",
@@ -63,7 +160,28 @@
     "description": "Added GitHub Models. Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM/150 RPD; High tier: 10 RPM/50 RPD. No credit card required."
   },
   {
+    "id": "cl-auto-1743206403",
+    "timestamp": "2026-03-29T00:00:00.000Z",
+    "date": "2026-03-29",
+    "provider_id": "openrouter",
+    "provider_name": "OpenRouter",
+    "type": "model_added",
+    "title": "OpenRouter added 5 free models",
+    "description": "OpenRouter added 5 free models: Step 3.5 Flash (128K), MiniMax M2.5 (131K), Nemotron 3 Super 120B (131K), Nemotron 3 Nano 30B (131K), GLM-4.5 Air (131K)."
+  },
+  {
+    "id": "cl-auto-1743206402",
+    "timestamp": "2026-03-29T00:00:00.000Z",
+    "date": "2026-03-29",
+    "provider_id": "bigmodel",
+    "provider_name": "BigModel",
+    "type": "model_added",
+    "title": "BigModel added 4 free models",
+    "description": "BigModel added 4 free models: GLM-4.7 Flash (200K), GLM-4 Flash (250414) (128K), GLM-4V Flash (8K), GLM-4.1V Thinking Flash (32K)."
+  },
+  {
     "id": "cl-auto-1743206401",
+    "timestamp": "2026-03-29T00:00:00.000Z",
     "date": "2026-03-29",
     "provider_id": "openrouter",
     "provider_name": "OpenRouter",
@@ -73,6 +191,7 @@
   },
   {
     "id": "cl-auto-1743206400",
+    "timestamp": "2026-03-29T00:00:00.000Z",
     "date": "2026-03-29",
     "provider_id": "bigmodel",
     "provider_name": "BigModel",
