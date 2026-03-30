@@ -283,14 +283,19 @@ const sortedProviders = [...providers].sort((a, b) => {
         container.innerHTML = '<div class="py-4 text-center text-slate-600 text-xs">No changes yet</div>';
         return;
       }
-      container.innerHTML = entries.map(e => `
+      container.innerHTML = entries.map(e => {
+        const timeStr = e.timestamp
+          ? new Date(e.timestamp).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
+          : e.date;
+        return `
         <div class="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-slate-800/50 transition-colors duration-150">
           <span class="w-2 h-2 rounded-full flex-shrink-0 ${DOT_COLOR[e.type] ?? 'bg-slate-500'}"></span>
-          <span class="text-xs text-slate-500 font-mono flex-shrink-0">${e.date}</span>
+          <span class="text-xs text-slate-500 font-mono flex-shrink-0">${timeStr}</span>
           <span class="text-sm font-medium ${TYPE_COLOR[e.type] ?? 'text-slate-300'} flex-shrink-0">${e.provider_name}</span>
           <span class="text-slate-600 flex-shrink-0">·</span>
           <span class="text-sm text-slate-300 truncate">${e.title}</span>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     } catch {
       if (container) container.innerHTML = '';
     }
