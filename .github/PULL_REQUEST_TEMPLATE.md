@@ -2,7 +2,6 @@
 
 - [ ] Add provider (edit `site/src/data/providers.json`)
 - [ ] Update provider info (status / models / rate limits)
-- [ ] Add changelog entry (edit `site/src/data/changelog.json`)
 - [ ] Bug fix
 - [ ] Other
 
@@ -11,10 +10,7 @@
 ## What Changed
 
 **providers.json changes:**
-<!-- If modified, briefly describe the added or changed fields -->
-
-**changelog.json new entries:**
-<!-- If added, paste the entry content here -->
+<!-- Briefly describe the added or changed fields -->
 
 ---
 
