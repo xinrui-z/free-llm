@@ -25,7 +25,12 @@ jobs:
       - name: Check if worker changed
         id: check
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q '^checker-worker/'; then
+          if git rev-parse HEAD~1 &>/dev/null; then
+            DIFF=$(git diff --name-only HEAD~1 HEAD)
+          else
+            DIFF=$(git diff --name-only HEAD)
+          fi
+          if echo "$DIFF" | grep -q '^checker-worker/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -34,7 +39,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.check.outputs.changed == 'true'
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: checker-worker/package-lock.json
 
@@ -68,7 +73,11 @@ jobs:
       - name: Check which data files changed
         id: check
         run: |
-          changed=$(git diff --name-only HEAD~1 HEAD)
+          if git rev-parse HEAD~1 &>/dev/null; then
+            changed=$(git diff --name-only HEAD~1 HEAD)
+          else
+            changed=$(git diff --name-only HEAD)
+          fi
           echo "$changed" | grep -q 'site/src/data/providers.json' \
             && echo "providers=true" >> "$GITHUB_OUTPUT" \
             || echo "providers=false" >> "$GITHUB_OUTPUT"
@@ -117,7 +126,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: site/package-lock.json
 
@@ -165,7 +174,12 @@ jobs:
       - name: Check if providers.json changed
         id: check
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q 'site/src/data/providers.json'; then
+          if git rev-parse HEAD~1 &>/dev/null; then
+            DIFF=$(git diff --name-only HEAD~1 HEAD)
+          else
+            DIFF=$(git diff --name-only HEAD)
+          fi
+          if echo "$DIFF" | grep -q 'site/src/data/providers.json'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -174,7 +188,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.check.outputs.changed == 'true'
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Generate and push changelog
         if: steps.check.outputs.changed == 'true'
