@@ -78,7 +78,8 @@
     }
   ],
   "last_verified": "2026-03-30",    // YYYY-MM-DD，填写核实数据的日期
-  "geo_restrictions": []            // 例如 ["requires-vpn-in-china"]
+  "geo_restrictions": [],           // 例如 ["requires-vpn-in-china"]
+  "api_key_env": "MY_PROVIDER_API_KEY"  // checker worker 环境变量中对应该服务商 API Key 的字段名
 }
 ```
 
@@ -91,6 +92,7 @@
 - [ ] `top_models` 中的 ID 在 `models` 数组中均有对应条目
 - [ ] `last_verified` 填写今天的日期
 - [ ] 该服务商有永久免费额度，而非仅限试用赠送
+- [ ] `api_key_env` 已填写 checker worker 中对应该服务商 API Key 的 secret 名称
 
 ---
 

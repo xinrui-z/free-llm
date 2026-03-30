@@ -78,7 +78,8 @@ To add or update a provider, edit [`site/src/data/providers.json`](site/src/data
     }
   ],
   "last_verified": "2026-03-30",    // YYYY-MM-DD — date you verified this data
-  "geo_restrictions": []            // e.g. ["requires-vpn-in-china"]
+  "geo_restrictions": [],           // e.g. ["requires-vpn-in-china"]
+  "api_key_env": "MY_PROVIDER_API_KEY"  // name of the secret in the checker worker's env
 }
 ```
 
@@ -91,6 +92,7 @@ To add or update a provider, edit [`site/src/data/providers.json`](site/src/data
 - [ ] `top_models` only lists IDs that also appear in the `models` array
 - [ ] `last_verified` is today's date
 - [ ] The provider has a permanently free tier, not just trial credits
+- [ ] `api_key_env` is set to the Cloudflare Worker secret name for this provider's API key
 
 ---
 
