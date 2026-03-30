@@ -60,7 +60,9 @@ const newProviders = JSON.parse(readFileSync(newPath, 'utf8'));
 const oldMap = Object.fromEntries(oldProviders.map(p => [p.id, p]));
 const newMap = Object.fromEntries(newProviders.map(p => [p.id, p]));
 
-const today = new Date().toISOString().split('T')[0];
+const now = new Date();
+const today = now.toISOString().split('T')[0];
+const timestamp = now.toISOString();
 let counter = Date.now();
 const uid = () => `cl-auto-${counter++}`;
 
@@ -69,7 +71,7 @@ const entries = [];
 for (const p of newProviders) {
   if (!oldMap[p.id]) {
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: p.id, provider_name: p.name,
       type: 'provider_added',
       title: `Added ${p.name} provider`,
@@ -83,7 +85,7 @@ for (const p of newProviders) {
 for (const p of oldProviders) {
   if (!newMap[p.id]) {
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: p.id, provider_name: p.name,
       type: 'provider_removed',
       title: `Removed ${p.name} provider`,
@@ -105,7 +107,7 @@ for (const newP of newProviders) {
   if (addedModels.length === 1) {
     const m = addedModels[0];
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: newP.id, provider_name: newP.name,
       type: 'model_added',
       title: `${newP.name} added model ${m.name ?? m.id}`,
@@ -126,7 +128,7 @@ for (const newP of newProviders) {
       return parts.join(' ');
     }).join(', ');
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: newP.id, provider_name: newP.name,
       type: 'model_added',
       title: `${newP.name} added ${addedModels.length} free models`,
@@ -137,7 +139,7 @@ for (const newP of newProviders) {
   if (removedModels.length === 1) {
     const m = removedModels[0];
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: newP.id, provider_name: newP.name,
       type: 'model_removed',
       title: `${newP.name} removed model ${m.name ?? m.id}`,
@@ -146,7 +148,7 @@ for (const newP of newProviders) {
   } else if (removedModels.length > 1) {
     const modelList = removedModels.map(m => m.name ?? m.id).join(', ');
     entries.push({
-      id: uid(), date: today,
+      id: uid(), timestamp, date: today,
       provider_id: newP.id, provider_name: newP.name,
       type: 'model_removed',
       title: `${newP.name} removed ${removedModels.length} models`,
