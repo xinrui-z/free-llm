@@ -1,0 +1,328 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import FilterBar from '../../components/FilterBar.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+
+import providers from '../../data/providers.json';
+
+// Read URL search params
+const url = Astro.url;
+const searchQuery = url.searchParams.get('q') ?? '';
+
+type Provider = typeof providers[0];
+
+// Server-side: search filter only (status filter + sort are client-side)
+let filtered: Provider[] = [...providers];
+
+if (searchQuery) {
+  const q = searchQuery.toLowerCase();
+  filtered = filtered.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    p.id.toLowerCase().includes(q) ||
+    p.tags.some((t: string) => t.toLowerCase().includes(q)) ||
+    p.top_models.some(m => m.toLowerCase().includes(q))
+  );
+}
+
+const sortedFiltered = filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+function formatLatency(ms: number | null): string {
+  if (ms === null || ms === undefined) return '—';
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
+}
+
+function formatNum(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '—';
+  return n.toLocaleString();
+}
+---
+
+<Layout
+  title={`Providers — Free LLM APIs`}
+  description="Browse all free LLM API providers, filter by status, latency, and features."
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+    <!-- Page header -->
+    <div class="pt-8 pb-4">
+      <h1 class="text-2xl font-bold text-white mb-1">All Providers</h1>
+      <p class="text-slate-400 text-sm">
+        {providers.length} providers
+        {searchQuery ? `, ${sortedFiltered.length} matching` : ''}
+        <span id="last-checked" class="hidden text-slate-600 ml-1"></span>
+      </p>
+    </div>
+
+    <!-- Filter bar (search only) -->
+    <div class="mb-4">
+      <FilterBar filters={[]} active={{}} searchQuery={searchQuery} />
+    </div>
+
+    <!-- Controls: status filter (client-side) + sort -->
+    <div class="flex items-center justify-between mb-4 text-sm flex-wrap gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        {[
+          { value: 'all', label: 'All' },
+          { value: 'active', label: 'Operational' },
+          { value: 'degraded', label: 'Degraded' },
+          { value: 'dead', label: 'Down' },
+        ].map(opt => (
+          <button
+            class={`status-filter-btn px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${opt.value === 'all' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+            data-status-filter={opt.value}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button
+          data-sort-btn="default"
+          class="sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400"
+        >Default</button>
+        <button
+          id="sort-latency-btn"
+          data-sort-btn="latency_asc"
+          class="sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+        >Latency ↑</button>
+      </div>
+    </div>
+
+    <!-- Provider list -->
+    {sortedFiltered.length === 0 ? (
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-slate-600 mb-4">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <p class="text-slate-400 font-medium mb-2">No providers found</p>
+        <p class="text-slate-600 text-sm mb-4">Try adjusting your filters or browse all providers</p>
+        <a
+          href="/providers"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors duration-150"
+        >
+          Clear filters
+        </a>
+      </div>
+    ) : (
+      <div class="border border-slate-700/50 rounded-xl overflow-hidden mb-8">
+        <!-- Table header -->
+        <div class="hidden md:grid grid-cols-[2fr_1fr_80px_70px_80px_60px_90px] gap-4 px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/50 text-xs text-slate-500 font-mono">
+          <span>Provider</span>
+          <span>Status</span>
+          <span class="text-right">Latency</span>
+          <span class="text-right">RPM</span>
+          <span class="text-right">RPD</span>
+          <span class="text-right">Context</span>
+          <span class="text-right">Models</span>
+        </div>
+
+        <!-- Provider rows -->
+        <div class="divide-y divide-slate-800/50">
+          {sortedFiltered.map(provider => (
+            <a
+              href={`/providers/${provider.id}`}
+              data-provider-id={provider.id}
+              data-status={provider.status}
+              data-latency={provider.latency_ms ?? ''}
+              class="flex flex-col md:grid md:grid-cols-[2fr_1fr_80px_70px_80px_60px_90px] md:gap-4 px-4 py-3 hover:bg-slate-800/50 transition-colors duration-150 cursor-pointer group"
+            >
+              <!-- Provider name -->
+              <div class="flex items-center gap-2 mb-2 md:mb-0">
+                <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+                  {provider.logo
+                    ? <img src={provider.logo} alt={provider.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                    : null}
+                  <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0)}</span>
+                </div>
+                <div>
+                  <span class="text-slate-200 font-medium text-sm group-hover:text-white transition-colors">{provider.name}</span>
+                  <div class="md:hidden flex items-center gap-2 mt-0.5">
+                    <span data-live-status={provider.id} data-badge-size="sm">
+                      <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+                    </span>
+                    <span class="font-mono text-xs text-slate-500" data-live-latency={provider.id}>{formatLatency(provider.latency_ms)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status (desktop) -->
+              <div class="hidden md:flex items-center">
+                <span data-live-status={provider.id} data-badge-size="sm">
+                  <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+                </span>
+              </div>
+
+              <!-- Latency (desktop) -->
+              <div class="hidden md:flex items-center justify-end">
+                <span class={`font-mono text-xs ${provider.status === 'degraded' ? 'text-yellow-400' : 'text-slate-400'}`} data-live-latency={provider.id}>
+                  {formatLatency(provider.latency_ms)}
+                </span>
+              </div>
+
+              <!-- RPM -->
+              <div class="hidden md:flex items-center justify-end">
+                <span class="font-mono text-xs text-slate-400">{formatNum(provider.rpm)}</span>
+              </div>
+
+              <!-- RPD -->
+              <div class="hidden md:flex items-center justify-end">
+                <span class="font-mono text-xs text-slate-400">{formatNum(provider.rpd)}</span>
+              </div>
+
+              <!-- Context window -->
+              <div class="hidden md:flex items-center justify-end">
+                <span class="font-mono text-xs text-slate-400">{provider.context_window ?? '—'}</span>
+              </div>
+
+              <!-- Models count -->
+              <div class="hidden md:flex items-center justify-end">
+                <span class="font-mono text-xs text-slate-400">{provider.models?.length ?? '—'}</span>
+              </div>
+
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script define:vars={{ workerUrl: import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '' }}>
+  function badgeHtml(status, size) {
+    const cls = {
+      active:   'bg-green-500/10 text-green-400 border-green-500/20',
+      degraded: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      dead:     'bg-red-500/10 text-red-400 border-red-500/20',
+      unknown:  'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    }[status] ?? 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    const dot = status === 'active' ? 'animate-pulse' : '';
+    const sz  = size === 'lg' ? 'px-3 py-1 text-sm' : 'px-2 py-0.5 text-xs';
+    return `<span class="inline-flex items-center gap-1.5 rounded-full font-mono font-semibold border ${sz} ${cls}"><span class="w-1.5 h-1.5 rounded-full bg-current ${dot}"></span>${status}</span>`;
+  }
+
+  function fmtLatency(ms) {
+    if (ms === null || ms === undefined) return '—';
+    if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${ms}ms`;
+  }
+
+  let activeFilter = 'all';
+  let activeSort = 'default';
+
+  function applyFilter(filter) {
+    document.querySelectorAll('[data-provider-id]').forEach(row => {
+      const status = row.getAttribute('data-status');
+      row.style.display = (filter === 'all' || status === filter) ? '' : 'none';
+    });
+  }
+
+  function applySort(sort) {
+    const container = document.querySelector('.divide-y');
+    if (!container) return;
+    const rows = Array.from(container.querySelectorAll('[data-provider-id]'));
+    const statusOrder = { active: 0, degraded: 1, dead: 2, unknown: 3 };
+
+    rows.sort((a, b) => {
+      const aLat = a.getAttribute('data-latency');
+      const bLat = b.getAttribute('data-latency');
+      const aMs = aLat === '' || aLat === null ? null : Number(aLat);
+      const bMs = bLat === '' || bLat === null ? null : Number(bLat);
+
+      if (sort === 'latency_asc') {
+        return (aMs ?? 99999) - (bMs ?? 99999);
+      }
+      if (sort === 'latency_desc') {
+        return (bMs ?? 0) - (aMs ?? 0);
+      }
+      // default: alphabetical by provider name
+      const aName = (a.querySelector('.text-slate-200')?.textContent ?? '').trim().toLowerCase();
+      const bName = (b.querySelector('.text-slate-200')?.textContent ?? '').trim().toLowerCase();
+      return aName.localeCompare(bName);
+    });
+
+    rows.forEach(row => container.appendChild(row));
+  }
+
+  document.querySelectorAll('[data-status-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.getAttribute('data-status-filter');
+      document.querySelectorAll('[data-status-filter]').forEach(b => {
+        b.className = 'status-filter-btn px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200';
+      });
+      btn.className = 'status-filter-btn px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400';
+      applyFilter(activeFilter);
+    });
+  });
+
+  const latencyBtn = document.getElementById('sort-latency-btn');
+
+  document.querySelectorAll('[data-sort-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.getAttribute('data-sort-btn');
+
+      // Latency button toggles between asc and desc
+      if (value === 'latency_asc' || value === 'latency_desc') {
+        const next = activeSort === 'latency_asc' ? 'latency_desc' : 'latency_asc';
+        activeSort = next;
+        if (latencyBtn) {
+          latencyBtn.setAttribute('data-sort-btn', next);
+          latencyBtn.textContent = next === 'latency_asc' ? 'Latency ↑' : 'Latency ↓';
+        }
+      } else {
+        activeSort = value;
+        if (latencyBtn) {
+          latencyBtn.setAttribute('data-sort-btn', 'latency_asc');
+          latencyBtn.textContent = 'Latency ↑';
+        }
+      }
+
+      document.querySelectorAll('[data-sort-btn]').forEach(b => {
+        b.className = 'sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200';
+      });
+      const activeBtn = (activeSort === 'latency_asc' || activeSort === 'latency_desc') ? latencyBtn : btn;
+      if (activeBtn) activeBtn.className = 'sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400';
+
+      applySort(activeSort);
+      if (activeFilter !== 'all') applyFilter(activeFilter);
+    });
+  });
+
+  async function fetchLiveStatus() {
+    if (!workerUrl) return;
+    try {
+      const resp = await fetch(`${workerUrl}/api/status`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      for (const p of data.providers) {
+        document.querySelectorAll(`[data-live-status="${p.id}"]`).forEach(el => {
+          el.innerHTML = badgeHtml(p.status, el.getAttribute('data-badge-size') || 'sm');
+        });
+        document.querySelectorAll(`[data-live-latency="${p.id}"]`).forEach(el => {
+          el.textContent = fmtLatency(p.latency_ms);
+          el.className = `font-mono text-xs ${p.status === 'degraded' ? 'text-yellow-400' : 'text-slate-400'}`;
+        });
+        const row = document.querySelector(`[data-provider-id="${p.id}"]`);
+        if (row) {
+          row.setAttribute('data-status', p.status);
+          row.setAttribute('data-latency', p.latency_ms ?? '');
+        }
+      }
+
+      applySort(activeSort);
+      if (activeFilter !== 'all') applyFilter(activeFilter);
+
+      const ts = document.getElementById('last-checked');
+      if (ts && data.last_checked) {
+        const mins = Math.round((Date.now() - new Date(data.last_checked).getTime()) / 60000);
+        ts.textContent = `· ${mins < 1 ? 'just updated' : `updated ${mins}m ago`}`;
+        ts.classList.remove('hidden');
+      }
+    } catch {
+      // static data as fallback
+    }
+  }
+
+  fetchLiveStatus();
+</script>

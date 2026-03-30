@@ -1,0 +1,207 @@
+---
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+interface FilterGroup {
+  key: string;
+  label: string;
+  options: FilterOption[];
+  multiple?: boolean;
+}
+
+interface Props {
+  filters: FilterGroup[];
+  active: Record<string, string[]>;
+  searchQuery?: string;
+  searchPlaceholder?: string;
+}
+
+const { filters, active, searchQuery = '', searchPlaceholder = 'Search provider name or model...' } = Astro.props;
+
+// Count total active filters
+const activeCount = Object.values(active).flat().length;
+---
+
+<div class="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 space-y-3" id="filter-bar">
+  <!-- Search input -->
+  <div class="relative">
+    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </div>
+    <input
+      type="text"
+      id="search-input"
+      value={searchQuery}
+      placeholder={searchPlaceholder}
+      class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-9 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+      autocomplete="off"
+    />
+    <button
+      id="clear-search"
+      class={`absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors duration-150 ${searchQuery ? '' : 'hidden'}`}
+      aria-label="Clear search"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Filter groups -->
+  {filters.map(group => (
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-xs text-slate-500 w-12 flex-shrink-0">{group.label}:</span>
+      <div class="flex flex-wrap gap-1.5">
+        {group.options.map(option => {
+          const isSelected = (active[group.key] ?? []).includes(option.value);
+          return (
+            <button
+              class={`filter-tag px-3 py-1 rounded-full text-xs border cursor-pointer transition-all duration-150 ${
+                isSelected
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'
+              }`}
+              data-filter-key={group.key}
+              data-filter-value={option.value}
+            >
+              {isSelected && (
+                <span class="mr-0.5">×</span>
+              )}
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+
+  <!-- Active filters & clear -->
+  {activeCount > 0 && (
+    <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-700/50">
+      <span class="text-xs text-slate-500">Active:</span>
+      {Object.entries(active).flatMap(([key, values]) =>
+        values.map(value => {
+          const group = filters.find(f => f.key === key);
+          const option = group?.options.find(o => o.value === value);
+          return option ? (
+            <span
+              class="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-full px-2.5 py-0.5 text-xs"
+            >
+              {option.label}
+              <button
+                class="hover:text-blue-200 transition-colors"
+                data-filter-key={key}
+                data-filter-value={value}
+                data-remove-filter="true"
+              >×</button>
+            </span>
+          ) : null;
+        })
+      )}
+      <button
+        id="clear-all-filters"
+        class="text-xs text-slate-500 hover:text-red-400 transition-colors duration-150 ml-1"
+      >
+        Clear all
+      </button>
+    </div>
+  )}
+</div>
+
+<script>
+  // Filter tag toggle
+  document.querySelectorAll('[data-filter-key][data-filter-value]:not([data-remove-filter])').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-filter-key');
+      const value = btn.getAttribute('data-filter-value');
+      if (!key || !value) return;
+
+      const url = new URL(window.location.href);
+      const current = (url.searchParams.get(key) || '').split(',').filter(Boolean);
+      const idx = current.indexOf(value);
+
+      if (idx >= 0) {
+        current.splice(idx, 1);
+      } else {
+        current.push(value);
+      }
+
+      if (current.length > 0) {
+        url.searchParams.set(key, current.join(','));
+      } else {
+        url.searchParams.delete(key);
+      }
+
+      history.replaceState({}, '', url.toString());
+      window.dispatchEvent(new CustomEvent('filter-change', { detail: { key, value } }));
+      window.location.reload();
+    });
+  });
+
+  // Remove individual filter chip
+  document.querySelectorAll('[data-remove-filter="true"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-filter-key');
+      const value = btn.getAttribute('data-filter-value');
+      if (!key || !value) return;
+
+      const url = new URL(window.location.href);
+      const current = (url.searchParams.get(key) || '').split(',').filter(v => v !== value);
+
+      if (current.length > 0) {
+        url.searchParams.set(key, current.join(','));
+      } else {
+        url.searchParams.delete(key);
+      }
+
+      history.replaceState({}, '', url.toString());
+      window.location.reload();
+    });
+  });
+
+  // Clear all filters
+  document.getElementById('clear-all-filters')?.addEventListener('click', () => {
+    const url = new URL(window.location.href);
+    url.search = '';
+    history.replaceState({}, '', url.toString());
+    window.location.reload();
+  });
+
+  // Search input with debounce
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  const clearSearch = document.getElementById('clear-search');
+  let debounceTimer: ReturnType<typeof setTimeout>;
+
+  searchInput?.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const hasValue = searchInput.value.length > 0;
+    clearSearch?.classList.toggle('hidden', !hasValue);
+
+    debounceTimer = setTimeout(() => {
+      const url = new URL(window.location.href);
+      if (searchInput.value) {
+        url.searchParams.set('q', searchInput.value);
+      } else {
+        url.searchParams.delete('q');
+      }
+      history.replaceState({}, '', url.toString());
+      window.dispatchEvent(new CustomEvent('search-change', { detail: { q: searchInput.value } }));
+      window.location.reload();
+    }, 300);
+  });
+
+  clearSearch?.addEventListener('click', () => {
+    if (searchInput) searchInput.value = '';
+    clearSearch.classList.add('hidden');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    history.replaceState({}, '', url.toString());
+    window.location.reload();
+  });
+</script>

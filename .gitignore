@@ -1,0 +1,47 @@
+# ── Private infrastructure ─────────────────────────────────────────────────
+# The checker worker contains API keys and private logic; never commit it.
+checker-worker/
+
+# ── Internal documents ─────────────────────────────────────────────────────
+# Planning, design, and implementation notes are kept out of the public repo.
+CODING_REPORT.md
+PLAN.md
+INTERACTION_DESIGN.md
+UI_DESIGN.md
+PRODUCT_SPEC.md
+design-system/
+
+# ── Dependencies and build output ──────────────────────────────────────────
+node_modules/
+dist/
+.astro/
+
+# ── Cloudflare Wrangler ────────────────────────────────────────────────────
+.wrangler/
+
+# ── Environment variables ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.local.example
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── TypeScript ─────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Operating system ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Editors ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ── Claude Code ────────────────────────────────────────────────────────────
+.claude/

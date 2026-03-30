@@ -1,0 +1,187 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import providers from '../../data/providers.json';
+
+const workerUrl = import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '';
+
+const typeLabels: Record<string, string> = {
+  model_added:       'Model Added',
+  status_change:     'Status Change',
+  rate_limit_change: 'Rate Limit Change',
+  outage:            'Outage',
+  recovery:          'Recovery',
+  degraded:          'Degraded',
+  provider_added:    'Provider Added',
+  provider_removed:  'Provider Removed',
+  model_removed:     'Model Removed',
+};
+
+const typeBgColors: Record<string, string> = {
+  model_added:       'bg-green-500/10 border-green-500/20 text-green-400',
+  status_change:     'bg-green-500/10 border-green-500/20 text-green-400',
+  rate_limit_change: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+  outage:            'bg-red-500/10 border-red-500/20 text-red-400',
+  recovery:          'bg-green-500/10 border-green-500/20 text-green-400',
+  degraded:          'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
+};
+
+const typeDotColors: Record<string, string> = {
+  model_added:       'bg-green-500',
+  status_change:     'bg-green-500',
+  rate_limit_change: 'bg-yellow-500',
+  outage:            'bg-red-500',
+  recovery:          'bg-green-500',
+  degraded:          'bg-yellow-500',
+};
+---
+
+<Layout
+  title="Changelog — Free LLM APIs"
+  description="View the full history of free LLM API changes: outages, recoveries, new providers and models."
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+    <!-- Page header -->
+    <div class="pt-8 pb-6">
+      <div class="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-white mb-1">Changelog</h1>
+          <p class="text-slate-400 text-sm">Automatically tracks status changes across all free LLM APIs</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+      <span class="text-sm text-slate-500">Filter:</span>
+      <select
+        id="provider-filter"
+        class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
+      >
+        <option value="">All Providers</option>
+        {providers.map(p => <option value={p.id}>{p.name}</option>)}
+      </select>
+      <select
+        id="type-filter"
+        class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
+      >
+        <option value="">All Types</option>
+        <option value="outage">Outage</option>
+        <option value="recovery">Recovery</option>
+        <option value="degraded">Degraded</option>
+        <option value="status_change">Status Change</option>
+        <option value="provider_added">Provider Added</option>
+        <option value="model_added">Model Added</option>
+      </select>
+    </div>
+
+    <!-- Timeline (rendered client-side) -->
+    <div id="changelog-list">
+      <div id="changelog-loading" class="py-20 text-center text-slate-500 text-sm">Loading…</div>
+    </div>
+
+    <div id="changelog-footer" class="hidden pb-12 text-center text-sm text-slate-600"></div>
+  </div>
+</Layout>
+
+<script define:vars={{ workerUrl, typeLabels, typeBgColors, typeDotColors }}>
+  const list = document.getElementById('changelog-list');
+  const loading = document.getElementById('changelog-loading');
+  const footer = document.getElementById('changelog-footer');
+  const providerFilter = document.getElementById('provider-filter');
+  const typeFilter = document.getElementById('type-filter');
+
+  let allEntries = [];
+
+  function renderEntries(entries) {
+    if (!list) return;
+
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="py-20 text-center text-slate-500 text-sm">No changes recorded yet</div>';
+      if (footer) footer.classList.add('hidden');
+      return;
+    }
+
+    // Group by date
+    const grouped = {};
+    for (const e of entries) {
+      if (!grouped[e.date]) grouped[e.date] = [];
+      grouped[e.date].push(e);
+    }
+    const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+    list.innerHTML = dates.map(date => {
+      const dayEntries = grouped[date];
+      const rows = dayEntries.map(e => {
+        const bg = typeBgColors[e.type] ?? 'bg-gray-500/10 border-gray-500/20 text-gray-400';
+        const dot = typeDotColors[e.type] ?? 'bg-gray-500';
+        const label = typeLabels[e.type] ?? e.type;
+        return `
+          <div class="changelog-entry relative pl-6 py-3 hover:bg-slate-800/30 rounded-r-lg transition-colors duration-150"
+               data-provider="${e.provider_id}" data-type="${e.type}">
+            <div class="absolute left-0 top-4 w-2.5 h-2.5 rounded-full -translate-x-[5px] ${dot}"></div>
+            <div class="flex items-start gap-2 flex-wrap">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${bg}">${label}</span>
+              <span class="text-sm font-semibold text-slate-200">${e.provider_name}</span>
+              <span class="text-slate-600">—</span>
+              <span class="text-sm text-slate-300">${e.title}</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">${e.description}</p>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="changelog-date-group mb-8" data-date="${date}">
+          <div class="flex items-center gap-3 mb-3">
+            <h2 class="text-sm font-semibold text-slate-400 font-mono">${date}</h2>
+            <div class="flex-1 h-px bg-slate-800"></div>
+          </div>
+          <div class="border-l-2 border-slate-800 ml-1 space-y-0">${rows}</div>
+        </div>`;
+    }).join('');
+
+    if (footer) {
+      footer.textContent = `Showing all ${entries.length} entries`;
+      footer.classList.remove('hidden');
+    }
+
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const provider = providerFilter?.value ?? '';
+    const type = typeFilter?.value ?? '';
+
+    document.querySelectorAll('.changelog-entry').forEach(entry => {
+      const matchProvider = !provider || entry.getAttribute('data-provider') === provider;
+      const matchType = !type || entry.getAttribute('data-type') === type;
+      entry.style.display = (matchProvider && matchType) ? '' : 'none';
+    });
+
+    document.querySelectorAll('.changelog-date-group').forEach(group => {
+      const hasVisible = [...group.querySelectorAll('.changelog-entry')]
+        .some(e => e.style.display !== 'none');
+      group.style.display = hasVisible ? '' : 'none';
+    });
+  }
+
+  async function fetchChangelog() {
+    if (!workerUrl) {
+      if (loading) loading.textContent = 'Worker URL not configured';
+      return;
+    }
+    try {
+      const resp = await fetch(`${workerUrl}/api/changelog?limit=200`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      allEntries = await resp.json();
+      if (loading) loading.remove();
+      renderEntries(allEntries);
+    } catch (err) {
+      if (loading) loading.textContent = 'Failed to load, please refresh';
+    }
+  }
+
+  providerFilter?.addEventListener('change', applyFilters);
+  typeFilter?.addEventListener('change', applyFilters);
+
+  fetchChangelog();
+</script>

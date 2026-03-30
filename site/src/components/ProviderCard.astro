@@ -1,0 +1,121 @@
+---
+import StatusBadge from './StatusBadge.astro';
+
+interface Model {
+  id: string;
+  name: string;
+  context_window: string;
+  modalities: string[];
+  rpm: number;
+  rpd: number | null;
+  status: string;
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  description?: string;
+  base_url: string;
+  signup_url?: string;
+  website_url?: string;
+  logo?: string;
+  status: 'active' | 'degraded' | 'dead' | 'unknown';
+  latency_ms: number | null;
+  uptime_7d?: string[];
+  uptime_90d?: string[];
+  rpm: number | null;
+  rpd: number | null;
+  context_window?: string;
+  auth: string;
+  tags: string[];
+  top_models: string[];
+  models?: Model[];
+  last_verified: string;
+}
+
+interface Props {
+  provider: Provider;
+}
+
+const { provider } = Astro.props;
+
+const statusBorderMap: Record<string, string> = {
+  dead:     'border-l-2 border-l-red-500',
+  degraded: 'border-l-2 border-l-yellow-500',
+  active:   '',
+  unknown:  '',
+};
+
+const statusOpacityMap: Record<string, string> = {
+  dead: 'opacity-70',
+  degraded: '',
+  active: '',
+  unknown: '',
+};
+
+const borderClass = statusBorderMap[provider.status] ?? '';
+const opacityClass = statusOpacityMap[provider.status] ?? '';
+
+function formatLatency(ms: number | null): string {
+  if (ms === null || ms === undefined) return '—';
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
+}
+
+function formatNum(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '—';
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return n.toString();
+}
+
+// Get initials for fallback logo
+const initials = provider.name.charAt(0).toUpperCase();
+---
+
+<a
+  href={`/providers/${provider.id}`}
+  data-provider-id={provider.id}
+  class={`group block bg-slate-800 border border-slate-700 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:border-slate-600 hover:shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_4px_16px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 ${borderClass} ${opacityClass}`}
+>
+  <!-- Header -->
+  <div class="flex items-start justify-between mb-4">
+    <div class="flex items-center gap-2 min-w-0">
+      <!-- Logo fallback -->
+      <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+        {provider.logo ? (
+          <img
+            src={provider.logo}
+            alt={provider.name}
+            class="w-full h-full object-contain brightness-0 invert"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+          />
+        ) : null}
+        <span class={provider.logo ? 'hidden' : 'flex'}>{initials}</span>
+      </div>
+      <span class="font-semibold text-slate-100 text-sm truncate">{provider.name}</span>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+      <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+    </div>
+  </div>
+
+  <!-- Uptime mini bar (populated by live Worker data) -->
+  <div data-uptime-bar={provider.id} class="mb-3 hidden"></div>
+
+  <!-- Stats row -->
+  <div class="flex flex-wrap gap-3 text-xs text-slate-500 font-mono">
+    <span data-latency class={`font-bold ${provider.status === 'degraded' ? 'text-yellow-400' : provider.status === 'dead' ? 'text-slate-600' : 'text-slate-300'}`}>
+      {formatLatency(provider.latency_ms)}
+    </span>
+    {provider.rpm !== null && (
+      <span><span class="text-slate-400">{formatNum(provider.rpm)}</span> RPM</span>
+    )}
+    {provider.rpd !== null && (
+      <span><span class="text-slate-400">{formatNum(provider.rpd)}</span> RPD</span>
+    )}
+{provider.context_window && (
+      <span>CTX <span class="text-slate-400">{provider.context_window}</span></span>
+    )}
+  </div>
+
+</a>

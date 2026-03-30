@@ -1,0 +1,83 @@
+[
+  {
+    "id": "cl-auto-1743292807",
+    "date": "2026-03-30",
+    "provider_id": "aihubmix",
+    "provider_name": "AIHubMix",
+    "type": "provider_added",
+    "title": "Added AIHubMix provider",
+    "description": "Added AIHubMix. Unified OpenAI-compatible API aggregating OpenAI, Claude, Gemini, DeepSeek, GLM, Qwen and more — with load balancing and high concurrency support."
+  },
+  {
+    "id": "cl-auto-1743292806",
+    "date": "2026-03-30",
+    "provider_id": "groq",
+    "provider_name": "Groq",
+    "type": "provider_added",
+    "title": "Added Groq provider",
+    "description": "Added Groq. High-speed LLM inference powered by LPU hardware — free tier includes Llama, Kimi, Qwen and more with generous rate limits."
+  },
+  {
+    "id": "cl-auto-1743292805",
+    "date": "2026-03-30",
+    "provider_id": "cohere",
+    "provider_name": "Cohere",
+    "type": "provider_added",
+    "title": "Added Cohere provider",
+    "description": "Added Cohere. Trial API key with free access to Command A, Command R+, Command R7B and Aya Expanse. Limited to 20 RPM and 1,000 calls/month. Non-commercial use only."
+  },
+  {
+    "id": "cl-auto-1743292804",
+    "date": "2026-03-30",
+    "provider_id": "huggingface",
+    "provider_name": "Hugging Face Inference",
+    "type": "provider_added",
+    "title": "Added Hugging Face Inference provider",
+    "description": "Added Hugging Face Inference. Unified inference router across 18+ providers (Groq, SambaNova, Together, Cerebras, etc.) — free users get $0.10/month in credits, no credit card required."
+  },
+  {
+    "id": "cl-auto-1743292803",
+    "date": "2026-03-30",
+    "provider_id": "cerebras",
+    "provider_name": "Cerebras",
+    "type": "provider_added",
+    "title": "Added Cerebras provider",
+    "description": "Added Cerebras. Ultra-fast LLM inference via custom wafer-scale chips — free tier offers 30 RPM and 1M tokens/day with no credit card required."
+  },
+  {
+    "id": "cl-auto-1743292802",
+    "date": "2026-03-30",
+    "provider_id": "sambanova",
+    "provider_name": "SambaNova Cloud",
+    "type": "provider_added",
+    "title": "Added SambaNova Cloud provider",
+    "description": "Added SambaNova Cloud. RDU-accelerated inference with a persistent free tier — no credit card required. Llama 3.1/3.2/3.3 series up to 405B, 200K tokens/day free."
+  },
+  {
+    "id": "cl-auto-1743292801",
+    "date": "2026-03-30",
+    "provider_id": "github-models",
+    "provider_name": "GitHub Models",
+    "type": "provider_added",
+    "title": "Added GitHub Models provider",
+    "description": "Added GitHub Models. Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM/150 RPD; High tier: 10 RPM/50 RPD. No credit card required."
+  },
+  {
+    "id": "cl-auto-1743206401",
+    "date": "2026-03-29",
+    "provider_id": "openrouter",
+    "provider_name": "OpenRouter",
+    "type": "provider_added",
+    "title": "Added OpenRouter provider",
+    "description": "Added OpenRouter. Aggregates multiple LLM providers — some models are permanently free with no credit card required."
+  },
+  {
+    "id": "cl-auto-1743206400",
+    "date": "2026-03-29",
+    "provider_id": "bigmodel",
+    "provider_name": "BigModel",
+    "type": "provider_added",
+    "title": "Added BigModel provider",
+    "description": "Added BigModel. Zhipu AI's open platform featuring GLM series models — permanently free API, available in China, OpenAI-compatible."
+  }
+]

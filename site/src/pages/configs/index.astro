@@ -1,0 +1,318 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+import providers from '../../data/providers.json';
+
+const activeProviders = providers.filter(p => p.status === 'active');
+
+// Generate config for each tool
+const litellmConfig = `# LiteLLM Proxy Configuration
+# Generated on ${new Date().toISOString().split('T')[0]}
+# Includes ${activeProviders.length} active providers
+
+model_list:
+${activeProviders.map(p =>
+  p.top_models.slice(0, 2).map(m =>
+    `  - model_name: ${p.id}/${m.split('/').pop()}
+    litellm_params:
+      model: ${p.id.replace('-', '_')}/${m}
+      api_base: ${p.base_url}
+      api_key: "YOUR_${p.id.toUpperCase().replace(/-/g, '_')}_API_KEY"`
+  ).join('\n')
+).join('\n')}
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false`;
+
+const openwebuiConfig = JSON.stringify({
+  connections: activeProviders.map(p => ({
+    id: p.id,
+    name: p.name,
+    api_base_url: p.base_url,
+    api_key: `YOUR_${p.id.toUpperCase().replace(/-/g, '_')}_API_KEY`,
+    models: p.top_models.map(m => ({ id: m, name: m.split('/').pop() }))
+  }))
+}, null, 2);
+
+const lobechatConfig = JSON.stringify({
+  providers: activeProviders.map(p => ({
+    id: p.id,
+    name: p.name,
+    enabled: true,
+    apiKey: `YOUR_${p.id.toUpperCase().replace(/-/g, '_')}_API_KEY`,
+    endpoint: p.base_url,
+    models: p.top_models.map(m => ({
+      id: m,
+      displayName: m.split('/').pop(),
+      enabled: true
+    }))
+  }))
+}, null, 2);
+
+const cursorConfig = activeProviders.map(p =>
+  `# ${p.name}
+${p.top_models.slice(0, 2).map(m =>
+  `[model.${p.id}.${m.split('/').pop()?.replace(/[^a-z0-9]/gi, '_')}]
+name = "${m.split('/').pop()}"
+api_base = "${p.base_url}"
+api_key = "YOUR_${p.id.toUpperCase().replace(/-/g, '_')}_API_KEY"`
+).join('\n\n')}`
+).join('\n\n');
+
+const tools = [
+  {
+    id: 'litellm',
+    name: 'LiteLLM Proxy',
+    shortDesc: 'Unified LLM proxy supporting 100+ model routes',
+    description: 'Unified LLM proxy supporting 100+ models',
+    filename: 'litellm-config.yaml',
+    language: 'yaml',
+    config: litellmConfig,
+    docsUrl: 'https://docs.litellm.ai/docs/proxy/quick_start',
+    steps: [
+      { title: 'Get API Keys', desc: 'Obtain an API key from each provider\'s console' },
+      { title: 'Replace placeholders', desc: 'Replace all YOUR_*_API_KEY values with your real keys' },
+      { title: 'Place config file', desc: 'Save as <code class="text-slate-300 font-mono text-xs">./config.yaml</code>' },
+      { title: 'Start the proxy', desc: 'Run <code class="text-slate-300 font-mono text-xs">litellm --config config.yaml</code>' },
+    ],
+  },
+  {
+    id: 'openwebui',
+    name: 'Open WebUI',
+    shortDesc: 'Self-hosted ChatGPT-style web UI',
+    description: 'Open-source ChatGPT interface supporting local and cloud models',
+    filename: 'openwebui-connections.json',
+    language: 'json',
+    config: openwebuiConfig,
+    docsUrl: 'https://docs.openwebui.com',
+    steps: [
+      { title: 'Get API Keys', desc: 'Obtain an API key from each provider\'s console' },
+      { title: 'Replace placeholders', desc: 'Replace all YOUR_*_API_KEY values with your real keys' },
+      { title: 'Import config', desc: 'Go to Open WebUI → Settings → Connections → Import' },
+      { title: 'Save and reload', desc: 'Click Save then refresh the page to apply' },
+    ],
+  },
+  {
+    id: 'lobechat',
+    name: 'LobeChat',
+    shortDesc: 'Modern AI assistant UI with plugin support',
+    description: 'Modern AI assistant interface with plugin support',
+    filename: 'lobechat-providers.json',
+    language: 'json',
+    config: lobechatConfig,
+    docsUrl: 'https://lobehub.com/docs',
+    steps: [
+      { title: 'Get API Keys', desc: 'Obtain an API key from each provider\'s console' },
+      { title: 'Replace placeholders', desc: 'Replace all YOUR_*_API_KEY values with your real keys' },
+      { title: 'Place config file', desc: 'Save to <code class="text-slate-300 font-mono text-xs">~/.lobe/providers.json</code>' },
+      { title: 'Restart app', desc: 'Restart LobeChat and enable the provider in settings' },
+    ],
+  },
+  {
+    id: 'cursor',
+    name: 'Cursor',
+    shortDesc: 'AI-powered code editor with custom model support',
+    description: 'AI-powered code editor',
+    filename: '.cursor-models',
+    language: 'toml',
+    config: cursorConfig,
+    docsUrl: 'https://docs.cursor.com/context/model-context',
+    steps: [
+      { title: 'Get API Keys', desc: 'Obtain an API key from each provider\'s console' },
+      { title: 'Replace placeholders', desc: 'Replace all YOUR_*_API_KEY values with your real keys' },
+      { title: 'Place config file', desc: 'Save to project root as <code class="text-slate-300 font-mono text-xs">.cursor-models</code>' },
+      { title: 'Restart Cursor', desc: 'Restart the editor then select the custom model in the model picker' },
+    ],
+  },
+];
+---
+
+<Layout
+  title="Config Downloads — Free LLM APIs"
+  description="Generate ready-to-use LLM config files for LiteLLM, Open WebUI, LobeChat, and Cursor — one-click download."
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+
+    <!-- Page header -->
+    <div class="pt-8 pb-6">
+      <h1 class="text-2xl font-bold text-white mb-2">Tool Config Files</h1>
+      <p class="text-slate-400 text-sm mb-4">
+        Generate ready-to-use LLM config files for all currently active free APIs
+      </p>
+      <div class="flex items-center gap-3 text-sm text-slate-500">
+        <span class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block"></span>
+          <span class="text-green-400 font-semibold">{activeProviders.length}</span> active providers
+        </span>
+        <span class="text-slate-700">·</span>
+        <span>Last updated: {new Date().toISOString().split('T')[0]}</span>
+      </div>
+    </div>
+
+    <!-- Tool tabs -->
+    <div class="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-1" id="tool-tabs">
+      {tools.map((tool, i) => (
+        <button
+          class={`tool-tab group flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${
+            i === 0
+              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/60 hover:border-slate-700/60'
+          }`}
+          data-tool={tool.id}
+        >
+          <!-- Tool icons -->
+          {tool.id === 'litellm' && (
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/>
+            </svg>
+          )}
+          {tool.id === 'openwebui' && (
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          )}
+          {tool.id === 'lobechat' && (
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          )}
+          {tool.id === 'cursor' && (
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+          )}
+          {tool.name}
+        </button>
+      ))}
+    </div>
+
+    <!-- Tool content panels -->
+    {tools.map((tool, i) => (
+      <div id={`tool-${tool.id}`} class={`tool-content ${i !== 0 ? 'hidden' : ''}`}>
+        <div class="grid md:grid-cols-[280px_1fr] gap-5 items-stretch">
+
+          <!-- Left: Quick Start sidebar -->
+          <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 space-y-5 h-full">
+
+            <!-- Tool info -->
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-semibold text-slate-100">{tool.name}</span>
+                <a
+                  href={tool.docsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs text-slate-500 hover:text-blue-400 transition-colors duration-150 flex items-center gap-0.5 cursor-pointer"
+                  aria-label={`${tool.name} documentation`}
+                >
+                  Docs
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/>
+                  </svg>
+                </a>
+              </div>
+              <p class="text-xs text-slate-500">{tool.shortDesc}</p>
+            </div>
+
+            <!-- Quick Start steps -->
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Start</p>
+              <ol class="space-y-3.5">
+                {tool.steps.map((step, si) => (
+                  <li class="flex gap-3">
+                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-400 mt-0.5">
+                      {si + 1}
+                    </span>
+                    <div>
+                      <p class="text-xs font-medium text-slate-300 leading-4">{step.title}</p>
+                      <p class="text-xs text-slate-500 mt-0.5 leading-relaxed" set:html={step.desc} />
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <!-- Divider -->
+            <div class="border-t border-slate-700/50"></div>
+
+            <!-- Provider API Keys shortcuts -->
+            <div>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">API Keys</p>
+              <div class="space-y-1.5">
+                {activeProviders.map(p => (
+                  <a
+                    href={(p as any).signup_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="flex items-center justify-between group/link py-1.5 px-2 rounded-lg hover:bg-slate-700/40 transition-colors duration-150 cursor-pointer"
+                  >
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">
+                        {p.name.charAt(0)}
+                      </div>
+                      <span class="text-xs text-slate-300 group-hover/link:text-slate-100 transition-colors">{p.name}</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-600 group-hover/link:text-slate-400 transition-colors flex-shrink-0">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/>
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <!-- File info -->
+            <div class="border-t border-slate-700/50 pt-4 flex items-center justify-between">
+              <div class="space-y-1">
+                <p class="text-[11px] text-slate-500">
+                  Filename <code class="text-slate-400 font-mono">{tool.filename}</code>
+                </p>
+                <p class="text-[11px] text-slate-500">
+                  Format <code class="text-slate-400 font-mono">{tool.language}</code>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Config preview -->
+          <div class="min-w-0 h-full flex flex-col">
+            <div class="rounded-xl overflow-hidden flex-1 flex flex-col">
+              <CodeBlock code={tool.config} language={tool.language} downloadFilename={tool.filename} />
+            </div>
+          </div>
+        </div>
+      </div>
+    ))}
+
+  </div>
+</Layout>
+
+<script>
+  // Tool tabs
+  const toolTabs = document.querySelectorAll<HTMLButtonElement>('.tool-tab');
+  const toolContents = document.querySelectorAll<HTMLElement>('.tool-content');
+
+  const activeClass = 'bg-green-500/10 border border-green-500/30 text-green-400';
+  const inactiveClass = 'text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/60 hover:border-slate-700/60';
+
+  toolTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const toolId = tab.getAttribute('data-tool');
+
+      toolTabs.forEach(t => {
+        t.className = `tool-tab group flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${inactiveClass}`;
+      });
+      tab.className = `tool-tab group flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${activeClass}`;
+
+      toolContents.forEach(content => {
+        if (content.id === `tool-${toolId}`) {
+          content.classList.remove('hidden');
+        } else {
+          content.classList.add('hidden');
+        }
+      });
+    });
+  });
+
+</script>

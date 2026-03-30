@@ -1,0 +1,41 @@
+---
+interface Props {
+  status: 'active' | 'degraded' | 'dead' | 'unknown';
+  size?: 'sm' | 'lg';
+}
+
+const { status, size = 'sm' } = Astro.props;
+
+const variants: Record<string, string> = {
+  active:   'bg-green-500/10  text-green-400  border-green-500/20',
+  degraded: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  dead:     'bg-red-500/10    text-red-400    border-red-500/20',
+  unknown:  'bg-gray-500/10   text-gray-400   border-gray-500/20',
+};
+
+const labels: Record<string, string> = {
+  active:   'active',
+  degraded: 'degraded',
+  dead:     'dead',
+  unknown:  'unknown',
+};
+
+const sizeClasses = {
+  sm: 'px-2 py-0.5 text-xs',
+  lg: 'px-3 py-1 text-sm',
+};
+
+const variantClass = variants[status] ?? variants.unknown;
+const label = labels[status] ?? status;
+const sizeClass = sizeClasses[size];
+---
+
+<span
+  class={`inline-flex items-center gap-1.5 rounded-full font-mono font-semibold border ${sizeClass} ${variantClass} ${status === 'active' ? 'badge-active' : ''}`}
+  title={`Status: ${label}`}
+>
+  <span
+    class={`w-1.5 h-1.5 rounded-full bg-current dot ${status === 'active' ? 'animate-pulse' : ''}`}
+  ></span>
+  {label}
+</span>

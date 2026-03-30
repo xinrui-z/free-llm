@@ -1,0 +1,300 @@
+---
+import Layout from '../layouts/Layout.astro';
+import StatusSummaryBar from '../components/StatusSummaryBar.astro';
+import ProviderCard from '../components/ProviderCard.astro';
+
+import providers from '../data/providers.json';
+import statusSummary from '../data/status_summary.json';
+
+const workerUrl = import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '';
+
+// Sort providers: active first, then degraded, then dead
+const sortedProviders = [...providers].sort((a, b) => {
+  const order: Record<string, number> = { active: 0, degraded: 1, dead: 2, unknown: 3 };
+  return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+});
+
+---
+
+<Layout
+  title="Free LLM APIs — Real-time Status"
+  description="Real-time monitoring of free LLM API availability. Find free APIs that are actually working."
+>
+  <StatusSummaryBar summary={statusSummary} workerUrl={workerUrl} />
+
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+    <!-- Hero section -->
+    <div class="pt-10 pb-6">
+      <h1 class="text-2xl font-bold text-white mb-2">API Status</h1>
+      <p class="text-slate-500 text-sm font-mono">
+        Monitoring <span class="text-slate-300 font-semibold">{providers.length}</span> free LLM APIs in real time
+      </p>
+    </div>
+
+    <!-- Quick filter tabs -->
+    <div class="flex items-center gap-2 mb-5" id="quick-filter-tabs">
+      <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400" data-filter="all">
+        All ({providers.length})
+      </button>
+      <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500" data-filter="active">
+        Operational ({statusSummary.active})
+      </button>
+      <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500" data-filter="issues">
+        Issues ({statusSummary.degraded + statusSummary.dead})
+      </button>
+    </div>
+
+    <!-- Provider cards grid -->
+    <div
+      id="providers-grid"
+      class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-10"
+    >
+      {sortedProviders.map(provider => (
+        <div
+          class="provider-card-wrapper transition-opacity duration-200"
+          data-status={provider.status}
+          data-provider-id={provider.id}
+        >
+          <ProviderCard provider={provider as any} />
+        </div>
+      ))}
+    </div>
+
+    <!-- Recent changes -->
+    <div class="pb-16 border-t border-slate-800/60 pt-8">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-sm font-semibold text-slate-200">Recent Changes</h2>
+        <a
+          href="/changelog"
+          class="text-sm text-slate-400 hover:text-slate-200 transition-colors duration-150 flex items-center gap-1"
+        >
+          View all
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      </div>
+
+      <div id="recent-changelog" class="space-y-1">
+        <div class="py-4 text-center text-slate-600 text-xs">Loading…</div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // ── Provider card live-update on status-updated event ─────────────────────
+  const BADGE_VARIANTS: Record<string, string> = {
+    active:   'bg-green-500/10 text-green-400 border-green-500/20',
+    degraded: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    dead:     'bg-red-500/10 text-red-400 border-red-500/20',
+    unknown:  'bg-gray-500/10 text-gray-400 border-gray-500/20',
+  };
+  const BADGE_LABELS: Record<string, string> = {
+    active: 'active', degraded: 'degraded', dead: 'dead', unknown: 'unknown',
+  };
+  const BORDER_CLASSES: Record<string, string> = {
+    dead: 'border-l-2 border-l-red-500',
+    degraded: 'border-l-2 border-l-yellow-500',
+    active: '',
+    unknown: '',
+  };
+  const LATENCY_COLOR: Record<string, string> = {
+    active:   'text-slate-300',
+    degraded: 'text-yellow-400',
+    dead:     'text-slate-600',
+    unknown:  'text-slate-600',
+  };
+
+  function formatLatency(ms: number | null): string {
+    if (ms === null || ms === undefined) return '—';
+    if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${ms}ms`;
+  }
+
+  const COLOR_MAP: Record<string, string> = {
+    active:   'bg-green-500',
+    degraded: 'bg-yellow-500',
+    dead:     'bg-red-500',
+    unknown:  'bg-slate-700 opacity-40',
+  };
+
+  function renderMiniUptimeBar(rawHistory: string[]): string {
+    const WINDOW = 90;
+    const padded = rawHistory.length < WINDOW
+      ? [...Array(WINDOW - rawHistory.length).fill('unknown'), ...rawHistory]
+      : rawHistory.slice(-WINDOW);
+
+    const today = new Date();
+    const bars = padded.map((status, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (padded.length - 1 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const color = COLOR_MAP[status] ?? COLOR_MAP.unknown;
+      return `<div class="flex-1 min-w-0 ${color}" style="height:8px" title="${dateStr}: ${status}"></div>`;
+    }).join('');
+
+    const knownCount = padded.filter(s => s !== 'unknown').length;
+    const activeCount = padded.filter(s => s === 'active').length;
+    const pct = knownCount > 0 ? ((activeCount / knownCount) * 100).toFixed(1) : '—';
+
+    return `
+      <div class="flex gap-px w-full overflow-hidden rounded-sm">${bars}</div>
+      <div class="flex justify-between mt-0.5">
+        <span class="text-xs text-slate-600 font-mono">90d</span>
+        <span class="text-xs text-green-400 font-mono">${pct}%</span>
+      </div>`;
+  }
+
+  document.addEventListener('status-updated', (e: Event) => {
+    const data = (e as CustomEvent).detail as {
+      active: number; degraded: number;
+      providers: { id: string; status: string; latency_ms: number | null; history_90d?: string[] }[];
+    };
+
+    // Update filter tab counts
+    const allTab = document.querySelector('[data-filter="all"]');
+    const activeTab = document.querySelector('[data-filter="active"]');
+    const issuesTab = document.querySelector('[data-filter="issues"]');
+    const totalCount = data.providers.length;
+    const activeCount = data.providers.filter(p => p.status === 'active').length;
+    const issuesCount = data.providers.filter(p => p.status === 'degraded' || p.status === 'dead').length;
+    if (allTab) allTab.textContent = `All (${totalCount})`;
+    if (activeTab) activeTab.textContent = `Operational (${activeCount})`;
+    if (issuesTab) issuesTab.textContent = `Issues (${issuesCount})`;
+
+    // Update each provider card
+    data.providers.forEach(({ id, status, latency_ms, history_90d }) => {
+      const wrapper = document.querySelector<HTMLElement>(`[data-provider-id="${id}"]`);
+      if (!wrapper) return;
+
+      // Update wrapper data-status (used by filter tabs)
+      wrapper.dataset.status = status;
+
+      // Find the inner <a> card element
+      const cardLink = wrapper.querySelector<HTMLElement>('a[data-provider-id]');
+      if (cardLink) {
+        // Rebuild border/opacity classes without changing hover classes
+        const base = 'group block bg-slate-800 border border-slate-700 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:border-slate-600 hover:shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_4px_16px_rgba(0,0,0,0.3)] hover:-translate-y-0.5';
+        const border = BORDER_CLASSES[status] ?? '';
+        const opacity = status === 'dead' ? 'opacity-70' : '';
+        cardLink.className = [base, border, opacity].filter(Boolean).join(' ');
+      }
+
+      // Update status badge
+      const badge = wrapper.querySelector<HTMLElement>('span[title^="Status:"]');
+      if (badge) {
+        const variant = BADGE_VARIANTS[status] ?? BADGE_VARIANTS.unknown;
+        const label = BADGE_LABELS[status] ?? status;
+        const pulse = status === 'active' ? ' badge-active' : '';
+        badge.className = `inline-flex items-center gap-1.5 rounded-full font-mono font-semibold border px-2 py-0.5 text-xs ${variant}${pulse}`;
+        badge.setAttribute('title', `Status: ${label}`);
+        const dot = badge.querySelector('span');
+        if (dot) {
+          dot.className = `w-1.5 h-1.5 rounded-full bg-current dot${status === 'active' ? ' animate-pulse' : ''}`;
+        }
+        // Update text node (skip empty whitespace-only nodes)
+        badge.childNodes.forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) node.textContent = label;
+        });
+      }
+
+      // Update latency display
+      const latencyEl = wrapper.querySelector<HTMLElement>('[data-latency]');
+      if (latencyEl) {
+        latencyEl.textContent = formatLatency(latency_ms);
+        latencyEl.className = `font-mono text-sm font-bold ${LATENCY_COLOR[status] ?? 'text-slate-300'}`;
+      }
+
+      // Update mini uptime bar
+      const uptimeBarEl = wrapper.querySelector<HTMLElement>(`[data-uptime-bar="${id}"]`);
+      if (uptimeBarEl && history_90d?.length) {
+        uptimeBarEl.innerHTML = renderMiniUptimeBar(history_90d);
+        uptimeBarEl.classList.remove('hidden');
+      }
+    });
+  });
+
+  // ── Quick filter tabs ─────────────────────────────────────────────────────
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.quick-tab');
+  const cards = document.querySelectorAll<HTMLElement>('.provider-card-wrapper');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const filter = tab.getAttribute('data-filter');
+
+      tabs.forEach(t => {
+        t.className = 'quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500';
+      });
+      tab.className = 'quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400';
+
+      cards.forEach(card => {
+        const status = card.getAttribute('data-status');
+        let visible = true;
+
+        if (filter === 'active') {
+          visible = status === 'active';
+        } else if (filter === 'issues') {
+          visible = status === 'degraded' || status === 'dead';
+        }
+
+        if (visible) {
+          card.style.display = '';
+          setTimeout(() => { card.style.opacity = '1'; }, 10);
+        } else {
+          card.style.opacity = '0';
+          setTimeout(() => { card.style.display = 'none'; }, 200);
+        }
+      });
+    });
+  });
+</script>
+
+<script define:vars={{ workerUrl: import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '' }}>
+  const TYPE_COLOR = {
+    outage:            'text-red-400',
+    recovery:          'text-green-400',
+    degraded:          'text-yellow-400',
+    status_change:     'text-slate-300',
+    model_added:       'text-green-400',
+    rate_limit_change: 'text-yellow-400',
+  };
+  const DOT_COLOR = {
+    outage:            'bg-red-500',
+    recovery:          'bg-green-500',
+    degraded:          'bg-yellow-500',
+    status_change:     'bg-slate-500',
+    model_added:       'bg-green-500',
+    rate_limit_change: 'bg-yellow-500',
+  };
+
+  async function fetchRecentChangelog() {
+    const container = document.getElementById('recent-changelog');
+    if (!container || !workerUrl) {
+      if (container) container.innerHTML = '';
+      return;
+    }
+    try {
+      const resp = await fetch(`${workerUrl}/api/changelog?limit=5`);
+      if (!resp.ok) throw new Error();
+      const entries = await resp.json();
+      if (!entries.length) {
+        container.innerHTML = '<div class="py-4 text-center text-slate-600 text-xs">No changes yet</div>';
+        return;
+      }
+      container.innerHTML = entries.map(e => `
+        <div class="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-slate-800/50 transition-colors duration-150">
+          <span class="w-2 h-2 rounded-full flex-shrink-0 ${DOT_COLOR[e.type] ?? 'bg-slate-500'}"></span>
+          <span class="text-xs text-slate-500 font-mono flex-shrink-0">${e.date}</span>
+          <span class="text-sm font-medium ${TYPE_COLOR[e.type] ?? 'text-slate-300'} flex-shrink-0">${e.provider_name}</span>
+          <span class="text-slate-600 flex-shrink-0">·</span>
+          <span class="text-sm text-slate-300 truncate">${e.title}</span>
+        </div>`).join('');
+    } catch {
+      if (container) container.innerHTML = '';
+    }
+  }
+
+  fetchRecentChangelog();
+</script>

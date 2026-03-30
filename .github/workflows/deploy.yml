@@ -1,0 +1,184 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'site/**'
+      - 'checker-worker/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  # ── 1. Deploy Worker when its source changes ───────────────────────────────
+  deploy-worker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if worker changed
+        id: check
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q '^checker-worker/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.changed == 'true'
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: checker-worker/package-lock.json
+
+      - name: Install worker dependencies
+        if: steps.check.outputs.changed == 'true'
+        working-directory: checker-worker
+        run: npm ci
+
+      - name: Deploy Worker to Cloudflare
+        if: steps.check.outputs.changed == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: checker-worker
+
+  # ── 2. Sync providers.json → Worker KV when catalog changes ───────────────
+  # This lets the Worker pick up new providers / model updates without
+  # redeploying its code. Also triggers an immediate health check so the
+  # status snapshot fetched in the next job reflects the latest catalog.
+  sync-providers:
+    runs-on: ubuntu-latest
+    needs: [deploy-worker]
+    if: always() && !failure() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check which data files changed
+        id: check
+        run: |
+          changed=$(git diff --name-only HEAD~1 HEAD)
+          echo "$changed" | grep -q 'site/src/data/providers.json' \
+            && echo "providers=true" >> "$GITHUB_OUTPUT" \
+            || echo "providers=false" >> "$GITHUB_OUTPUT"
+          echo "$changed" | grep -q 'site/src/data/changelog.json' \
+            && echo "changelog=true" >> "$GITHUB_OUTPUT" \
+            || echo "changelog=false" >> "$GITHUB_OUTPUT"
+
+      - name: Sync catalog to Worker KV
+        if: steps.check.outputs.providers == 'true'
+        run: |
+          curl -sf -X PUT "${{ secrets.WORKER_URL }}/api/providers" \
+            -H "Content-Type: application/json" \
+            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
+            --data @site/src/data/providers.json
+          echo "Catalog synced ($(jq length site/src/data/providers.json) providers)"
+
+      - name: Trigger immediate health check after catalog update
+        if: steps.check.outputs.providers == 'true'
+        run: |
+          curl -sf "${{ secrets.WORKER_URL }}/api/refresh" \
+            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
+            -o /dev/null && echo "Health check triggered"
+
+      - name: Sync changelog.json to Worker KV
+        if: steps.check.outputs.changelog == 'true'
+        run: |
+          curl -sf -X POST "${{ secrets.WORKER_URL }}/api/changelog/replace" \
+            -H "Content-Type: application/json" \
+            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
+            --data @site/src/data/changelog.json
+          echo "Changelog synced ($(jq length site/src/data/changelog.json) entries)"
+
+  # ── 3. Build and deploy site ───────────────────────────────────────────────
+  # Fetches a fresh status snapshot from the Worker before building so the
+  # SSR initial render shows real data instead of the hand-maintained fallback.
+  deploy-site:
+    runs-on: ubuntu-latest
+    needs: [sync-providers]
+    if: always() && !failure() && !cancelled()
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Fetch live status snapshot for SSR
+        # Overwrites status_summary.json with current KV state so the first
+        # paint shows real provider counts without waiting for client JS.
+        # Falls through silently if the Worker is unreachable (stale file used).
+        run: |
+          curl -sf "${{ secrets.PUBLIC_STATUS_WORKER_URL }}/api/status" \
+            -o site/src/data/status_summary.json \
+            && echo "Status snapshot updated" \
+            || echo "Worker unreachable — using existing status_summary.json"
+
+      - name: Build
+        working-directory: site
+        env:
+          PUBLIC_STATUS_WORKER_URL: ${{ secrets.PUBLIC_STATUS_WORKER_URL }}
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=free-llm-apis
+          workingDirectory: site
+
+  # ── 4. Generate changelog entries when providers.json changes ─────────────
+  update-changelog:
+    runs-on: ubuntu-latest
+    needs: [sync-providers]
+    if: always() && !failure() && !cancelled()
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if providers.json changed
+        id: check
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q 'site/src/data/providers.json'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.changed == 'true'
+        with:
+          node-version: '20'
+
+      - name: Generate and push changelog
+        if: steps.check.outputs.changed == 'true'
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          REFRESH_SECRET: ${{ secrets.REFRESH_SECRET }}
+        run: node scripts/gen-changelog.mjs

@@ -1,0 +1,181 @@
+---
+interface Props {
+  summary: {
+    active: number;
+    degraded: number;
+    dead: number;
+    unknown?: number;
+    total?: number;
+    last_checked: string;
+  };
+  workerUrl?: string;
+}
+
+const { summary, workerUrl = '' } = Astro.props;
+
+function formatTime(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString('en-US');
+}
+
+const lastChecked = formatTime(summary.last_checked);
+---
+
+<div
+  id="status-summary-bar"
+  class="bg-slate-800/50 border-b border-slate-700/50 py-3"
+  data-worker-url={workerUrl}
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 flex flex-wrap items-center gap-4 md:gap-6 text-sm font-mono">
+    <!-- Operational -->
+    <div class="relative group flex items-center gap-1.5 cursor-default">
+      <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block"></span>
+      <span id="count-active" class="text-green-400 font-semibold">{summary.active}</span>
+      <span class="text-slate-500 text-xs">operational</span>
+      <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
+        <div class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 whitespace-nowrap shadow-xl">
+          <p class="font-semibold text-green-400 mb-1">Operational</p>
+          <p class="text-slate-400">HTTP 200 / 201 — API responding normally</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Degraded -->
+    <div class="relative group flex items-center gap-1.5 cursor-default">
+      <span class="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>
+      <span id="count-degraded" class="text-yellow-400 font-semibold">{summary.degraded}</span>
+      <span class="text-slate-500 text-xs">degraded</span>
+      <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
+        <div class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 whitespace-nowrap shadow-xl">
+          <p class="font-semibold text-yellow-400 mb-1">Degraded</p>
+          <p class="text-slate-400">HTTP 429 / 503 / 529 — Rate limited or overloaded</p>
+          <p class="text-slate-400">Timeout — Response took too long</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Down -->
+    <div class="relative group flex items-center gap-1.5 cursor-default">
+      <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+      <span id="count-dead" class="text-red-400 font-semibold">{summary.dead}</span>
+      <span class="text-slate-500 text-xs">down</span>
+      <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
+        <div class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 whitespace-nowrap shadow-xl">
+          <p class="font-semibold text-red-400 mb-1">Down</p>
+          <p class="text-slate-400">HTTP 401 / 403 — Auth failure</p>
+          <p class="text-slate-400">Other errors — Unreachable or misconfigured</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unknown -->
+    <div id="unknown-block" class={`relative group flex items-center gap-1.5 cursor-default ${(summary.unknown ?? 0) === 0 ? 'hidden' : ''}`}>
+      <span class="w-2 h-2 rounded-full bg-gray-500 inline-block"></span>
+      <span id="count-unknown" class="text-gray-400 font-semibold">{summary.unknown ?? 0}</span>
+      <span class="text-slate-500 text-xs">unknown</span>
+      <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 pointer-events-none">
+        <div class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 whitespace-nowrap shadow-xl">
+          <p class="font-semibold text-gray-400 mb-1">Unknown</p>
+          <p class="text-slate-400">Not yet checked or missing API key</p>
+        </div>
+      </div>
+    </div>
+    <div class="ml-auto flex items-center gap-2 text-slate-500 text-xs">
+      <span id="last-checked-label">Last checked: {lastChecked}</span>
+      <button
+        id="refresh-btn"
+        class="flex items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors duration-150 cursor-pointer"
+        title="Refresh"
+      >
+        <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hover:rotate-12 transition-transform duration-150">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const bar = document.getElementById('status-summary-bar');
+  const workerUrl = bar?.getAttribute('data-worker-url') || '';
+
+  const refreshBtn = document.getElementById('refresh-btn');
+  const refreshIcon = document.getElementById('refresh-icon');
+
+  function formatTimeDiff(isoString: string): string {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString('en-US');
+  }
+
+  async function fetchStatus(): Promise<void> {
+    if (!workerUrl) return;
+
+    refreshIcon?.classList.add('animate-spin');
+    refreshBtn?.setAttribute('disabled', 'true');
+
+    const endpoint = `${workerUrl}/api/status`;
+
+    try {
+      const resp = await fetch(endpoint, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json() as {
+        active: number; degraded: number; dead: number; unknown: number;
+        last_checked: string;
+        providers: { id: string; status: string; latency_ms: number | null }[];
+      };
+
+      // Update summary counts
+      const setCount = (id: string, val: number) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      };
+      setCount('count-active', data.active);
+      setCount('count-degraded', data.degraded);
+      setCount('count-dead', data.dead);
+      setCount('count-unknown', data.unknown);
+      const unknownBlock = document.getElementById('unknown-block');
+      if (unknownBlock) unknownBlock.classList.toggle('hidden', data.unknown === 0);
+
+      const labelEl = document.getElementById('last-checked-label');
+      if (labelEl) labelEl.textContent = `Last checked: ${formatTimeDiff(data.last_checked)}`;
+
+      // Dispatch event so index.astro can update provider cards
+      document.dispatchEvent(new CustomEvent('status-updated', { detail: data }));
+
+      if (typeof (window as any).showToast === 'function') {
+        (window as any).showToast('Status updated', 'success');
+      }
+    } catch (err) {
+      console.warn('[status checker] fetch failed:', err);
+      if (typeof (window as any).showToast === 'function') {
+        (window as any).showToast('Failed to fetch status, showing cached data', 'error');
+      }
+    } finally {
+      refreshIcon?.classList.remove('animate-spin');
+      refreshBtn?.removeAttribute('disabled');
+    }
+  }
+
+  refreshBtn?.addEventListener('click', () => fetchStatus());
+
+  if (workerUrl) {
+    fetchStatus();
+  }
+</script>

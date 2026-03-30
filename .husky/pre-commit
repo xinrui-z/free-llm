@@ -1,0 +1,5 @@
+#!/bin/sh
+# Only run validation if the relevant JSON files are staged
+if git diff --cached --name-only | grep -qE 'site/src/data/(providers|changelog)\.json'; then
+  node scripts/validate.mjs
+fi

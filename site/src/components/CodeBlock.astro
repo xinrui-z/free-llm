@@ -1,0 +1,171 @@
+---
+interface Props {
+  code: string;
+  language?: string;
+  title?: string;
+  downloadFilename?: string;
+}
+
+const { code, language = 'bash', title, downloadFilename } = Astro.props;
+
+// Simple syntax highlighting map
+const langLabel: Record<string, string> = {
+  bash: 'bash',
+  shell: 'shell',
+  python: 'python',
+  javascript: 'javascript',
+  typescript: 'typescript',
+  json: 'json',
+  yaml: 'yaml',
+  toml: 'toml',
+};
+
+const displayLang = langLabel[language] ?? language;
+
+// Generate unique ID for this code block
+const blockId = `cb-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-900 h-full flex flex-col">
+  <!-- Header bar -->
+  <div class="flex items-center justify-between px-4 py-2.5 bg-slate-800/80 border-b border-slate-700/50">
+    <div class="flex items-center gap-2">
+      <div class="flex gap-1.5">
+        <div class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></div>
+      </div>
+      <span class="text-xs text-slate-500 font-mono ml-2">{title || displayLang}</span>
+    </div>
+    <div class="flex items-center gap-1">
+      {downloadFilename && (
+        <button
+          id={`download-btn-${blockId}`}
+          class="flex items-center px-2 py-1 rounded text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-all duration-150 cursor-pointer"
+          data-download-id={blockId}
+          aria-label={`Download ${downloadFilename}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+        </button>
+      )}
+      <button
+        id={`copy-btn-${blockId}`}
+        class="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-all duration-150 cursor-pointer"
+        data-code-id={blockId}
+        aria-label="Copy code"
+      >
+      <svg id={`icon-copy-${blockId}`} xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <svg id={`icon-check-${blockId}`} xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden text-green-400">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <svg id={`icon-spin-${blockId}`} xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden animate-spin">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+      </svg>
+      <span id={`copy-text-${blockId}`}>Copy</span>
+    </button>
+    </div>
+  </div>
+
+  <!-- Code content -->
+  <div class="overflow-auto flex-1">
+    <pre
+      id={`code-${blockId}`}
+      class="px-4 py-3 text-sm font-mono text-slate-300 leading-relaxed whitespace-pre"
+    >{code}</pre>
+  </div>
+</div>
+
+<script define:vars={{ blockId, downloadFilename }}>
+  // Download handler
+  if (downloadFilename) {
+    const dlBtn = document.getElementById(`download-btn-${blockId}`);
+    dlBtn?.addEventListener('click', () => {
+      const code = document.getElementById(`code-${blockId}`)?.textContent || '';
+      const blob = new Blob([code], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = downloadFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (typeof window.showToast === 'function') {
+        window.showToast(`${downloadFilename} downloaded`, 'success');
+      }
+    });
+  }
+
+  const btn = document.getElementById(`copy-btn-${blockId}`);
+  const codeEl = document.getElementById(`code-${blockId}`);
+  const iconCopy = document.getElementById(`icon-copy-${blockId}`);
+  const iconCheck = document.getElementById(`icon-check-${blockId}`);
+  const iconSpin = document.getElementById(`icon-spin-${blockId}`);
+  const copyText = document.getElementById(`copy-text-${blockId}`);
+
+  btn?.addEventListener('click', async () => {
+    if (!codeEl || !btn) return;
+
+    const code = codeEl.textContent || '';
+
+    // Loading state
+    iconCopy?.classList.add('hidden');
+    iconSpin?.classList.remove('hidden');
+    if (copyText) copyText.textContent = '';
+
+    try {
+      await navigator.clipboard.writeText(code);
+
+      // Success state
+      iconSpin?.classList.add('hidden');
+      iconCheck?.classList.remove('hidden');
+      iconCheck?.classList.add('text-green-400');
+      if (copyText) {
+        copyText.textContent = 'Copied';
+        copyText.className = 'text-green-400';
+      }
+      btn.className = btn.className.replace('text-slate-500 hover:text-slate-300', 'text-green-400');
+
+      if (typeof window.showToast === 'function') {
+        window.showToast('Copied to clipboard', 'success');
+      }
+
+      // Restore after 2000ms
+      setTimeout(() => {
+        iconCheck?.classList.add('hidden');
+        iconCheck?.classList.remove('text-green-400');
+        iconCopy?.classList.remove('hidden');
+        if (copyText) {
+          copyText.textContent = 'Copy';
+          copyText.className = '';
+        }
+        if (btn) btn.className = btn.className.replace('text-green-400', 'text-slate-500 hover:text-slate-300');
+      }, 2000);
+
+    } catch {
+      // Error state
+      iconSpin?.classList.add('hidden');
+      iconCopy?.classList.remove('hidden');
+      if (copyText) {
+        copyText.textContent = 'Failed';
+        copyText.className = 'text-red-400';
+      }
+
+      if (typeof window.showToast === 'function') {
+        window.showToast('Copy failed, please select text manually', 'error');
+      }
+
+      setTimeout(() => {
+        if (copyText) {
+          copyText.textContent = 'Copy';
+          copyText.className = '';
+        }
+      }, 1500);
+    }
+  });
+</script>

@@ -1,0 +1,465 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import UptimeBar from '../../components/UptimeBar.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+import providers from '../../data/providers.json';
+
+export function getStaticPaths() {
+  return providers.map(p => ({
+    params: { id: p.id },
+    props: { provider: p },
+  }));
+}
+
+type Provider = typeof providers[0];
+interface Props {
+  provider: Provider;
+}
+
+const { provider } = Astro.props;
+
+// Generate curl example
+const curlExample = `export API_KEY="your_api_key_here"
+curl ${provider.base_url}/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $API_KEY" \\
+  -d '{
+    "model": "${provider.top_models[0] || 'your-model-id'}",
+    "messages": [
+      {"role": "user", "content": "Hello! How are you?"}
+    ]
+  }'`;
+
+const pythonExample = `from openai import OpenAI
+
+client = OpenAI(
+    base_url="${provider.base_url}",
+    api_key="your_api_key_here",  # or use env var
+)
+
+response = client.chat.completions.create(
+    model="${provider.top_models[0] || 'your-model-id'}",
+    messages=[
+        {"role": "user", "content": "Hello! How are you?"}
+    ]
+)
+
+print(response.choices[0].message.content)`;
+
+const nodeExample = `import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: '${provider.base_url}',
+  apiKey: process.env.API_KEY ?? 'your_api_key_here',
+});
+
+const response = await client.chat.completions.create({
+  model: '${provider.top_models[0] || 'your-model-id'}',
+  messages: [
+    { role: 'user', content: 'Hello! How are you?' }
+  ],
+});
+
+console.log(response.choices[0].message.content);`;
+
+// Related providers (same tags, exclude current)
+const relatedProviders = providers
+  .filter(p => p.id !== provider.id && p.tags.some(t => provider.tags.includes(t)))
+  .slice(0, 3);
+
+function formatLatency(ms: number | null): string {
+  if (ms === null || ms === undefined) return '—';
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
+}
+
+function formatNum(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '—';
+  return n.toLocaleString();
+}
+
+// Uptime stats — no static data, history comes from live Worker API
+const uptimePct = '—';
+---
+
+<Layout
+  title={`${provider.name} — Free LLM APIs`}
+  description={`${provider.name} API status, model list, and usage examples. ${provider.description ?? ''}`}
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+    <!-- Back link -->
+    <div class="pt-6 pb-2">
+      <a href="/providers" class="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors duration-150 text-sm w-fit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Providers
+      </a>
+    </div>
+
+    <!-- Provider header -->
+    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 md:p-6 mb-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-base font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+            {provider.logo
+              ? <img src={provider.logo} alt={provider.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+              : null}
+            <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0)}</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-2xl font-bold text-white">{provider.name}</h1>
+              <span data-live-status={provider.id} data-badge-size="lg">
+                <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} size="lg" />
+              </span>
+            </div>
+            {provider.description && (
+              <p class="text-slate-400 text-sm mt-0.5">{provider.description}</p>
+            )}
+            <p class="text-slate-500 text-xs font-mono mt-1">{provider.base_url}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-wrap">
+          {provider.website_url && (
+            <a
+              href={provider.website_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-100 transition-colors duration-150"
+            >
+              Website
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+          )}
+          {provider.signup_url && (
+            <a
+              href={provider.signup_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 rounded-lg text-sm transition-colors duration-150"
+            >
+              Get API Key
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </a>
+          )}
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-700/50">
+        <div>
+          <p class="text-xs text-slate-500 mb-0.5">Avg Latency</p>
+          <p class={`font-mono text-lg font-bold ${provider.status === 'degraded' ? 'text-yellow-400' : 'text-slate-200'}`} data-live-latency={provider.id}>
+            {formatLatency(provider.latency_ms)}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-0.5">90-day Uptime</p>
+          <p class="font-mono text-lg font-bold text-green-400"><span data-live-uptime>—</span>%</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-0.5">Rate Limits</p>
+          <p class="font-mono text-sm text-slate-300">
+            {formatNum(provider.rpm)} RPM / {formatNum(provider.rpd)} RPD
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 mb-0.5">Sign-up Required</p>
+          <p class="font-mono text-sm text-slate-300">
+            {provider.auth === 'required' ? 'Yes' : 'No'}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Uptime bar - 90 days (hidden until live data arrives) -->
+    <div id="uptime-section" class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 mb-5 hidden">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-slate-200">Uptime History (90 days)</h2>
+        <span class="text-sm font-mono text-green-400 font-bold"><span data-live-uptime></span>% uptime</span>
+      </div>
+      <div id="uptime-bar-container"></div>
+    </div>
+
+    <!-- Main content: info + models -->
+    <div class="grid md:grid-cols-2 gap-5 mb-5">
+      <!-- Basic info -->
+      <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-slate-200 mb-4">Info</h2>
+        <div class="space-y-3">
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Base URL</span>
+            <span class="font-mono text-slate-300 text-xs text-right max-w-[200px] truncate">{provider.base_url}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Sign-up Required</span>
+            <span class={provider.auth === 'required' ? 'text-slate-300' : 'text-green-400'}>
+              {provider.auth === 'required' ? 'Yes' : 'No'}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Credit Card</span>
+            <span class={provider.auth === 'credit_card_required' ? 'text-yellow-400' : 'text-slate-300'}>
+              {provider.auth === 'credit_card_required' ? 'Required' : 'Not required'}
+            </span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Context Window</span>
+            <span class="font-mono text-slate-300">{provider.context_window ?? '—'}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-500">Last Verified</span>
+            <span class="font-mono text-slate-400 text-xs">{provider.last_verified}</span>
+          </div>
+          <div class="flex flex-wrap gap-1 pt-1 border-t border-slate-700/50">
+            {provider.tags.map((tag: string) => (
+              <span class="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 font-mono">{tag}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <!-- Model list -->
+      <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
+        <h2 class="text-sm font-semibold text-slate-200 mb-4">
+          Models
+          {provider.models && <span class="text-slate-500 font-normal ml-1">({provider.models.length})</span>}
+        </h2>
+        {provider.models && provider.models.length > 0 ? (
+          <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {provider.models.map((model: any) => (
+              <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg hover:bg-slate-700/30 transition-colors duration-150">
+                <div class="min-w-0 flex-1 mr-3">
+                  <p class="text-xs font-mono text-slate-300 truncate">{model.id}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    CTX: {model.context_window}
+                    {model.rpm !== null && <span> · {model.rpm} RPM</span>}
+                  </p>
+                </div>
+                <StatusBadge status={model.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p class="text-sm text-slate-500">No model data available</p>
+        )}
+      </div>
+    </div>
+
+    <!-- Code examples -->
+    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 mb-5">
+      <h2 class="text-sm font-semibold text-slate-200 mb-4">Quick Start</h2>
+
+      <!-- Tab selector -->
+      <div class="flex gap-1 mb-4 bg-slate-800/80 rounded-lg p-1 w-fit" id="sdk-tabs">
+        <button
+          class="sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 bg-slate-700 text-white"
+          data-tab="curl"
+        >
+          curl
+        </button>
+        <button
+          class="sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 text-slate-500 hover:text-slate-300"
+          data-tab="python"
+        >
+          Python
+        </button>
+        <button
+          class="sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 text-slate-500 hover:text-slate-300"
+          data-tab="node"
+        >
+          Node.js
+        </button>
+      </div>
+
+      <div id="tab-curl" class="sdk-tab-content">
+        <CodeBlock code={curlExample} language="bash" />
+      </div>
+      <div id="tab-python" class="sdk-tab-content hidden">
+        <CodeBlock code={pythonExample} language="python" />
+      </div>
+      <div id="tab-node" class="sdk-tab-content hidden">
+        <CodeBlock code={nodeExample} language="javascript" />
+      </div>
+    </div>
+
+    <!-- Related providers -->
+    {relatedProviders.length > 0 && (
+      <div class="mb-12">
+        <h2 class="text-sm font-semibold text-slate-200 mb-3">Related Providers</h2>
+        <div class="grid sm:grid-cols-3 gap-3">
+          {relatedProviders.map(rp => (
+            <a
+              href={`/providers/${rp.id}`}
+              class="flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:border-slate-600 hover:bg-slate-800/70 transition-all duration-150"
+            >
+              <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+                {rp.logo
+                  ? <img src={rp.logo} alt={rp.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                  : null}
+                <span class={rp.logo ? 'hidden' : 'flex'}>{rp.name.charAt(0)}</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-200">{rp.name}</p>
+                <span data-live-status={rp.id} data-badge-size="sm">
+                  <StatusBadge status={rp.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script define:vars={{ workerUrl: import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '', providerId: provider.id }}>
+  function badgeHtml(status, size) {
+    const cls = {
+      active:   'bg-green-500/10 text-green-400 border-green-500/20',
+      degraded: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      dead:     'bg-red-500/10 text-red-400 border-red-500/20',
+      unknown:  'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    }[status] ?? 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    const dot = status === 'active' ? 'animate-pulse' : '';
+    const sz  = size === 'lg' ? 'px-3 py-1 text-sm' : 'px-2 py-0.5 text-xs';
+    return `<span class="inline-flex items-center gap-1.5 rounded-full font-mono font-semibold border ${sz} ${cls}"><span class="w-1.5 h-1.5 rounded-full bg-current ${dot}"></span>${status}</span>`;
+  }
+
+  function fmtLatency(ms) {
+    if (ms === null || ms === undefined) return '—';
+    if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${ms}ms`;
+  }
+
+  const COLOR_MAP = {
+    active:   'bg-green-500',
+    degraded: 'bg-yellow-500',
+    dead:     'bg-red-500',
+    unknown:  'bg-slate-700 opacity-40',
+  };
+
+  function renderUptimeBar(rawHistory) {
+    if (!rawHistory || rawHistory.length === 0) return;
+
+    const container = document.getElementById('uptime-bar-container');
+    const section = document.getElementById('uptime-section');
+    if (!container || !section) return;
+
+    // Always show 90 days: pad left with 'unknown' if Worker returned fewer entries
+    const WINDOW = 90;
+    const history = rawHistory.length < WINDOW
+      ? [...Array(WINDOW - rawHistory.length).fill('unknown'), ...rawHistory]
+      : rawHistory.slice(-WINDOW);
+
+    const today = new Date();
+    const bars = history.map((status, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (history.length - 1 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const color = COLOR_MAP[status] || COLOR_MAP.unknown;
+      return `<div class="flex-1 min-w-0 rounded-sm cursor-pointer transition-all duration-150 hover:brightness-125 ${color}" style="height:20px" title="${dateStr}: ${status}" data-date="${dateStr}" data-status="${status}"></div>`;
+    }).join('');
+
+    const activeCount = history.filter(s => s === 'active').length;
+    const deadCount = history.filter(s => s === 'dead').length;
+    const degradedCount = history.filter(s => s === 'degraded').length;
+    const pct = ((activeCount / history.length) * 100).toFixed(1);
+
+    container.innerHTML = `
+      <div class="flex gap-px items-end h-6 w-full overflow-hidden">${bars}</div>
+      <div class="flex justify-between mt-1">
+        <span class="text-xs text-slate-600">90d ago</span>
+        <span class="text-xs text-slate-600">today</span>
+      </div>
+      <div class="mt-1 flex flex-wrap gap-2 text-xs">
+        ${deadCount > 0 ? `<span class="text-red-400 font-mono">${deadCount} outage${deadCount > 1 ? 's' : ''}</span>` : ''}
+        ${degradedCount > 0 ? `<span class="text-yellow-400 font-mono">${degradedCount} degraded</span>` : ''}
+      </div>
+    `;
+
+    // Show the section
+    section.classList.remove('hidden');
+
+    // Update uptime % in section title and stats row (% is a static sibling text node)
+    document.querySelectorAll('[data-live-uptime]').forEach(el => {
+      el.textContent = pct;
+    });
+  }
+
+  async function fetchLiveStatus() {
+    if (!workerUrl) return;
+    try {
+      const resp = await fetch(`${workerUrl}/api/status`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      for (const p of data.providers) {
+        document.querySelectorAll(`[data-live-status="${p.id}"]`).forEach(el => {
+          el.innerHTML = badgeHtml(p.status, el.getAttribute('data-badge-size') || 'sm');
+        });
+        document.querySelectorAll(`[data-live-latency="${p.id}"]`).forEach(el => {
+          el.textContent = fmtLatency(p.latency_ms);
+          const isDegraded = p.status === 'degraded';
+          if (el.tagName === 'P') {
+            el.className = `font-mono text-lg font-bold ${isDegraded ? 'text-yellow-400' : 'text-slate-200'}`;
+          } else {
+            el.className = `font-mono text-xs ${isDegraded ? 'text-yellow-400' : 'text-slate-400'}`;
+          }
+        });
+        // Update uptime bar for current provider
+        if (p.id === providerId && p.history_90d) {
+          renderUptimeBar(p.history_90d);
+        }
+      }
+    } catch {
+      // static data as fallback
+    }
+  }
+
+  fetchLiveStatus();
+</script>
+
+<script>
+  const tabBtns = document.querySelectorAll<HTMLButtonElement>('.sdk-tab-btn');
+  const tabContents = document.querySelectorAll<HTMLElement>('.sdk-tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-tab');
+
+      // Update tab button styles
+      tabBtns.forEach(b => {
+        b.className = 'sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 text-slate-500 hover:text-slate-300';
+      });
+      btn.className = 'sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 bg-slate-700 text-white';
+
+      // Show/hide content with fade
+      tabContents.forEach(content => {
+        if (content.id === `tab-${target}`) {
+          content.classList.remove('hidden');
+          content.style.opacity = '0';
+          requestAnimationFrame(() => {
+            content.style.transition = 'opacity 150ms ease';
+            content.style.opacity = '1';
+          });
+        } else {
+          content.classList.add('hidden');
+        }
+      });
+    });
+  });
+</script>
