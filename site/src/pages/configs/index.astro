@@ -130,8 +130,22 @@ const tools = [
 ---
 
 <Layout
-  title="Config Downloads — Free LLM APIs"
-  description="Generate ready-to-use LLM config files for LiteLLM, Open WebUI, LobeChat, and Cursor — one-click download."
+  title="Free LLM Config Generator — LiteLLM, Cursor, LobeChat, Open WebUI"
+  description={`Generate ready-to-use config files for LiteLLM, Open WebUI, LobeChat, and Cursor using ${activeProviders.length} active free LLM API providers. One-click download.`}
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Free LLM Config Generator",
+    "description": "Generate configuration files for popular LLM tools using free API providers.",
+    "url": "https://free-llm-apis.pages.dev/configs",
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://free-llm-apis.pages.dev" },
+        { "@type": "ListItem", "position": 2, "name": "Configs", "item": "https://free-llm-apis.pages.dev/configs" }
+      ]
+    }
+  }}
 >
   <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
 

@@ -85,8 +85,38 @@ const uptimePct = '—';
 ---
 
 <Layout
-  title={`${provider.name} — Free LLM APIs`}
-  description={`${provider.name} API status, model list, and usage examples. ${provider.description ?? ''}`}
+  title={`${provider.name} Free API — Status, Models & Rate Limits`}
+  description={`${provider.name} free API real-time status, response latency, rate limits (${provider.rpm ?? '?'} RPM / ${provider.rpd ?? '?'} RPD), and ${provider.models?.length ?? 0} models. ${provider.description ?? ''}`}
+  jsonLd={[
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": `${provider.name} Free API — Status & Models`,
+      "description": provider.description ?? `${provider.name} free LLM API status and usage information.`,
+      "url": `https://free-llm-apis.pages.dev/providers/${provider.id}`,
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://free-llm-apis.pages.dev" },
+          { "@type": "ListItem", "position": 2, "name": "Providers", "item": "https://free-llm-apis.pages.dev/providers" },
+          { "@type": "ListItem", "position": 3, "name": provider.name, "item": `https://free-llm-apis.pages.dev/providers/${provider.id}` }
+        ]
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": `${provider.name} API`,
+      "url": provider.website_url ?? provider.base_url,
+      "applicationCategory": "DeveloperApplication",
+      "description": provider.description ?? `${provider.name} free LLM API`,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  ]}
 >
   <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
     <!-- Back link -->

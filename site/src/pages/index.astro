@@ -17,8 +17,22 @@ const sortedProviders = [...providers].sort((a, b) => {
 ---
 
 <Layout
-  title="Free LLM APIs — Real-time Status"
-  description="Real-time monitoring of free LLM API availability. Find free APIs that are actually working."
+  title="Free LLM APIs — Real-time Status Dashboard"
+  description={`Real-time monitoring of ${providers.length} free LLM API providers. Track OpenRouter, Groq, AIHubMix, Cohere and more — instantly find free AI APIs that are actually working.`}
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Free LLM APIs",
+    "url": "https://free-llm-apis.pages.dev",
+    "description": `Real-time status monitoring for ${providers.length}+ free LLM API providers including OpenRouter, Groq, AIHubMix, Cohere, Hugging Face and more.`,
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }}
 >
   <StatusSummaryBar summary={statusSummary} workerUrl={workerUrl} />
 

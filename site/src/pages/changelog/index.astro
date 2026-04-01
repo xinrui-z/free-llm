@@ -36,8 +36,22 @@ const typeDotColors: Record<string, string> = {
 ---
 
 <Layout
-  title="Changelog — Free LLM APIs"
-  description="View the full history of free LLM API changes: outages, recoveries, new providers and models."
+  title="Free LLM API Changelog — Outages, Recoveries & Updates"
+  description="Full history of free LLM API status changes: outages, recoveries, new models and rate limit updates across OpenRouter, Groq, AIHubMix, Cohere and more."
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Free LLM API Changelog",
+    "description": "Historical log of status changes, outages, recoveries, and model updates across free LLM API providers.",
+    "url": "https://free-llm-apis.pages.dev/changelog",
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://free-llm-apis.pages.dev" },
+        { "@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://free-llm-apis.pages.dev/changelog" }
+      ]
+    }
+  }}
 >
   <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
     <!-- Page header -->
@@ -134,9 +148,12 @@ const typeDotColors: Record<string, string> = {
       }).join('');
 
       return `
-        <div class="changelog-date-group mb-8" data-date="${date}">
+        <div class="changelog-date-group mb-8" data-date="${date}" id="${date}">
           <div class="flex items-center gap-3 mb-3">
-            <h2 class="text-sm font-semibold text-slate-400 font-mono">${date}</h2>
+            <a href="#${date}" class="group flex items-center gap-2">
+              <h2 class="text-sm font-semibold text-slate-400 font-mono group-hover:text-slate-200 transition-colors">${date}</h2>
+              <span class="opacity-0 group-hover:opacity-40 text-slate-400 text-xs transition-opacity">#</span>
+            </a>
             <div class="flex-1 h-px bg-slate-800"></div>
           </div>
           <div class="border-l-2 border-slate-800 ml-1 space-y-0">${rows}</div>

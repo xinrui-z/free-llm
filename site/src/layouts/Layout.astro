@@ -7,15 +7,17 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  jsonLd?: object | object[];
 }
 
 const {
   title = 'Free LLM APIs — Real-time Status',
   description = 'Real-time monitoring of free LLM API availability. Track OpenRouter, AIHubMix, BigModel and more — find free LLM APIs that are actually working.',
-  ogImage = '/og-image.png'
+  ogImage = '/og-image.png',
+  jsonLd
 } = Astro.props;
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://free-llm-apis.dev');
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://free-llm-apis.pages.dev');
 ---
 
 <!doctype html>
@@ -39,6 +41,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://free-llm
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Z_250508" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
@@ -46,6 +49,11 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://free-llm
     <!-- Theme -->
     <meta name="theme-color" content="#0F172A" />
     <meta name="color-scheme" content="dark" />
+
+    <!-- JSON-LD Structured Data -->
+    {jsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    )}
   </head>
   <body class="min-h-screen bg-[#0F172A] text-slate-100">
     <NavBar />

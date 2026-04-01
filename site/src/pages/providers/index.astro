@@ -39,8 +39,22 @@ function formatNum(n: number | null | undefined): string {
 ---
 
 <Layout
-  title={`Providers — Free LLM APIs`}
-  description="Browse all free LLM API providers, filter by status, latency, and features."
+  title="Browse Free LLM API Providers — Status, Latency & Rate Limits"
+  description={`Browse all ${providers.length} free LLM API providers. Filter by operational status, response latency, RPM/RPD limits. Find the best free OpenAI-compatible API for your project.`}
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Browse Free LLM API Providers",
+    "description": `Directory of ${providers.length} free LLM API providers with real-time status, latency, and rate limit information.`,
+    "url": "https://free-llm-apis.pages.dev/providers",
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://free-llm-apis.pages.dev" },
+        { "@type": "ListItem", "position": 2, "name": "Providers", "item": "https://free-llm-apis.pages.dev/providers" }
+      ]
+    }
+  }}
 >
   <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
     <!-- Page header -->
