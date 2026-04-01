@@ -1261,5 +1261,111 @@
     "last_verified": "2026-03-30",
     "geo_restrictions": [],
     "api_key_env": "GOOGLE_API_KEY"
+  },
+  {
+    "id": "mistral",
+    "name": "Mistral AI",
+    "description": "Mistral's Experiment plan gives free access to all models — including Mistral Small, Large, Codestral, and Magistral reasoning — with 1 billion tokens per month. No credit card required, phone verification only.",
+    "base_url": "https://api.mistral.ai/v1",
+    "signup_url": "https://console.mistral.ai",
+    "website_url": "https://mistral.ai",
+    "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/mistral.svg",
+    "status": "active",
+    "latency_ms": null,
+    "rpm": 2,
+    "rpd": null,
+    "context_window": "256K",
+    "auth": "required",
+    "tags": [
+      "openai-compatible",
+      "reasoning",
+      "code",
+      "vision",
+      "function-call",
+      "embedding"
+    ],
+    "top_models": [
+      "mistral-small-latest",
+      "open-mistral-nemo",
+      "codestral-latest",
+      "magistral-small-latest"
+    ],
+    "models": [
+      {
+        "id": "mistral-small-latest",
+        "name": "Mistral Small 4",
+        "context_window": "128K",
+        "modalities": ["text"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "mistral-large-latest",
+        "name": "Mistral Large 3",
+        "context_window": "128K",
+        "modalities": ["text", "vision"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "open-mistral-nemo",
+        "name": "Mistral Nemo 12B",
+        "context_window": "128K",
+        "modalities": ["text"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "codestral-latest",
+        "name": "Codestral",
+        "context_window": "256K",
+        "modalities": ["text", "code"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "magistral-small-latest",
+        "name": "Magistral Small",
+        "context_window": "128K",
+        "modalities": ["text"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "magistral-medium-latest",
+        "name": "Magistral Medium",
+        "context_window": "128K",
+        "modalities": ["text"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "pixtral-12b-2409",
+        "name": "Pixtral 12B",
+        "context_window": "128K",
+        "modalities": ["text", "vision"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      },
+      {
+        "id": "mistral-embed",
+        "name": "Mistral Embed",
+        "context_window": "8K",
+        "modalities": ["embedding"],
+        "rpm": 2,
+        "rpd": null,
+        "status": "active"
+      }
+    ],
+    "last_verified": "2026-04-02",
+    "geo_restrictions": [],
+    "api_key_env": "MISTRAL_API_KEY"
   }
 ]
