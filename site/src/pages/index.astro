@@ -14,6 +14,19 @@ const sortedProviders = [...providers].sort((a, b) => {
   return (order[a.status] ?? 3) - (order[b.status] ?? 3);
 });
 
+// Pre-compute fallback providers for degraded/dead cards
+const activeProviders = providers.filter(p => p.status === 'active');
+function getFallbacksFor(id: string) {
+  return activeProviders
+    .filter(p => p.id !== id)
+    .sort((a, b) => {
+      const la = a.latency_ms ?? Infinity;
+      const lb = b.latency_ms ?? Infinity;
+      return la - lb;
+    })
+    .slice(0, 2);
+}
+
 ---
 
 <Layout
@@ -69,7 +82,12 @@ const sortedProviders = [...providers].sort((a, b) => {
           data-status={provider.status}
           data-provider-id={provider.id}
         >
-          <ProviderCard provider={provider as any} />
+          <ProviderCard
+            provider={provider as any}
+            fallbacks={(provider.status === 'degraded' || provider.status === 'dead')
+              ? getFallbacksFor(provider.id) as any[]
+              : []}
+          />
         </div>
       ))}
     </div>

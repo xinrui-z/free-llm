@@ -20,6 +20,28 @@ interface Props {
 
 const { provider } = Astro.props;
 
+// Compute fallback recommendations (used for degraded/dead providers)
+function calcUptimePct(p: Provider): number {
+  // No history_90d in static JSON, use status as proxy
+  if (p.status === 'active') return 99.0;
+  if (p.status === 'degraded') return 70.0;
+  return 0.0;
+}
+
+const fallbackProviders = (provider.status === 'degraded' || provider.status === 'dead')
+  ? [...providers]
+      .filter(p => p.status === 'active' && p.id !== provider.id)
+      .sort((a, b) => {
+        const ua = calcUptimePct(a as Provider);
+        const ub = calcUptimePct(b as Provider);
+        if (ub !== ua) return ub - ua;
+        const la = a.latency_ms ?? Infinity;
+        const lb = b.latency_ms ?? Infinity;
+        return la - lb;
+      })
+      .slice(0, 3)
+  : [];
+
 // Generate curl example
 const curlExample = `export API_KEY="your_api_key_here"
 curl ${provider.base_url}/chat/completions \\
@@ -129,6 +151,78 @@ const uptimePct = '—';
         Back to Providers
       </a>
     </div>
+
+    <!-- Fallback Banner (shown when degraded or dead) -->
+    {fallbackProviders.length > 0 && (
+      <div
+        id="fallback-banner"
+        class={`mb-5 rounded-xl border p-4 ${
+          provider.status === 'dead'
+            ? 'bg-red-950/40 border-red-500/30'
+            : 'bg-amber-950/40 border-amber-500/30'
+        }`}
+        data-provider-id={provider.id}
+      >
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class={provider.status === 'dead' ? 'text-red-400' : 'text-amber-400'}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span class={`text-sm font-semibold ${provider.status === 'dead' ? 'text-red-400' : 'text-amber-400'}`}>
+              {provider.status === 'dead' ? 'This provider is currently down' : 'This provider is experiencing issues'}
+              — consider these alternatives:
+            </span>
+          </div>
+          <button
+            id="fallback-banner-close"
+            class="flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors duration-150 p-0.5"
+            aria-label="Dismiss banner"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="grid sm:grid-cols-3 gap-3">
+          {fallbackProviders.map(fp => (
+            <div class="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
+              <div class="w-8 h-8 rounded-md bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+                {fp.logo
+                  ? <img src={fp.logo} alt={fp.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                  : null}
+                <span class={fp.logo ? 'hidden' : 'flex'}>{fp.name.charAt(0)}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-slate-100 truncate">{fp.name}</p>
+                <div class="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
+                  <span class="text-green-400">99%</span>
+                  <span>·</span>
+                  <span>{fp.latency_ms ? `${fp.latency_ms}ms` : '—'}</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <button
+                  class="fallback-copy-btn text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md transition-all duration-150"
+                  data-url={fp.base_url}
+                >
+                  Copy URL
+                </button>
+                <a
+                  href={`/providers/${fp.id}`}
+                  class="text-xs px-2 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-md text-center transition-all duration-150"
+                >
+                  View →
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
 
     <!-- Provider header -->
     <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 md:p-6 mb-5">
@@ -466,6 +560,49 @@ const uptimePct = '—';
 <script>
   const tabBtns = document.querySelectorAll<HTMLButtonElement>('.sdk-tab-btn');
   const tabContents = document.querySelectorAll<HTMLElement>('.sdk-tab-content');
+
+  // ── Fallback Banner ──────────────────────────────────────────────────────
+  const banner = document.getElementById('fallback-banner');
+  if (banner) {
+    const providerId = banner.getAttribute('data-provider-id') ?? '';
+    const sessionKey = `fallback-dismissed-${providerId}`;
+
+    // Check if dismissed this session
+    if (sessionStorage.getItem(sessionKey)) {
+      banner.style.display = 'none';
+    }
+
+    // Close button
+    document.getElementById('fallback-banner-close')?.addEventListener('click', () => {
+      banner.style.transition = 'opacity 200ms ease';
+      banner.style.opacity = '0';
+      setTimeout(() => { banner.style.display = 'none'; }, 200);
+      sessionStorage.setItem(sessionKey, '1');
+    });
+
+    // Copy base_url buttons — three-state: default → Copying… → ✓ Copied!
+    banner.querySelectorAll<HTMLButtonElement>('.fallback-copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = btn.getAttribute('data-url') ?? '';
+        const original = btn.textContent ?? 'Copy URL';
+        btn.textContent = 'Copying…';
+        btn.disabled = true;
+        navigator.clipboard.writeText(url).then(() => {
+          btn.textContent = '✓ Copied!';
+          btn.classList.add('text-green-400');
+          setTimeout(() => {
+            btn.textContent = original;
+            btn.disabled = false;
+            btn.classList.remove('text-green-400');
+          }, 2000);
+        }).catch(() => {
+          btn.textContent = original;
+          btn.disabled = false;
+        });
+      });
+    });
+  }
 
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {

@@ -33,11 +33,22 @@ interface Provider {
   last_verified: string;
 }
 
-interface Props {
-  provider: Provider;
+interface FallbackProvider {
+  id: string;
+  name: string;
+  logo?: string;
+  base_url: string;
+  status: string;
+  latency_ms: number | null;
 }
 
-const { provider } = Astro.props;
+interface Props {
+  provider: Provider;
+  fallbacks?: FallbackProvider[];
+}
+
+const { provider, fallbacks = [] } = Astro.props;
+const showFallbacks = (provider.status === 'degraded' || provider.status === 'dead') && fallbacks.length > 0;
 
 const statusBorderMap: Record<string, string> = {
   dead:     'border-l-2 border-l-red-500',
@@ -72,50 +83,161 @@ function formatNum(n: number | null | undefined): string {
 const initials = provider.name.charAt(0).toUpperCase();
 ---
 
-<a
-  href={`/providers/${provider.id}`}
-  data-provider-id={provider.id}
-  class={`group block bg-slate-800 border border-slate-700 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:border-slate-600 hover:shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_4px_16px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 ${borderClass} ${opacityClass}`}
->
-  <!-- Header -->
-  <div class="flex items-start justify-between mb-4">
-    <div class="flex items-center gap-2 min-w-0">
-      <!-- Logo fallback -->
-      <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-        {provider.logo ? (
-          <img
-            src={provider.logo}
-            alt={provider.name}
-            class="w-full h-full object-contain brightness-0 invert"
-            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
-          />
-        ) : null}
-        <span class={provider.logo ? 'hidden' : 'flex'}>{initials}</span>
+<div class="flex flex-col">
+  <a
+    href={`/providers/${provider.id}`}
+    data-provider-id={provider.id}
+    class={`group block bg-slate-800 border border-slate-700 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:border-slate-600 hover:shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_4px_16px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 ${borderClass} ${opacityClass} ${showFallbacks ? 'rounded-b-none border-b-0' : ''}`}
+  >
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-4">
+      <div class="flex items-center gap-2 min-w-0">
+        <!-- Logo fallback -->
+        <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+          {provider.logo ? (
+            <img
+              src={provider.logo}
+              alt={provider.name}
+              class="w-full h-full object-contain brightness-0 invert"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+            />
+          ) : null}
+          <span class={provider.logo ? 'hidden' : 'flex'}>{initials}</span>
+        </div>
+        <span class="font-semibold text-slate-100 text-sm truncate">{provider.name}</span>
       </div>
-      <span class="font-semibold text-slate-100 text-sm truncate">{provider.name}</span>
+      <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+        <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+      </div>
     </div>
-    <div class="flex items-center gap-2 flex-shrink-0 ml-2">
-      <StatusBadge status={provider.status as 'active' | 'degraded' | 'dead' | 'unknown'} />
+
+    <!-- Uptime mini bar (populated by live Worker data) -->
+    <div data-uptime-bar={provider.id} class="mb-3 hidden"></div>
+
+    <!-- Stats row -->
+    <div class="flex flex-wrap gap-3 text-xs text-slate-500 font-mono">
+      <span data-latency class={`font-bold ${provider.status === 'degraded' ? 'text-yellow-400' : provider.status === 'dead' ? 'text-slate-600' : 'text-slate-300'}`}>
+        {formatLatency(provider.latency_ms)}
+      </span>
+      {provider.rpm !== null && (
+        <span><span class="text-slate-400">{formatNum(provider.rpm)}</span> RPM</span>
+      )}
+      {provider.rpd !== null && (
+        <span><span class="text-slate-400">{formatNum(provider.rpd)}</span> RPD</span>
+      )}
+      {provider.context_window && (
+        <span>CTX <span class="text-slate-400">{provider.context_window}</span></span>
+      )}
     </div>
-  </div>
+  </a>
 
-  <!-- Uptime mini bar (populated by live Worker data) -->
-  <div data-uptime-bar={provider.id} class="mb-3 hidden"></div>
+  {showFallbacks && (
+    <div
+      class={`border border-t-0 rounded-b-xl overflow-hidden ${
+        provider.status === 'dead'
+          ? 'border-red-500/30 bg-red-950/30'
+          : 'border-amber-500/30 bg-amber-950/30'
+      }`}
+      data-fallback-panel={provider.id}
+    >
+      <!-- Toggle button -->
+      <button
+        class={`w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-colors duration-150 ${
+          provider.status === 'dead'
+            ? 'text-red-400 hover:text-red-300'
+            : 'text-amber-400 hover:text-amber-300'
+        }`}
+        data-fallback-toggle={provider.id}
+        aria-expanded="false"
+      >
+        <span class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+          <span data-toggle-label>Show fallbacks</span>
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          class="transition-transform duration-200"
+          data-chevron={provider.id}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
 
-  <!-- Stats row -->
-  <div class="flex flex-wrap gap-3 text-xs text-slate-500 font-mono">
-    <span data-latency class={`font-bold ${provider.status === 'degraded' ? 'text-yellow-400' : provider.status === 'dead' ? 'text-slate-600' : 'text-slate-300'}`}>
-      {formatLatency(provider.latency_ms)}
-    </span>
-    {provider.rpm !== null && (
-      <span><span class="text-slate-400">{formatNum(provider.rpm)}</span> RPM</span>
-    )}
-    {provider.rpd !== null && (
-      <span><span class="text-slate-400">{formatNum(provider.rpd)}</span> RPD</span>
-    )}
-{provider.context_window && (
-      <span>CTX <span class="text-slate-400">{provider.context_window}</span></span>
-    )}
-  </div>
+      <!-- Fallback items (collapsed by default) -->
+      <div class="hidden px-3 pb-3 space-y-2" data-fallback-list={provider.id}>
+        {fallbacks.slice(0, 2).map(fp => (
+          <div class="flex items-center gap-2 bg-slate-800/60 rounded-lg px-3 py-2">
+            <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+              {fp.logo
+                ? <img src={fp.logo} alt={fp.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                : null}
+              <span class={fp.logo ? 'hidden' : 'flex'}>{fp.name.charAt(0)}</span>
+            </div>
+            <span class="text-xs text-slate-200 font-medium flex-1 truncate">{fp.name}</span>
+            <span class="text-xs text-green-400 font-mono">active</span>
+            <button
+              class="card-fallback-copy text-xs px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors duration-150"
+              data-url={fp.base_url}
+            >
+              Copy
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
 
-</a>
+<script>
+  // Fallback panel toggle (runs once per card mount)
+  document.querySelectorAll<HTMLButtonElement>('[data-fallback-toggle]').forEach(btn => {
+    const id = btn.getAttribute('data-fallback-toggle');
+    const list = document.querySelector<HTMLElement>(`[data-fallback-list="${id}"]`);
+    const chevron = document.querySelector<SVGElement>(`[data-chevron="${id}"]`);
+    if (!list || !chevron) return;
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      const labelEl = btn.querySelector('[data-toggle-label]');
+      if (expanded) {
+        list.classList.add('hidden');
+        chevron.style.transform = '';
+        if (labelEl) labelEl.textContent = 'Show fallbacks';
+      } else {
+        list.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+        if (labelEl) labelEl.textContent = 'Hide fallbacks';
+      }
+    });
+  });
+
+  // Copy base_url buttons on fallback items inside cards
+  document.querySelectorAll<HTMLButtonElement>('.card-fallback-copy').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = btn.getAttribute('data-url') ?? '';
+      btn.textContent = '…';
+      btn.disabled = true;
+      navigator.clipboard.writeText(url).then(() => {
+        btn.textContent = '✓';
+        btn.classList.add('text-green-400');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.disabled = false;
+          btn.classList.remove('text-green-400');
+        }, 2000);
+      }).catch(() => {
+        btn.textContent = 'Copy';
+        btn.disabled = false;
+      });
+    });
+  });
+</script>
