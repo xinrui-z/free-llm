@@ -272,14 +272,14 @@
       "function-call"
     ],
     "top_models": [
-      "stepfun/step-3.5-flash:free",
+      "z-ai/glm-4.5-air:free",
       "minimax/minimax-m2.5:free",
       "nvidia/nemotron-3-super-120b-a12b:free"
     ],
     "models": [
       {
-        "id": "stepfun/step-3.5-flash:free",
-        "name": "Step 3.5 Flash",
+        "id": "z-ai/glm-4.5-air:free",
+        "name": "GLM-4.5 Air",
         "context_window": "128K",
         "modalities": [
           "text"
