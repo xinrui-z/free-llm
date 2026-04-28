@@ -133,7 +133,7 @@
       ],
       "rpm": 60,
       "rpd": 1000,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "openai/gpt-oss-120b",
@@ -180,7 +180,7 @@
       "status": "active"
     }
   ],
-  "last_verified": "2026-03-30",
+  "last_verified": "2026-04-28",
   "geo_restrictions": [],
   "api_key_env": "GROQ_API_KEY"
 }

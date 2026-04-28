@@ -2,630 +2,494 @@
 import Layout from '../../layouts/Layout.astro';
 import providers from '../../data/providers';
 
-// Serialize providers to pass to client-side script
-const providersJson = JSON.stringify(providers);
+type Provider = typeof providers[0];
+type Model = Provider['models'][0];
+
+const activeProviders = (providers as Provider[]).filter(p => p.status === 'active');
+
+interface ModelFamily {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  tags?: string[];
+  match: (modelId: string) => boolean;
+}
+
+const MODEL_FAMILIES: ModelFamily[] = [
+  {
+    id: 'gpt4',
+    name: 'GPT-4o / GPT-4.1',
+    category: 'OpenAI',
+    description: 'OpenAI flagship series',
+    tags: ['vision', 'function-call'],
+    match: id => /gpt-4/i.test(id) && !/oss/i.test(id),
+  },
+  {
+    id: 'gpt-oss',
+    name: 'GPT-OSS',
+    category: 'OpenAI',
+    description: 'OpenAI open-weight models',
+    match: id => /gpt.?oss/i.test(id),
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini',
+    category: 'Google',
+    description: 'Gemini 2.5 / 3 series',
+    tags: ['vision', 'thinking'],
+    match: id => /gemini/i.test(id),
+  },
+  {
+    id: 'gemma',
+    name: 'Gemma 3',
+    category: 'Google',
+    description: 'Google open Gemma models',
+    match: id => /gemma/i.test(id),
+  },
+  {
+    id: 'llama3',
+    name: 'Llama 3.x',
+    category: 'Meta',
+    description: 'Meta Llama 3 series',
+    match: id => /llama.?3\.[0-3]/i.test(id) || /llama3\.[0-3]/i.test(id),
+  },
+  {
+    id: 'llama4',
+    name: 'Llama 4',
+    category: 'Meta',
+    description: 'Meta Llama 4 series',
+    tags: ['vision'],
+    match: id => /llama.?4/i.test(id),
+  },
+  {
+    id: 'deepseek-v3',
+    name: 'DeepSeek V3',
+    category: 'DeepSeek',
+    description: 'DeepSeek V3 chat / code',
+    match: id => /deepseek.?v3/i.test(id) || /deepseek-v3/i.test(id),
+  },
+  {
+    id: 'deepseek-r1',
+    name: 'DeepSeek R1',
+    category: 'DeepSeek',
+    description: 'DeepSeek R1 reasoning',
+    tags: ['thinking'],
+    match: id => /deepseek.?r1/i.test(id),
+  },
+  {
+    id: 'qwen3',
+    name: 'Qwen 3',
+    category: 'Alibaba',
+    description: 'Alibaba Qwen 3 family',
+    match: id => /qwen.?3/i.test(id),
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi K2',
+    category: 'Moonshot',
+    description: 'Moonshot Kimi K2',
+    match: id => /kimi.?k2/i.test(id),
+  },
+  {
+    id: 'glm',
+    name: 'GLM',
+    category: 'Zhipu',
+    description: 'Zhipu GLM series',
+    match: id => /\bglm\b/i.test(id),
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax M2',
+    category: 'MiniMax',
+    description: 'MiniMax M2 series',
+    match: id => /minimax/i.test(id),
+  },
+  {
+    id: 'mistral',
+    name: 'Mistral / Magistral',
+    category: 'Mistral',
+    description: 'Mistral conversational',
+    match: id => /mistral|magistral|mixtral/i.test(id) && !/codestral/i.test(id),
+  },
+  {
+    id: 'codestral',
+    name: 'Codestral',
+    category: 'Mistral',
+    description: 'Mistral coding model',
+    tags: ['code'],
+    match: id => /codestral/i.test(id),
+  },
+  {
+    id: 'phi',
+    name: 'Phi-4',
+    category: 'Microsoft',
+    description: 'Microsoft Phi models',
+    match: id => /\bphi\b/i.test(id),
+  },
+  {
+    id: 'command',
+    name: 'Command',
+    category: 'Cohere',
+    description: 'Cohere Command family',
+    match: id => /command/i.test(id),
+  },
+];
+
+interface CellData {
+  models: Model[];
+  bestRpd: number | null;
+  bestRpm: number | null;
+}
+
+type Matrix = Record<string, Record<string, CellData>>;
+
+const matrix: Matrix = {};
+for (const family of MODEL_FAMILIES) {
+  matrix[family.id] = {};
+  for (const provider of activeProviders) {
+    const matching = (provider.models as Model[]).filter(
+      m => m.status !== 'deprecated' && family.match(m.id)
+    );
+    if (matching.length > 0) {
+      const rpds = matching.map(m => m.rpd).filter((v): v is number => v !== null);
+      const rpms = matching.map(m => m.rpm).filter((v): v is number => v !== null);
+      matrix[family.id][provider.id] = {
+        models: matching,
+        bestRpd: rpds.length > 0 ? Math.max(...rpds) : null,
+        bestRpm: rpms.length > 0 ? Math.max(...rpms) : null,
+      };
+    }
+  }
+}
+
+const visibleFamilies = MODEL_FAMILIES.filter(f => Object.keys(matrix[f.id]).length > 0);
+
+// Sort providers: most model-family coverage first
+const sortedProviders = [...activeProviders].sort((a, b) => {
+  const ca = visibleFamilies.filter(f => matrix[f.id][a.id]).length;
+  const cb = visibleFamilies.filter(f => matrix[f.id][b.id]).length;
+  return cb - ca;
+});
+
+const CATEGORY_COLORS: Record<string, string> = {
+  OpenAI:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  Google:    'bg-blue-500/15 text-blue-400 border-blue-500/25',
+  Meta:      'bg-indigo-500/15 text-indigo-400 border-indigo-500/25',
+  DeepSeek:  'bg-violet-500/15 text-violet-400 border-violet-500/25',
+  Alibaba:   'bg-orange-500/15 text-orange-400 border-orange-500/25',
+  Moonshot:  'bg-cyan-500/15 text-cyan-400 border-cyan-500/25',
+  Zhipu:     'bg-sky-500/15 text-sky-400 border-sky-500/25',
+  Mistral:   'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  MiniMax:   'bg-pink-500/15 text-pink-400 border-pink-500/25',
+  Microsoft: 'bg-teal-500/15 text-teal-400 border-teal-500/25',
+  Cohere:    'bg-rose-500/15 text-rose-400 border-rose-500/25',
+};
+
+const TAG_STYLE = 'inline-block px-1 py-0 text-[10px] rounded border border-slate-600 text-slate-500 font-mono leading-4';
+
+function formatRpd(rpd: number | null): string {
+  if (rpd === null) return '∞/d';
+  if (rpd >= 1000) return `${(rpd / 1000).toFixed(0)}k/d`;
+  return `${rpd}/d`;
+}
+
+// Serialise matrix for client-side tooltip
+const matrixJson = JSON.stringify(
+  Object.fromEntries(
+    visibleFamilies.map(f => [
+      f.id,
+      Object.fromEntries(
+        Object.entries(matrix[f.id]).map(([pid, cell]) => [
+          pid,
+          {
+            models: cell.models.map(m => m.id),
+            rpd: cell.bestRpd,
+            rpm: cell.bestRpm,
+          },
+        ])
+      ),
+    ])
+  )
+);
+
+const providersJson = JSON.stringify(
+  sortedProviders.map(p => ({ id: p.id, name: p.name, status: p.status }))
+);
 ---
 
 <Layout
-  title="Compare Free LLM APIs — Side-by-side Performance"
-  description="Compare free LLM API providers side by side. Analyze availability, latency, throughput, and get scene-based scores for chat, batch, and production workloads."
+  title="Model Coverage Matrix — Free LLM APIs"
+  description={`Which free LLM API supports which model family? Compare ${activeProviders.length} providers across ${visibleFamilies.length} model families including GPT-4, Gemini, Llama, DeepSeek, Qwen and more.`}
 >
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-    <!-- Page header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-white mb-1">Provider Comparison</h1>
-      <p class="text-slate-400 text-sm">Select providers and a scenario to compare performance metrics side by side.</p>
+  <div class="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="mb-5">
+      <h1 class="text-2xl font-bold text-white mb-1">Model Coverage Matrix</h1>
+      <p class="text-slate-400 text-sm">
+        Which free API supports which model family?
+        <span class="text-slate-500"> · {activeProviders.length} providers · {visibleFamilies.length} model families · hover a cell to see exact model IDs</span>
+      </p>
     </div>
 
-    <!-- Scene selector -->
-    <div class="flex items-center gap-2 mb-6">
-      <span class="text-xs text-slate-500 mr-1">Scenario:</span>
-      {[
-        { id: 'chat', label: 'Real-time Chat' },
-        { id: 'batch', label: 'Batch Processing' },
-        { id: 'production', label: 'Stable Production' },
-      ].map(s => (
-        <button
-          class="scene-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150"
-          data-scene={s.id}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-
-    <!-- Provider selector -->
-    <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-6">
-      <div class="flex items-center justify-between mb-3">
-        <span class="text-sm font-semibold text-slate-200">Selected Providers</span>
-        <span id="selection-count" class="text-xs text-slate-400 font-mono">0/5 selected</span>
-      </div>
-
-      <!-- Chips row -->
-      <div id="selected-chips" class="flex flex-wrap gap-2 mb-3 min-h-[32px]"></div>
-
-      <!-- Add button -->
-      <div class="relative">
-        <button
-          id="add-provider-btn"
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 rounded-lg transition-all duration-150"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Add Provider
-        </button>
-
-        <!-- Search popover -->
-        <div
-          id="provider-popover"
-          class="hidden absolute left-0 top-full mt-1 z-20 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-xl"
-        >
-          <div class="p-2 border-b border-slate-700">
-            <input
-              id="provider-search"
-              type="text"
-              placeholder="Search providers…"
-              class="w-full bg-slate-700 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500"
-            />
-          </div>
-          <div id="provider-list" class="max-h-56 overflow-y-auto p-1"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- View switch -->
-    <div class="flex items-center gap-1 mb-4 bg-slate-800/80 rounded-lg p-1 w-fit" id="view-tabs">
-      <button
-        id="view-table-btn"
-        class="view-tab px-3 py-1.5 text-xs rounded-md transition-all duration-150 bg-slate-700 text-white"
-        data-view="table"
-      >
-        Table
-      </button>
-      <button
-        id="view-radar-btn"
-        class="view-tab px-3 py-1.5 text-xs rounded-md transition-all duration-150 text-slate-500 hover:text-slate-300"
-        data-view="radar"
-      >
-        Radar
-      </button>
-    </div>
-
-    <!-- Share button -->
-    <div class="flex justify-end mb-4">
-      <button
-        id="share-btn"
-        class="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-600 rounded-lg transition-all duration-150"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-        </svg>
-        Share
-      </button>
-    </div>
-
-    <!-- Table view -->
-    <div id="view-table" class="overflow-x-auto">
-      <div id="compare-table-container">
-        <div class="text-center py-12 text-slate-500 text-sm">Select providers above to compare.</div>
-      </div>
-    </div>
-
-    <!-- Radar view -->
-    <div id="view-radar" class="hidden">
-      <div id="radar-container" class="flex flex-col items-center">
-        <div class="text-center py-12 text-slate-500 text-sm">Select providers above to compare.</div>
-      </div>
-    </div>
-  </div>
-</Layout>
-
-<script define:vars={{ providersJson }}>
-  const ALL_PROVIDERS = JSON.parse(providersJson);
-
-  const SCENE_WEIGHTS = {
-    chat:       { uptime: 0.4, latency: 0.4, throughput: 0.2 },
-    batch:      { uptime: 0.3, latency: 0.1, throughput: 0.6 },
-    production: { uptime: 0.5, latency: 0.3, throughput: 0.2 },
-  };
-
-  const PROVIDER_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#0ea5e9'];
-
-  // ── State ──────────────────────────────────────────────────────────────────
-  let selectedIds = [];
-  let currentScene = 'chat';
-  let currentView = 'table';
-
-  // ── Init from URL params ────────────────────────────────────────────────────
-  function initFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const pIds = params.get('providers');
-    const scene = params.get('scene');
-    if (scene && SCENE_WEIGHTS[scene]) currentScene = scene;
-
-    // Set scene tab active
-    document.querySelectorAll('.scene-tab').forEach(t => {
-      const s = t.getAttribute('data-scene');
-      if (s === currentScene) {
-        t.className = 'scene-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-indigo-500/20 border-indigo-500/40 text-indigo-400';
-      } else {
-        t.className = 'scene-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500';
-      }
-    });
-
-    if (pIds) {
-      const ids = pIds.split(',').filter(id => ALL_PROVIDERS.some(p => p.id === id));
-      selectedIds = ids.slice(0, 5);
-    } else {
-      // Default: first 3 active providers
-      selectedIds = ALL_PROVIDERS.filter(p => p.status === 'active').slice(0, 3).map(p => p.id);
-    }
-    renderChips();
-    renderView();
-  }
-
-  // ── Metrics helpers ─────────────────────────────────────────────────────────
-  function getUptimePct(p) {
-    if (p.status === 'active') return 99.5;
-    if (p.status === 'degraded') return 70.0;
-    return 0.0;
-  }
-
-  function getLatencyScore(p) {
-    // Normalize: lower latency = higher score. Assume range 0-3000ms
-    const ms = p.latency_ms ?? 1500;
-    return Math.max(0, 1 - ms / 3000);
-  }
-
-  function getThroughputScore(p) {
-    // Normalize RPM (assume max ~200 RPM is top tier)
-    const rpm = p.rpm ?? 0;
-    return Math.min(1, rpm / 200);
-  }
-
-  function calcScore(p, scene) {
-    const w = SCENE_WEIGHTS[scene] || SCENE_WEIGHTS.chat;
-    const uptimeNorm = getUptimePct(p) / 100;
-    const latencyNorm = getLatencyScore(p);
-    const throughputNorm = getThroughputScore(p);
-    return (uptimeNorm * w.uptime + latencyNorm * w.latency + throughputNorm * w.throughput) * 100;
-  }
-
-  function calcUptime30d(p) {
-    // No static history, derive from status
-    return getUptimePct(p);
-  }
-
-  // ── Chips rendering ─────────────────────────────────────────────────────────
-  function renderChips() {
-    const container = document.getElementById('selected-chips');
-    const countEl = document.getElementById('selection-count');
-    if (!container || !countEl) return;
-
-    countEl.textContent = `${selectedIds.length}/5 selected`;
-
-    container.innerHTML = selectedIds.map((id, i) => {
-      const p = ALL_PROVIDERS.find(x => x.id === id);
-      if (!p) return '';
-      const color = PROVIDER_COLORS[i] || '#6366f1';
-      return `
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
-          style="background: ${color}20; border-color: ${color}40; color: ${color}">
-          <span>${p.name}</span>
-          <button class="remove-chip opacity-70 hover:opacity-100 transition-opacity" data-id="${id}" aria-label="Remove ${p.name}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>`;
-    }).join('');
-
-    container.querySelectorAll('.remove-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        selectedIds = selectedIds.filter(x => x !== id);
-        renderChips();
-        renderView();
-      });
-    });
-  }
-
-  // ── Popover ─────────────────────────────────────────────────────────────────
-  function renderProviderList(filter = '') {
-    const listEl = document.getElementById('provider-list');
-    if (!listEl) return;
-    const lower = filter.toLowerCase();
-    const filtered = ALL_PROVIDERS.filter(p =>
-      (p.name.toLowerCase().includes(lower) || p.id.includes(lower))
-    );
-    listEl.innerHTML = filtered.map(p => {
-      const selected = selectedIds.includes(p.id);
-      const atMax = selectedIds.length >= 5;
-      const disabled = !selected && atMax;
-      return `
-        <button
-          class="provider-pick-item w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-150 text-left
-            ${selected ? 'bg-indigo-500/20 text-indigo-300' : disabled ? 'opacity-40 cursor-not-allowed text-slate-400' : 'text-slate-300 hover:bg-slate-700'}"
-          data-id="${p.id}"
-          ${disabled ? 'disabled' : ''}
-        >
-          <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-            ${p.logo
-              ? `<img src="${p.logo}" alt="${p.name}" class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none'">`
-              : p.name.charAt(0)}
-          </div>
-          <span class="flex-1 truncate">${p.name}</span>
-          <span class="text-xs font-mono ${p.status === 'active' ? 'text-green-400' : p.status === 'degraded' ? 'text-amber-400' : 'text-red-400'}">${p.status}</span>
-          ${selected ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
-        </button>`;
-    }).join('');
-
-    listEl.querySelectorAll('.provider-pick-item').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        if (btn.disabled) return;
-        if (selectedIds.includes(id)) {
-          selectedIds = selectedIds.filter(x => x !== id);
-        } else if (selectedIds.length < 5) {
-          selectedIds.push(id);
-        }
-        renderChips();
-        renderProviderList(document.getElementById('provider-search')?.value ?? '');
-        renderView();
-      });
-    });
-  }
-
-  // ── Table rendering ─────────────────────────────────────────────────────────
-  function renderTable() {
-    const container = document.getElementById('compare-table-container');
-    if (!container) return;
-
-    if (selectedIds.length === 0) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 text-sm">Select providers above to compare.</div>';
-      return;
-    }
-
-    const selected = selectedIds.map((id, i) => {
-      const p = ALL_PROVIDERS.find(x => x.id === id);
-      return { ...p, _color: PROVIDER_COLORS[i] || '#6366f1', _score: calcScore(p, currentScene) };
-    }).filter(Boolean);
-
-    // Compute row min/max for highlighting
-    function rowStats(vals) {
-      const nums = vals.filter(v => v !== null && v !== undefined && !isNaN(v));
-      if (!nums.length) return { min: null, max: null };
-      return { min: Math.min(...nums), max: Math.max(...nums) };
-    }
-
-    const uptimeVals = selected.map(p => calcUptime30d(p));
-    const latencyVals = selected.map(p => p.latency_ms);
-    const rpmVals = selected.map(p => p.rpm);
-    const rpdVals = selected.map(p => p.rpd);
-    const scoreVals = selected.map(p => p._score);
-
-    const uptimeStats = rowStats(uptimeVals);
-    const latencyStats = rowStats(latencyVals.filter(v => v !== null));
-    const rpmStats = rowStats(rpmVals);
-    const rpdStats = rowStats(rpdVals);
-    const scoreStats = rowStats(scoreVals);
-
-    function cellClass(val, stats, higherBetter = true) {
-      if (val === null || val === undefined || isNaN(val)) return 'text-slate-500';
-      if (higherBetter) {
-        if (val === stats.max) return 'text-green-400 font-semibold';
-        if (val === stats.min) return 'text-red-400';
-      } else {
-        if (val === stats.min) return 'text-green-400 font-semibold';
-        if (val === stats.max) return 'text-red-400';
-      }
-      return 'text-slate-200';
-    }
-
-    function trophy(val, stats, higherBetter = true) {
-      if (val === null || val === undefined) return '';
-      const best = higherBetter ? stats.max : stats.min;
-      return val === best ? ' <span title="Best">🏆</span>' : '';
-    }
-
-    const headerCells = selected.map((p, i) =>
-      `<th class="px-4 py-3 text-center min-w-[140px]">
-        <div class="flex flex-col items-center gap-1">
-          <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center overflow-hidden">
-            ${p.logo
-              ? `<img src="${p.logo}" alt="${p.name}" class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none'">`
-              : `<span class="text-xs font-bold text-slate-300">${p.name.charAt(0)}</span>`}
-          </div>
-          <span class="text-xs font-semibold" style="color:${p._color}">${p.name}</span>
-        </div>
-      </th>`
-    ).join('');
-
-    function makeRow(label, vals, cls, suffix = '', isFirst = false) {
-      const cells = vals.map(v => {
-        const disp = v !== null && v !== undefined ? `${typeof v === 'number' ? v.toLocaleString() : v}${suffix}` : '—';
-        return `<td class="px-4 py-3 text-center font-mono text-sm ${cls[vals.indexOf(v)]}">${disp}</td>`;
-      }).join('');
-      return `<tr class="${isFirst ? '' : 'border-t border-slate-700/50'} hover:bg-slate-800/30 transition-colors duration-100">
-        <td class="px-4 py-3 text-sm text-slate-400 font-medium sticky left-0 bg-slate-800/80 backdrop-blur whitespace-nowrap">${label}</td>
-        ${cells}
-      </tr>`;
-    }
-
-    const uptimeCls = uptimeVals.map((v, i) => cellClass(v, uptimeStats, true) + trophy(v, uptimeStats, true));
-    const latencyCls = latencyVals.map((v, i) => v === null ? 'text-slate-500' : cellClass(v, latencyStats, false) + trophy(v, latencyStats, false));
-    const rpmCls = rpmVals.map((v, i) => cellClass(v, rpmStats, true) + trophy(v, rpmStats, true));
-    const rpdCls = rpdVals.map((v, i) => cellClass(v, rpdStats, true) + trophy(v, rpdStats, true));
-    const scoreCls = scoreVals.map((v, i) => cellClass(v, scoreStats, true) + trophy(v, scoreStats, true));
-
-    const authVals = selected.map(p => p.auth === 'required' ? 'Required' : p.auth === 'none' ? 'None' : p.auth ?? '—');
-    const baseUrlVals = selected.map(p => p.base_url);
-
-    const baseUrlCells = selected.map(p =>
-      `<td class="px-4 py-3 text-center">
-        <button class="compare-copy-url text-xs px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-indigo-400 rounded transition-colors duration-150 font-mono truncate max-w-[120px]" data-url="${p.base_url}" title="${p.base_url}">
-          Copy URL
-        </button>
-      </td>`
-    ).join('');
-
-    const authCells = selected.map(p =>
-      `<td class="px-4 py-3 text-center text-sm font-mono ${p.auth === 'none' ? 'text-green-400' : 'text-slate-300'}">${authVals[selected.indexOf(p)]}</td>`
-    ).join('');
-
-    container.innerHTML = `
-      <table class="w-full border-collapse text-sm">
+    <!-- Matrix table -->
+    <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+      <table class="border-collapse text-sm" style="min-width: max-content;">
         <thead>
-          <tr class="border-b border-slate-700">
-            <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 sticky left-0 bg-slate-900/80 backdrop-blur min-w-[140px]">Metric</th>
-            ${headerCells}
+          <tr class="border-b border-slate-700 bg-slate-900/80">
+            <!-- Top-left corner -->
+            <th class="sticky left-0 z-20 bg-slate-900/95 backdrop-blur px-4 py-3 text-left min-w-[200px] w-[200px]">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Family</span>
+            </th>
+            {sortedProviders.map(provider => {
+              const coverage = visibleFamilies.filter(f => matrix[f.id][provider.id]).length;
+              return (
+                <th class="px-3 py-3 text-center w-[110px] min-w-[110px]">
+                  <div class="flex flex-col items-center gap-1.5">
+                    <!-- Logo -->
+                    <div class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {provider.logo ? (
+                        <img
+                          src={provider.logo}
+                          alt={provider.name}
+                          class="w-full h-full object-contain brightness-0 invert"
+                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                        />
+                      ) : null}
+                      <span class={provider.logo ? 'hidden text-xs font-bold text-slate-300' : 'text-xs font-bold text-slate-300'}>
+                        {provider.name.charAt(0)}
+                      </span>
+                    </div>
+                    <!-- Name + status -->
+                    <div class="flex items-center gap-1">
+                      <span
+                        class="provider-name-header text-xs font-medium text-slate-300 truncate max-w-[80px]"
+                        data-provider-id={provider.id}
+                        title={provider.name}
+                      >{provider.name}</span>
+                      <span
+                        class="provider-status-dot w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-500"
+                        data-provider-id={provider.id}
+                        title="active"
+                      ></span>
+                    </div>
+                    <!-- Coverage count -->
+                    <span class="text-[10px] text-slate-600 font-mono">{coverage}/{visibleFamilies.length}</span>
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
+
         <tbody>
-          <!-- Availability -->
-          <tr class="border-t border-slate-600/50">
-            <td colspan="${selected.length + 1}" class="px-4 py-2 text-xs font-semibold text-indigo-400 uppercase tracking-wider bg-slate-800/60 sticky left-0">Availability</td>
-          </tr>
-          ${makeRow('Uptime 30d', uptimeVals.map((v, i) => v !== null ? v.toFixed(1) + '%' + (uptimeStats.max && v === uptimeStats.max ? ' 🏆' : '') : '—'), uptimeVals.map((v,i) => cellClass(v, uptimeStats)), '', true)}
+          {visibleFamilies.map((family, rowIdx) => {
+            const categoryStyle = CATEGORY_COLORS[family.category] ?? 'bg-slate-700/30 text-slate-400 border-slate-600/30';
+            const supportCount = sortedProviders.filter(p => matrix[family.id][p.id]).length;
+            return (
+              <tr class={`border-t border-slate-800/60 hover:bg-slate-800/25 transition-colors duration-100 ${rowIdx % 2 === 1 ? 'bg-slate-900/30' : ''}`}>
 
-          <!-- Performance -->
-          <tr class="border-t border-slate-600/50">
-            <td colspan="${selected.length + 1}" class="px-4 py-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider bg-slate-800/60 sticky left-0">Performance</td>
-          </tr>
-          ${makeRow('Latency', latencyVals.map((v, i) => v !== null ? v + 'ms' + (latencyStats.min && v === latencyStats.min ? ' 🏆' : '') : '—'), latencyVals.map((v,i) => cellClass(v, latencyStats, false)))}
-          ${makeRow('RPM', rpmVals.map((v, i) => v !== null ? v.toLocaleString() + (rpmStats.max && v === rpmStats.max ? ' 🏆' : '') : '—'), rpmVals.map((v,i) => cellClass(v, rpmStats)))}
-          ${makeRow('RPD', rpdVals.map((v, i) => v !== null ? v.toLocaleString() + (rpdStats.max && v === rpdStats.max ? ' 🏆' : '') : '—'), rpdVals.map((v,i) => cellClass(v, rpdStats)))}
+                <!-- Family label (sticky) -->
+                <td class={`sticky left-0 z-10 px-4 py-3 backdrop-blur ${rowIdx % 2 === 1 ? 'bg-slate-950/90' : 'bg-[#0f172a]/90'}`}>
+                  <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-slate-100 text-xs whitespace-nowrap">{family.name}</span>
+                      <span class={`inline-flex items-center px-1.5 py-0 text-[10px] rounded border font-medium ${categoryStyle}`}>
+                        {family.category}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="text-[11px] text-slate-500">{family.description}</span>
+                      {family.tags?.map(tag => (
+                        <span class={TAG_STYLE}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </td>
 
-          <!-- Integration -->
-          <tr class="border-t border-slate-600/50">
-            <td colspan="${selected.length + 1}" class="px-4 py-2 text-xs font-semibold text-amber-400 uppercase tracking-wider bg-slate-800/60 sticky left-0">Integration</td>
-          </tr>
-          <tr class="hover:bg-slate-800/30 transition-colors duration-100 border-t border-slate-700/50">
-            <td class="px-4 py-3 text-sm text-slate-400 font-medium sticky left-0 bg-slate-800/80 backdrop-blur">Base URL</td>
-            ${baseUrlCells}
-          </tr>
-          <tr class="hover:bg-slate-800/30 transition-colors duration-100 border-t border-slate-700/50">
-            <td class="px-4 py-3 text-sm text-slate-400 font-medium sticky left-0 bg-slate-800/80 backdrop-blur">Auth</td>
-            ${authCells}
-          </tr>
+                <!-- Provider cells -->
+                {sortedProviders.map(provider => {
+                  const cell = matrix[family.id][provider.id];
+                  return (
+                    <td class="px-3 py-3 text-center">
+                      {cell ? (
+                        <button
+                          class="matrix-cell inline-flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 hover:border-green-500/35 transition-all duration-150 cursor-pointer w-full"
+                          data-family={family.id}
+                          data-provider={provider.id}
+                          aria-label={`${family.name} on ${provider.name}`}
+                        >
+                          <span class="text-green-400 text-xs font-semibold leading-none">✓</span>
+                          <span class="text-[10px] text-green-400/70 font-mono leading-none">{formatRpd(cell.bestRpd)}</span>
+                        </button>
+                      ) : (
+                        <span class="text-slate-800 text-xs">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
 
-          <!-- Scene Score -->
-          <tr class="border-t border-slate-600/50">
-            <td colspan="${selected.length + 1}" class="px-4 py-2 text-xs font-semibold text-violet-400 uppercase tracking-wider bg-slate-800/60 sticky left-0">Scene Score</td>
+          <!-- Coverage totals row -->
+          <tr class="border-t border-slate-700/60 bg-slate-900/60">
+            <td class="sticky left-0 z-10 bg-slate-900/95 backdrop-blur px-4 py-2.5">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Families covered</span>
+            </td>
+            {sortedProviders.map(provider => {
+              const count = visibleFamilies.filter(f => matrix[f.id][provider.id]).length;
+              const pct = Math.round((count / visibleFamilies.length) * 100);
+              return (
+                <td class="px-3 py-2.5 text-center">
+                  <div class="flex flex-col items-center gap-1">
+                    <span class="text-xs font-bold text-slate-200">{count}</span>
+                    <div class="w-12 h-1 rounded-full bg-slate-700 overflow-hidden">
+                      <div
+                        class="h-full rounded-full bg-green-500/70"
+                        style={`width: ${pct}%`}
+                      ></div>
+                    </div>
+                  </div>
+                </td>
+              );
+            })}
           </tr>
-          ${makeRow('Score', scoreVals.map((v, i) => v.toFixed(1) + (scoreStats.max && v === scoreStats.max ? ' 🏆' : '')), scoreVals.map((v,i) => cellClass(v, scoreStats)))}
         </tbody>
       </table>
-    `;
+    </div>
 
-    // Copy URL handlers
-    container.querySelectorAll('.compare-copy-url').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const url = btn.getAttribute('data-url') ?? '';
-        const orig = btn.textContent;
-        btn.disabled = true;
-        navigator.clipboard.writeText(url).then(() => {
-          btn.textContent = '✓ Copied!';
-          btn.classList.add('text-green-400');
-          setTimeout(() => {
-            btn.textContent = orig;
-            btn.disabled = false;
-            btn.classList.remove('text-green-400');
-          }, 2000);
-        }).catch(() => {
-          btn.textContent = orig;
-          btn.disabled = false;
-        });
-      });
-    });
-  }
-
-  // ── Radar rendering (pure SVG) ───────────────────────────────────────────────
-  function renderRadar() {
-    const container = document.getElementById('radar-container');
-    if (!container) return;
-
-    if (selectedIds.length === 0) {
-      container.innerHTML = '<div class="text-center py-12 text-slate-500 text-sm">Select providers above to compare.</div>';
-      return;
-    }
-
-    const selected = selectedIds.map((id, i) => {
-      const p = ALL_PROVIDERS.find(x => x.id === id);
-      return { ...p, _color: PROVIDER_COLORS[i] || '#6366f1' };
-    }).filter(Boolean);
-
-    const DIMS = ['Availability', 'Latency', 'Throughput', 'Reliability', 'Score'];
-    const N = DIMS.length;
-    const CX = 220, CY = 220, R = 160;
-    const LEVELS = 5;
-
-    function angle(i) {
-      return (Math.PI * 2 * i / N) - Math.PI / 2;
-    }
-
-    function polarToXY(r, i) {
-      return {
-        x: CX + r * Math.cos(angle(i)),
-        y: CY + r * Math.sin(angle(i)),
-      };
-    }
-
-    function getProviderDims(p) {
-      const uptime = getUptimePct(p) / 100;
-      const latency = getLatencyScore(p);
-      const throughput = getThroughputScore(p);
-      const reliability = p.status === 'active' ? 1 : p.status === 'degraded' ? 0.5 : 0;
-      const score = calcScore(p, currentScene) / 100;
-      return [uptime, latency, throughput, reliability, score];
-    }
-
-    // Grid lines
-    let svgContent = '';
-    for (let level = 1; level <= LEVELS; level++) {
-      const r = (R / LEVELS) * level;
-      const points = Array.from({ length: N }, (_, i) => {
-        const { x, y } = polarToXY(r, i);
-        return `${x},${y}`;
-      }).join(' ');
-      svgContent += `<polygon points="${points}" fill="none" stroke="#334155" stroke-width="1" opacity="0.5"/>`;
-    }
-
-    // Axis lines
-    for (let i = 0; i < N; i++) {
-      const { x, y } = polarToXY(R, i);
-      svgContent += `<line x1="${CX}" y1="${CY}" x2="${x}" y2="${y}" stroke="#334155" stroke-width="1" opacity="0.7"/>`;
-    }
-
-    // Axis labels
-    for (let i = 0; i < N; i++) {
-      const { x, y } = polarToXY(R + 28, i);
-      const anchor = x < CX - 5 ? 'end' : x > CX + 5 ? 'start' : 'middle';
-      const dy = y < CY - 5 ? '-0.3em' : y > CY + 5 ? '1.2em' : '0.4em';
-      svgContent += `<text x="${x}" y="${y}" text-anchor="${anchor}" dy="${dy}" fill="#94a3b8" font-size="11" font-family="system-ui, sans-serif">${DIMS[i]}</text>`;
-    }
-
-    // Provider polygons
-    selected.forEach(p => {
-      const dims = getProviderDims(p);
-      const points = dims.map((v, i) => {
-        const { x, y } = polarToXY(R * Math.max(0, Math.min(1, v)), i);
-        return `${x},${y}`;
-      }).join(' ');
-      svgContent += `<polygon points="${points}" fill="${p._color}" fill-opacity="0.15" stroke="${p._color}" stroke-width="2" stroke-linejoin="round"/>`;
-
-      // Dots at each vertex
-      dims.forEach((v, i) => {
-        const { x, y } = polarToXY(R * Math.max(0, Math.min(1, v)), i);
-        svgContent += `<circle cx="${x}" cy="${y}" r="3.5" fill="${p._color}" stroke="white" stroke-width="1" opacity="0.9"/>`;
-      });
-    });
-
-    // Legend
-    const legendItems = selected.map(p =>
-      `<div class="flex items-center gap-2">
-        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${p._color}"></span>
-        <span class="text-xs text-slate-300">${p.name}</span>
-      </div>`
-    ).join('');
-
-    container.innerHTML = `
-      <svg width="440" height="440" viewBox="0 0 440 440" class="overflow-visible max-w-full">
-        ${svgContent}
-      </svg>
-      <div class="flex flex-wrap justify-center gap-4 mt-4">
-        ${legendItems}
+    <!-- Legend -->
+    <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+      <div class="flex items-center gap-1.5">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 font-semibold text-[10px]">✓ 1k/d</span>
+        <span>Supported — best daily quota</span>
       </div>
-    `;
+      <div class="flex items-center gap-1.5">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 font-semibold text-[10px]">✓ ∞/d</span>
+        <span>Supported — no daily limit documented</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-slate-700">—</span>
+        <span>Not available</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tooltip -->
+  <div
+    id="matrix-tooltip"
+    class="hidden fixed z-50 pointer-events-none"
+    role="tooltip"
+  >
+    <div class="bg-slate-900 border border-slate-600 rounded-xl shadow-2xl p-3 w-60">
+      <div id="tt-header" class="flex items-center justify-between mb-2">
+        <span id="tt-provider" class="text-xs font-semibold text-slate-200"></span>
+        <span id="tt-family" class="text-[10px] text-slate-500"></span>
+      </div>
+      <div id="tt-models" class="space-y-0.5 mb-2"></div>
+      <div id="tt-limits" class="flex gap-3 pt-2 border-t border-slate-700/50 text-[10px] font-mono text-slate-400"></div>
+    </div>
+  </div>
+
+<script define:vars={{ matrixJson, providersJson }}>
+  const MATRIX = JSON.parse(matrixJson);
+  const PROVIDERS = JSON.parse(providersJson);
+  const providerMap = Object.fromEntries(PROVIDERS.map(p => [p.id, p]));
+
+  // ── Tooltip ───────────────────────────────────────────────────────────────────
+  const tooltip = document.getElementById('matrix-tooltip');
+  const ttProvider = document.getElementById('tt-provider');
+  const ttFamily = document.getElementById('tt-family');
+  const ttModels = document.getElementById('tt-models');
+  const ttLimits = document.getElementById('tt-limits');
+
+  let hideTimer = null;
+
+  function showTooltip(btn, familyId, providerId) {
+    clearTimeout(hideTimer);
+    const cell = MATRIX[familyId]?.[providerId];
+    const provider = providerMap[providerId];
+    if (!cell || !provider || !tooltip) return;
+
+    if (ttProvider) ttProvider.textContent = provider.name;
+    if (ttFamily) ttFamily.textContent = familyId;
+
+    if (ttModels) {
+      const shown = cell.models.slice(0, 5);
+      const extra = cell.models.length - shown.length;
+      ttModels.innerHTML = shown
+        .map(id => `<div class="text-[11px] text-slate-300 font-mono truncate" title="${id}">${id}</div>`)
+        .join('') + (extra > 0 ? `<div class="text-[10px] text-slate-500 mt-0.5">+${extra} more</div>` : '');
+    }
+
+    if (ttLimits) {
+      const rpm = cell.rpm !== null ? `${cell.rpm} RPM` : '— RPM';
+      const rpd = cell.rpd !== null ? `${cell.rpd >= 1000 ? (cell.rpd / 1000).toFixed(0) + 'k' : cell.rpd} RPD` : '∞ RPD';
+      ttLimits.innerHTML = `<span>${rpm}</span><span>${rpd}</span>`;
+    }
+
+    tooltip.classList.remove('hidden');
+    positionTooltip(btn);
   }
 
-  // ── Render dispatcher ────────────────────────────────────────────────────────
-  function renderView() {
-    if (currentView === 'table') renderTable();
-    else renderRadar();
+  function positionTooltip(btn) {
+    if (!tooltip) return;
+    const rect = btn.getBoundingClientRect();
+    const tW = 240, tH = 160;
+    let left = rect.left + rect.width / 2 - tW / 2;
+    let top = rect.top - tH - 8 + window.scrollY;
+
+    // Flip below if not enough space above
+    if (rect.top < tH + 16) top = rect.bottom + 8 + window.scrollY;
+    // Clamp horizontally
+    left = Math.max(8, Math.min(left, window.innerWidth - tW - 8));
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
   }
 
-  // ── Event listeners ──────────────────────────────────────────────────────────
+  function hideTooltip() {
+    hideTimer = setTimeout(() => tooltip?.classList.add('hidden'), 120);
+  }
 
-  // Scene tabs
-  document.querySelectorAll('.scene-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      currentScene = tab.getAttribute('data-scene') || 'chat';
-      document.querySelectorAll('.scene-tab').forEach(t => {
-        const isActive = t.getAttribute('data-scene') === currentScene;
-        t.className = `scene-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${
-          isActive
-            ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
-            : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
-        }`;
+  document.querySelectorAll('.matrix-cell').forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      const fid = btn.getAttribute('data-family');
+      const pid = btn.getAttribute('data-provider');
+      if (fid && pid) showTooltip(btn, fid, pid);
+    });
+    btn.addEventListener('mouseleave', hideTooltip);
+    btn.addEventListener('focus', () => {
+      const fid = btn.getAttribute('data-family');
+      const pid = btn.getAttribute('data-provider');
+      if (fid && pid) showTooltip(btn, fid, pid);
+    });
+    btn.addEventListener('blur', hideTooltip);
+  });
+
+  tooltip?.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  tooltip?.addEventListener('mouseleave', hideTooltip);
+
+  // ── Live status update ───────────────────────────────────────────────────────
+  const STATUS_DOT: Record<string, string> = {
+    active:   'bg-green-500',
+    degraded: 'bg-yellow-500',
+    dead:     'bg-red-500',
+    unknown:  'bg-slate-600',
+  };
+
+  document.addEventListener('status-updated', (e) => {
+    const data = e.detail;
+    data.providers?.forEach(({ id, status }) => {
+      document.querySelectorAll(`.provider-status-dot[data-provider-id="${id}"]`).forEach(dot => {
+        dot.className = `provider-status-dot w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[status] ?? STATUS_DOT.unknown}`;
+        dot.title = status;
       });
-      renderView();
     });
   });
-
-  // View tabs
-  document.querySelectorAll('.view-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      currentView = tab.getAttribute('data-view') || 'table';
-      document.querySelectorAll('.view-tab').forEach(t => {
-        const isActive = t.getAttribute('data-view') === currentView;
-        t.className = `view-tab px-3 py-1.5 text-xs rounded-md transition-all duration-150 ${
-          isActive ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'
-        }`;
-      });
-      document.getElementById('view-table')?.classList.toggle('hidden', currentView !== 'table');
-      document.getElementById('view-radar')?.classList.toggle('hidden', currentView !== 'radar');
-      renderView();
-    });
-  });
-
-  // Add provider popover
-  const addBtn = document.getElementById('add-provider-btn');
-  const popover = document.getElementById('provider-popover');
-  const searchInput = document.getElementById('provider-search');
-
-  addBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    popover?.classList.toggle('hidden');
-    if (!popover?.classList.contains('hidden')) {
-      renderProviderList('');
-      searchInput?.focus();
-    }
-  });
-
-  searchInput?.addEventListener('input', () => {
-    renderProviderList(searchInput.value);
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!popover?.contains(e.target) && e.target !== addBtn) {
-      popover?.classList.add('hidden');
-    }
-  });
-
-  // Share button
-  document.getElementById('share-btn')?.addEventListener('click', () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('providers', selectedIds.join(','));
-    url.searchParams.set('scene', currentScene);
-    navigator.clipboard.writeText(url.toString()).then(() => {
-      const btn = document.getElementById('share-btn');
-      if (btn) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!';
-        btn.classList.add('text-green-400', 'border-green-500/40');
-        setTimeout(() => {
-          btn.innerHTML = orig;
-          btn.classList.remove('text-green-400', 'border-green-500/40');
-        }, 2000);
-      }
-    });
-  });
-
-  // ── Boot ─────────────────────────────────────────────────────────────────────
-  initFromUrl();
 </script>
+
+</Layout>

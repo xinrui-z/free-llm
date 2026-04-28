@@ -19,9 +19,9 @@
     "function-call"
   ],
   "top_models": [
-    "gpt-4o",
-    "meta-llama/Llama-3.3-70B-Instruct",
-    "DeepSeek-R1"
+    "gpt-4o-mini",
+    "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+    "o4-mini"
   ],
   "models": [
     {
@@ -34,7 +34,7 @@
       ],
       "rpm": 10,
       "rpd": 50,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "gpt-4o-mini",
@@ -49,6 +49,51 @@
       "status": "active"
     },
     {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "gpt-5-mini",
+      "name": "GPT-5 Mini",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "o4-mini",
+      "name": "o4-mini",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "o3",
+      "name": "o3",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
       "id": "meta-llama/Llama-3.3-70B-Instruct",
       "name": "Llama 3.3 70B Instruct",
       "context_window": "8K",
@@ -60,9 +105,32 @@
       "status": "active"
     },
     {
+      "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "name": "Llama 4 Scout 17B",
+      "context_window": "10M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
       "id": "DeepSeek-R1",
       "name": "DeepSeek R1",
       "context_window": "8K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "DeepSeek-V3-0324",
+      "name": "DeepSeek V3 (0324)",
+      "context_window": "128K",
       "modalities": [
         "text"
       ],
@@ -80,9 +148,43 @@
       "rpm": 15,
       "rpd": 150,
       "status": "active"
+    },
+    {
+      "id": "Phi-4-multimodal-instruct",
+      "name": "Phi-4 Multimodal",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "Phi-4-reasoning",
+      "name": "Phi-4 Reasoning",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "Phi-4-mini-instruct",
+      "name": "Phi-4 Mini",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
     }
   ],
-  "last_verified": "2026-03-30",
+  "last_verified": "2026-04-28",
   "geo_restrictions": [],
   "api_key_env": "GITHUB_TOKEN"
 }

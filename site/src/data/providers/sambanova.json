@@ -21,8 +21,8 @@
   ],
   "top_models": [
     "Meta-Llama-3.3-70B-Instruct",
-    "Meta-Llama-3.1-405B-Instruct",
-    "Meta-Llama-3.2-11B-Vision-Instruct"
+    "MiniMax-M2.5",
+    "Llama-4-Maverick-17B-128E-Instruct"
   ],
   "models": [
     {
@@ -37,6 +37,62 @@
       "status": "active"
     },
     {
+      "id": "MiniMax-M2.5",
+      "name": "MiniMax M2.5",
+      "context_window": "160K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "DeepSeek-V3.1",
+      "name": "DeepSeek V3.1",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gpt-oss-120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "DeepSeek-V3.2",
+      "name": "DeepSeek V3.2 (Preview)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Llama-4-Maverick-17B-128E-Instruct",
+      "name": "Llama 4 Maverick 17B (Preview)",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 10,
+      "rpd": null,
+      "status": "active"
+    },
+    {
       "id": "Meta-Llama-3.1-8B-Instruct",
       "name": "Llama 3.1 8B Instruct",
       "context_window": "128K",
@@ -45,7 +101,7 @@
       ],
       "rpm": 30,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.1-70B-Instruct",
@@ -56,7 +112,7 @@
       ],
       "rpm": 20,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.1-405B-Instruct",
@@ -67,7 +123,7 @@
       ],
       "rpm": 10,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.2-1B-Instruct",
@@ -78,7 +134,7 @@
       ],
       "rpm": 30,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.2-3B-Instruct",
@@ -89,7 +145,7 @@
       ],
       "rpm": 30,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.2-11B-Vision-Instruct",
@@ -101,7 +157,7 @@
       ],
       "rpm": 10,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     },
     {
       "id": "Meta-Llama-3.2-90B-Vision-Instruct",
@@ -113,10 +169,10 @@
       ],
       "rpm": 1,
       "rpd": null,
-      "status": "active"
+      "status": "deprecated"
     }
   ],
-  "last_verified": "2026-03-30",
+  "last_verified": "2026-04-28",
   "geo_restrictions": [],
   "api_key_env": "SAMBANOVA_API_KEY"
 }

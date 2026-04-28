@@ -30,7 +30,7 @@
     {
       "id": "mistral-small-latest",
       "name": "Mistral Small 4",
-      "context_window": "128K",
+      "context_window": "256K",
       "modalities": [
         "text"
       ],
@@ -119,7 +119,7 @@
       "status": "active"
     }
   ],
-  "last_verified": "2026-04-02",
+  "last_verified": "2026-04-28",
   "geo_restrictions": [],
   "api_key_env": "MISTRAL_API_KEY"
 }
