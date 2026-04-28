@@ -116,7 +116,7 @@ const initials = provider.name.charAt(0).toUpperCase();
 
     <!-- Stats row -->
     <div class="flex flex-wrap gap-3 text-xs text-slate-500 font-mono">
-      <span data-latency class={`font-bold ${provider.status === 'degraded' ? 'text-yellow-400' : provider.status === 'dead' ? 'text-slate-600' : 'text-slate-300'}`}>
+      <span data-latency class={provider.status === 'degraded' ? 'text-yellow-400' : provider.status === 'dead' ? 'text-slate-600' : 'text-slate-300'}>
         {formatLatency(provider.latency_ms)}
       </span>
       {provider.rpm !== null && (

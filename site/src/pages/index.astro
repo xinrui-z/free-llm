@@ -236,7 +236,7 @@ function getFallbacksFor(id: string) {
       const latencyEl = wrapper.querySelector<HTMLElement>('[data-latency]');
       if (latencyEl) {
         latencyEl.textContent = formatLatency(latency_ms);
-        latencyEl.className = `font-mono text-sm font-bold ${LATENCY_COLOR[status] ?? 'text-slate-300'}`;
+        latencyEl.className = LATENCY_COLOR[status] ?? 'text-slate-300';
       }
 
       // Update mini uptime bar
