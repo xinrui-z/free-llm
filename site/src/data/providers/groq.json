@@ -1,0 +1,186 @@
+{
+  "id": "groq",
+  "name": "Groq",
+  "description": "High-speed LLM inference powered by LPU hardware — free tier includes Llama, Kimi, Qwen and more with generous rate limits.",
+  "base_url": "https://api.groq.com/openai/v1",
+  "signup_url": "https://console.groq.com/keys",
+  "website_url": "https://groq.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/groq.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 30,
+  "rpd": 1000,
+  "context_window": "128K",
+  "auth": "required",
+  "tags": [
+    "fast-inference",
+    "openai-compatible",
+    "llama",
+    "function-call"
+  ],
+  "top_models": [
+    "llama-3.3-70b-versatile",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "moonshotai/kimi-k2-instruct"
+  ],
+  "models": [
+    {
+      "id": "allam-2-7b",
+      "name": "Allam 2 7B",
+      "context_window": "4K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 7000,
+      "status": "active"
+    },
+    {
+      "id": "groq/compound",
+      "name": "Groq Compound",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 250,
+      "status": "active"
+    },
+    {
+      "id": "groq/compound-mini",
+      "name": "Groq Compound Mini",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 250,
+      "status": "active"
+    },
+    {
+      "id": "llama-3.1-8b-instant",
+      "name": "Llama 3.1 8B Instant",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "llama-3.3-70b-versatile",
+      "name": "Llama 3.3 70B Versatile",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "name": "Llama 4 Scout 17B",
+      "context_window": "10M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 30,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "meta-llama/llama-prompt-guard-2-22m",
+      "name": "Llama Prompt Guard 2 22M",
+      "context_window": "512",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "meta-llama/llama-prompt-guard-2-86m",
+      "name": "Llama Prompt Guard 2 86M",
+      "context_window": "512",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "moonshotai/kimi-k2-instruct",
+      "name": "Kimi K2 Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 60,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "moonshotai/kimi-k2-instruct-0905",
+      "name": "Kimi K2 Instruct (0905)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 60,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-20b",
+      "name": "GPT OSS 20B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-safeguard-20b",
+      "name": "GPT OSS Safeguard 20B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "qwen/qwen3-32b",
+      "name": "Qwen3 32B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 60,
+      "rpd": 1000,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "GROQ_API_KEY"
+}

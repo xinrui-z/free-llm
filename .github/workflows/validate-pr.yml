@@ -3,7 +3,7 @@ name: Validate PR
 on:
   pull_request:
     paths:
-      - 'site/src/data/providers.json'
+      - 'site/src/data/providers/**'
       - 'site/src/data/changelog.json'
 
 jobs:
@@ -12,5 +12,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate providers.json and changelog.json
+      - name: Validate provider files and changelog.json
         run: node scripts/validate.mjs

@@ -2,28 +2,33 @@
 /**
  * gen-changelog.mjs
  *
- * Compares two versions of providers.json, generates changelog entries for
- * new/removed providers and models, then POSTs them to the Worker KV.
+ * Compares two versions of the per-provider JSON files under
+ * `site/src/data/providers/`, generates changelog entries for new/removed
+ * providers and models, then POSTs them to the Worker KV.
  *
  * Usage:
  *   # Compare with previous git commit and push to Worker:
  *   node scripts/gen-changelog.mjs --worker-url <URL> --secret <SECRET>
  *
- *   # Compare two explicit files:
- *   node scripts/gen-changelog.mjs --old /tmp/old.json --worker-url <URL> --secret <SECRET>
+ *   # Compare against an explicit directory of provider JSON files:
+ *   node scripts/gen-changelog.mjs --old /tmp/old-providers --worker-url <URL> --secret <SECRET>
  *
  *   # Dry run (print entries, don't write anywhere):
  *   node scripts/gen-changelog.mjs --dry-run
  */
 
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
-const PROVIDERS_PATH = resolve(ROOT, 'site/src/data/providers.json');
+const PROVIDERS_DIR_REL = 'site/src/data/providers';
+const PROVIDERS_DIR_ABS = resolve(ROOT, PROVIDERS_DIR_REL);
+// Path to the legacy single-file format. Used as a fallback when comparing
+// against a git revision predating the directory split.
+const LEGACY_FILE_REL = 'site/src/data/providers.json';
 
 // ── Parse CLI args ────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -32,29 +37,53 @@ const flag = (name) => {
   return i !== -1 ? args[i + 1] : null;
 };
 const dryRun    = args.includes('--dry-run');
-const oldPath   = flag('--old');
-const newPath   = flag('--new') ?? PROVIDERS_PATH;
+const oldDir    = flag('--old');
 const workerUrl = flag('--worker-url') ?? process.env.WORKER_URL ?? '';
 const secret    = flag('--secret')     ?? process.env.REFRESH_SECRET ?? '';
 
 // ── Load providers ────────────────────────────────────────────────────────
-function loadProviders(source) {
-  if (source === 'git') {
-    try {
-      const raw = execSync('git show HEAD~1:site/src/data/providers.json', {
-        cwd: ROOT, encoding: 'utf8',
-      });
-      return JSON.parse(raw);
-    } catch {
-      console.warn('[gen-changelog] No previous commit found, treating all providers as new.');
-      return [];
-    }
-  }
-  return JSON.parse(readFileSync(source, 'utf8'));
+function loadProvidersFromDir(absDir) {
+  const files = readdirSync(absDir)
+    .filter(f => f.endsWith('.json') && !f.startsWith('_'));
+  return files.map(f => JSON.parse(readFileSync(resolve(absDir, f), 'utf8')));
 }
 
-const oldProviders = loadProviders(oldPath ?? 'git');
-const newProviders = JSON.parse(readFileSync(newPath, 'utf8'));
+function loadProvidersFromGitRev(rev) {
+  // Prefer the new directory layout if it exists at this rev.
+  let listing = '';
+  try {
+    listing = execSync(`git ls-tree -r --name-only ${rev} -- ${PROVIDERS_DIR_REL}`, {
+      cwd: ROOT, encoding: 'utf8',
+    });
+  } catch {
+    listing = '';
+  }
+  const dirFiles = listing
+    .split('\n')
+    .map(s => s.trim())
+    .filter(s => s.endsWith('.json') && !basename(s).startsWith('_'));
+
+  if (dirFiles.length > 0) {
+    return dirFiles.map(path => {
+      const raw = execSync(`git show ${rev}:${path}`, { cwd: ROOT, encoding: 'utf8' });
+      return JSON.parse(raw);
+    });
+  }
+
+  // Fallback: rev predates the split — read the legacy single file.
+  try {
+    const raw = execSync(`git show ${rev}:${LEGACY_FILE_REL}`, { cwd: ROOT, encoding: 'utf8' });
+    return JSON.parse(raw);
+  } catch {
+    console.warn(`[gen-changelog] No provider data found at ${rev}, treating all providers as new.`);
+    return [];
+  }
+}
+
+const oldProviders = oldDir
+  ? loadProvidersFromDir(resolve(oldDir))
+  : loadProvidersFromGitRev('HEAD~1');
+const newProviders = loadProvidersFromDir(PROVIDERS_DIR_ABS);
 
 // ── Diff logic ────────────────────────────────────────────────────────────
 const oldMap = Object.fromEntries(oldProviders.map(p => [p.id, p]));

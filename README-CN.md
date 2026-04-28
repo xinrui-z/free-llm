@@ -40,14 +40,15 @@
 
 ## 贡献指南
 
-向本项目贡献，主要是在 [`site/src/data/providers.json`](site/src/data/providers.json) 中新增或修改服务商条目，然后提交 Pull Request。CI 在每次 PR 时自动运行格式校验。
+每个 provider 都是 [`site/src/data/providers/`](site/src/data/providers/) 目录下的独立 JSON 文件。新增或修改服务商时，编辑（或创建）对应文件即可，然后提交 Pull Request。CI 在每次 PR 时自动运行格式校验。
 
 ### 步骤
 
 1. Fork 本仓库
-2. 在 `site/src/data/providers.json` 中添加你的条目
-3. 本地运行 `npm run validate` 检查格式
-4. 提交 Pull Request
+2. **新增 provider** — 创建 `site/src/data/providers/<id>.json`（字段见下方），并将 `<id>` 追加到 `_order.json` 中以控制展示顺序
+3. **修改 provider** — 编辑对应的 `site/src/data/providers/<id>.json`
+4. 本地运行 `npm run validate` 检查格式
+5. 提交 Pull Request
 
 ### 服务商字段说明
 
@@ -106,7 +107,7 @@ npm install
 npm run dev   # 启动于 http://localhost:4321
 ```
 
-开发服务器使用静态 `providers.json`。如需接入 checker worker 的实时状态，创建 `site/.env.local`：
+开发服务器读取 `site/src/data/providers/` 目录下的拆分文件（由 `index.ts` 聚合）。如需接入 checker worker 的实时状态，创建 `site/.env.local`：
 
 ```
 PUBLIC_STATUS_WORKER_URL=https://free-llm-checker.YOUR_SUBDOMAIN.workers.dev
@@ -170,7 +171,7 @@ npx wrangler pages deploy dist --project-name=your-project-name
 ## 架构
 
 ```
-GitHub 仓库（providers.json）
+GitHub 仓库（providers/*.json）
         │
         ▼ push 到 main
   GitHub Actions

@@ -1,0 +1,67 @@
+{
+  "id": "google-ai-studio",
+  "name": "Google AI Studio",
+  "description": "Google's free API gateway for Gemini models — Gemini 2.5 Flash and Flash-Lite are permanently free with no credit card required.",
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "signup_url": "https://aistudio.google.com/apikey",
+  "website_url": "https://ai.google.dev",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/gemini.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 15,
+  "rpd": 1000,
+  "context_window": "1M",
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "vision",
+    "thinking",
+    "function-call"
+  ],
+  "top_models": [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro"
+  ],
+  "models": [
+    {
+      "id": "gemini-2.5-flash-lite",
+      "name": "Gemini 2.5 Flash-Lite",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 15,
+      "rpd": 1000,
+      "status": "active"
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "name": "Gemini 2.5 Flash",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 10,
+      "rpd": 250,
+      "status": "active"
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "name": "Gemini 2.5 Pro",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 100,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "GOOGLE_API_KEY"
+}

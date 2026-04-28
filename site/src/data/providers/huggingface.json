@@ -1,0 +1,99 @@
+{
+  "id": "huggingface",
+  "name": "Hugging Face Inference",
+  "description": "Unified inference router across 18+ providers (Groq, SambaNova, Together, Cerebras, etc.) — free users get $0.10/month in credits, no credit card required. OpenAI-compatible endpoint with 200+ models.",
+  "base_url": "https://router.huggingface.co/v1",
+  "signup_url": "https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained",
+  "website_url": "https://huggingface.co/docs/inference-providers",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/huggingface.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": null,
+  "rpd": null,
+  "context_window": "128K",
+  "auth": "required",
+  "tags": [
+    "aggregator",
+    "openai-compatible",
+    "multi-provider",
+    "vision",
+    "function-call",
+    "embed"
+  ],
+  "top_models": [
+    "meta-llama/Llama-3.3-70B-Instruct",
+    "deepseek-ai/DeepSeek-V3-0324",
+    "openai/gpt-oss-120b"
+  ],
+  "models": [
+    {
+      "id": "meta-llama/Llama-3.3-70B-Instruct",
+      "name": "Llama 3.3 70B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3-0324",
+      "name": "DeepSeek V3 (0324)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1",
+      "name": "DeepSeek R1",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B",
+      "name": "Qwen3 235B A22B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "moonshotai/Kimi-K2-Instruct",
+      "name": "Kimi K2 Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "HF_TOKEN"
+}

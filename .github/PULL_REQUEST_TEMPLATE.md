@@ -1,7 +1,7 @@
 ## Change Type
 
-- [ ] Add provider (edit `site/src/data/providers.json`)
-- [ ] Update provider info (status / models / rate limits)
+- [ ] Add provider (create `site/src/data/providers/<id>.json` and append `<id>` to `_order.json`)
+- [ ] Update provider info (status / models / rate limits — edit the matching `site/src/data/providers/<id>.json`)
 - [ ] Bug fix
 - [ ] Other
 
@@ -9,15 +9,15 @@
 
 ## What Changed
 
-**providers.json changes:**
-<!-- Briefly describe the added or changed fields -->
+**Provider file(s) changed:**
+<!-- List the files under site/src/data/providers/ that you touched -->
 
 ---
 
 ## Source Verification
 
 - [ ] Official docs / announcement link attached
-- [ ] JSON format verified locally (run `node -e "JSON.parse(require('fs').readFileSync('site/src/data/providers.json','utf8'))"`)
+- [ ] Schema validated locally (`node scripts/validate.mjs`)
 
 **Source link:**
 <!-- Required — changes without a source link are difficult to verify -->

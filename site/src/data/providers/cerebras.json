@@ -1,0 +1,75 @@
+{
+  "id": "cerebras",
+  "name": "Cerebras",
+  "description": "Ultra-fast LLM inference via custom wafer-scale chips — free tier offers 30 RPM and 1M tokens/day with no credit card required.",
+  "base_url": "https://api.cerebras.ai/v1",
+  "signup_url": "https://cloud.cerebras.ai",
+  "website_url": "https://cerebras.ai",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/cerebras.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 30,
+  "rpd": 14400,
+  "context_window": "128K",
+  "auth": "required",
+  "tags": [
+    "fast-inference",
+    "openai-compatible",
+    "llama",
+    "function-call"
+  ],
+  "top_models": [
+    "llama3.1-8b",
+    "qwen-3-235b-a22b-instruct-2507",
+    "gpt-oss-120b"
+  ],
+  "models": [
+    {
+      "id": "llama3.1-8b",
+      "name": "Llama 3.1 8B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "gpt-oss-120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "qwen-3-235b-a22b-instruct-2507",
+      "name": "Qwen3 235B A22B (Preview)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": 14400,
+      "status": "active"
+    },
+    {
+      "id": "zai-glm-4.7",
+      "name": "Z.ai GLM 4.7 (Preview)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 100,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "CEREBRAS_API_KEY"
+}

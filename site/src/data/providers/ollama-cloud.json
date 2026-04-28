@@ -1,0 +1,134 @@
+{
+  "id": "ollama-cloud",
+  "name": "Ollama Cloud",
+  "description": "Ollama's hosted cloud inference — free tier includes $10/month in shared inference credits with access to 400+ models. OpenAI-compatible API, no credit card required.",
+  "base_url": "https://ollama.com/v1",
+  "signup_url": "https://ollama.com/settings",
+  "website_url": "https://ollama.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/ollama.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": null,
+  "rpd": null,
+  "context_window": "128K",
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "vision",
+    "function-call"
+  ],
+  "top_models": [
+    "deepseek-v3.2",
+    "kimi-k2.5",
+    "gemma3:27b"
+  ],
+  "models": [
+    {
+      "id": "deepseek-v3.2",
+      "name": "DeepSeek V3.2",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "kimi-k2.5",
+      "name": "Kimi K2.5",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gemma3:27b",
+      "name": "Gemma 3 27B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gemma3:12b",
+      "name": "Gemma 3 12B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gemma3:4b",
+      "name": "Gemma 3 4B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "mistral-large-3:675b",
+      "name": "Mistral Large 3 675B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gpt-oss:120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "name": "Gemini 3 Flash Preview",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "qwen3-vl:235b",
+      "name": "Qwen3 VL 235B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "OLLAMA_API_KEY"
+}

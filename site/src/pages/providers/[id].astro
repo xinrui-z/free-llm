@@ -4,7 +4,7 @@ import StatusBadge from '../../components/StatusBadge.astro';
 import UptimeBar from '../../components/UptimeBar.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
 
-import providers from '../../data/providers.json';
+import providers from '../../data/providers';
 
 export function getStaticPaths() {
   return providers.map(p => ({

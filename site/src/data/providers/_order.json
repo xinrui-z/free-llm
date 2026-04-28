@@ -1,0 +1,16 @@
+{
+  "order": [
+    "aihubmix",
+    "openrouter",
+    "groq",
+    "cohere",
+    "huggingface",
+    "cerebras",
+    "sambanova",
+    "github-models",
+    "bigmodel",
+    "ollama-cloud",
+    "google-ai-studio",
+    "mistral"
+  ]
+}

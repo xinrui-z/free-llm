@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import StatusSummaryBar from '../components/StatusSummaryBar.astro';
 import ProviderCard from '../components/ProviderCard.astro';
 
-import providers from '../data/providers.json';
+import providers from '../data/providers';
 import statusSummary from '../data/status_summary.json';
 
 const workerUrl = import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '';

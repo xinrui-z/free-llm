@@ -1,0 +1,99 @@
+{
+  "id": "cohere",
+  "name": "Cohere",
+  "description": "Cohere's Trial API key — free access to Command A, Command R+, Command R7B and Aya Expanse. Limited to 20 RPM and 1,000 calls/month. Non-commercial use only.",
+  "base_url": "https://api.cohere.ai/compatibility/v1",
+  "signup_url": "https://dashboard.cohere.com",
+  "website_url": "https://cohere.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/cohere.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 20,
+  "rpd": 33,
+  "context_window": "256K",
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "function-call",
+    "non-commercial",
+    "rag",
+    "embed",
+    "rerank"
+  ],
+  "top_models": [
+    "command-a-03-2025",
+    "command-r-plus",
+    "command-r7b-12-2024"
+  ],
+  "models": [
+    {
+      "id": "command-a-03-2025",
+      "name": "Command A",
+      "context_window": "256K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    },
+    {
+      "id": "command-r-plus",
+      "name": "Command R+",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    },
+    {
+      "id": "command-r",
+      "name": "Command R",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    },
+    {
+      "id": "command-r7b-12-2024",
+      "name": "Command R7B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    },
+    {
+      "id": "aya-expanse-32b",
+      "name": "Aya Expanse 32B",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    },
+    {
+      "id": "aya-expanse-8b",
+      "name": "Aya Expanse 8B",
+      "context_window": "8K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": 33,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "COHERE_API_KEY"
+}

@@ -1,0 +1,122 @@
+{
+  "id": "sambanova",
+  "name": "SambaNova Cloud",
+  "description": "RDU-accelerated inference with a persistent free tier — no credit card required. Llama 3.1/3.2/3.3 series up to 405B, 200K tokens/day free.",
+  "base_url": "https://api.sambanova.ai/v1",
+  "signup_url": "https://cloud.sambanova.ai",
+  "website_url": "https://sambanova.ai",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/sambanova.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 20,
+  "rpd": null,
+  "context_window": "128K",
+  "auth": "required",
+  "tags": [
+    "fast-inference",
+    "openai-compatible",
+    "llama",
+    "vision",
+    "function-call"
+  ],
+  "top_models": [
+    "Meta-Llama-3.3-70B-Instruct",
+    "Meta-Llama-3.1-405B-Instruct",
+    "Meta-Llama-3.2-11B-Vision-Instruct"
+  ],
+  "models": [
+    {
+      "id": "Meta-Llama-3.3-70B-Instruct",
+      "name": "Llama 3.3 70B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.1-8B-Instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.1-70B-Instruct",
+      "name": "Llama 3.1 70B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.1-405B-Instruct",
+      "name": "Llama 3.1 405B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.2-1B-Instruct",
+      "name": "Llama 3.2 1B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.2-3B-Instruct",
+      "name": "Llama 3.2 3B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.2-11B-Vision-Instruct",
+      "name": "Llama 3.2 11B Vision Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 10,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Meta-Llama-3.2-90B-Vision-Instruct",
+      "name": "Llama 3.2 90B Vision Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 1,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "SAMBANOVA_API_KEY"
+}

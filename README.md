@@ -40,14 +40,15 @@ Each provider page shows current status, response latency, RPM / RPD limits, mod
 
 ## Contributing
 
-To add or update a provider, edit [`site/src/data/providers.json`](site/src/data/providers.json) and open a Pull Request. CI runs the schema validator automatically on every PR.
+Each provider is a single JSON file under [`site/src/data/providers/`](site/src/data/providers/). To add or update a provider, edit (or create) the matching file and open a Pull Request. CI runs the schema validator automatically on every PR.
 
 ### Steps
 
 1. Fork this repository
-2. Add your entry to `site/src/data/providers.json`
-3. Run `npm run validate` locally to check the schema
-4. Open a Pull Request
+2. **Add a provider** — create `site/src/data/providers/<id>.json` (see schema below) and append `<id>` to `_order.json` to control display position
+3. **Update a provider** — edit `site/src/data/providers/<id>.json`
+4. Run `npm run validate` locally to check the schema
+5. Open a Pull Request
 
 ### Provider schema
 
@@ -106,7 +107,7 @@ npm install
 npm run dev   # http://localhost:4321
 ```
 
-The dev server reads from static `providers.json`. For live status from the checker worker, create `site/.env.local`:
+The dev server reads the per-provider files under `site/src/data/providers/` (aggregated by `index.ts`). For live status from the checker worker, create `site/.env.local`:
 
 ```
 PUBLIC_STATUS_WORKER_URL=https://free-llm-checker.YOUR_SUBDOMAIN.workers.dev
@@ -168,7 +169,7 @@ The checker worker (`checker-worker/`) is not included in this repository. It is
 ## Architecture
 
 ```
-GitHub repo (providers.json)
+GitHub repo (providers/*.json)
         │
         ▼ push to main
   GitHub Actions

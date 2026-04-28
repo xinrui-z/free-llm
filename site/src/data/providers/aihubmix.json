@@ -1,0 +1,251 @@
+{
+  "id": "aihubmix",
+  "name": "AIHubMix",
+  "description": "Unified OpenAI-compatible API aggregating OpenAI, Claude, Gemini, DeepSeek, GLM, Qwen and more — with load balancing and high concurrency support.",
+  "base_url": "https://aihubmix.com/v1",
+  "signup_url": "https://console.aihubmix.com/token",
+  "website_url": "https://aihubmix.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/aihubmix.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 5,
+  "rpd": 500,
+  "context_window": "1M",
+  "auth": "required",
+  "tags": [
+    "aggregator",
+    "openai-compatible",
+    "multi-provider",
+    "china-available"
+  ],
+  "top_models": [
+    "coding-glm-5.1-free",
+    "coding-minimax-m2.7-free"
+  ],
+  "models": [
+    {
+      "id": "gpt-4.1-free",
+      "name": "GPT-4.1 Free",
+      "context_window": "1M",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "gpt-4.1-mini-free",
+      "name": "GPT-4.1 Mini Free",
+      "context_window": "1M",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "gpt-4.1-nano-free",
+      "name": "GPT-4.1 Nano Free",
+      "context_window": "1M",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "gpt-4o-free",
+      "name": "GPT-4o Free",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "gemini-3-flash-preview-free",
+      "name": "Gemini 3 Flash Preview Free",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 250,
+      "status": "active"
+    },
+    {
+      "id": "gemini-2.0-flash-free",
+      "name": "Gemini 2.0 Flash Free",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-glm-5.1-free",
+      "name": "Coding GLM 5.1 Free",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-glm-5-free",
+      "name": "Coding GLM 5 Free",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-glm-5-turbo-free",
+      "name": "Coding GLM 5 Turbo Free",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-glm-4.7-free",
+      "name": "Coding GLM 4.7 Free",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "glm-4.7-flash-free",
+      "name": "GLM-4.7 Flash Free",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-glm-4.6-free",
+      "name": "Coding GLM 4.6 Free",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-minimax-m2.7-free",
+      "name": "Coding MiniMax M2.7 Free",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-minimax-m2.5-free",
+      "name": "Coding MiniMax M2.5 Free",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-minimax-m2.1-free",
+      "name": "Coding MiniMax M2.1 Free",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "coding-minimax-m2-free",
+      "name": "Coding MiniMax M2 Free",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "step-3.5-flash-free",
+      "name": "Step 3.5 Flash Free",
+      "context_window": "256K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 250,
+      "status": "active"
+    },
+    {
+      "id": "kimi-for-coding-free",
+      "name": "Kimi for Coding Free",
+      "context_window": "256K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    },
+    {
+      "id": "mimo-v2-flash-free",
+      "name": "MiMo V2 Flash Free",
+      "context_window": "256K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 5,
+      "rpd": 500,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "AIHUBMIX_API_KEY"
+}

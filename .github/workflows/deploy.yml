@@ -57,7 +57,7 @@ jobs:
           command: deploy
           workingDirectory: checker-worker
 
-  # ── 2. Sync providers.json → Worker KV when catalog changes ───────────────
+  # ── 2. Sync provider catalog → Worker KV when catalog changes ─────────────
   # This lets the Worker pick up new providers / model updates without
   # redeploying its code. Also triggers an immediate health check so the
   # status snapshot fetched in the next job reflects the latest catalog.
@@ -78,12 +78,18 @@ jobs:
           else
             changed=$(git diff --name-only HEAD)
           fi
-          echo "$changed" | grep -q 'site/src/data/providers.json' \
+          echo "$changed" | grep -qE 'site/src/data/providers/' \
             && echo "providers=true" >> "$GITHUB_OUTPUT" \
             || echo "providers=false" >> "$GITHUB_OUTPUT"
           echo "$changed" | grep -q 'site/src/data/changelog.json' \
             && echo "changelog=true" >> "$GITHUB_OUTPUT" \
             || echo "changelog=false" >> "$GITHUB_OUTPUT"
+
+      - name: Build catalog bundle
+        if: steps.check.outputs.providers == 'true'
+        run: |
+          mkdir -p checker-worker/src
+          node scripts/build-providers-bundle.mjs
 
       - name: Sync catalog to Worker KV
         if: steps.check.outputs.providers == 'true'
@@ -91,8 +97,8 @@ jobs:
           curl -sf -X PUT "${{ secrets.WORKER_URL }}/api/providers" \
             -H "Content-Type: application/json" \
             -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
-            --data @site/src/data/providers.json
-          echo "Catalog synced ($(jq length site/src/data/providers.json) providers)"
+            --data @checker-worker/src/providers.bundle.json
+          echo "Catalog synced ($(jq length checker-worker/src/providers.bundle.json) providers)"
 
       - name: Trigger immediate health check after catalog update
         if: steps.check.outputs.providers == 'true'
@@ -158,7 +164,7 @@ jobs:
           command: pages deploy dist --project-name=free-llm-apis
           workingDirectory: site
 
-  # ── 4. Generate changelog entries when providers.json changes ─────────────
+  # ── 4. Generate changelog entries when provider catalog changes ───────────
   update-changelog:
     runs-on: ubuntu-latest
     needs: [sync-providers]
@@ -171,7 +177,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Check if providers.json changed
+      - name: Check if any provider file changed
         id: check
         run: |
           if git rev-parse HEAD~1 &>/dev/null; then
@@ -179,7 +185,7 @@ jobs:
           else
             DIFF=$(git diff --name-only HEAD)
           fi
-          if echo "$DIFF" | grep -q 'site/src/data/providers.json'; then
+          if echo "$DIFF" | grep -qE 'site/src/data/providers/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

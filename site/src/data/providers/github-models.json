@@ -1,0 +1,88 @@
+{
+  "id": "github-models",
+  "name": "GitHub Models",
+  "description": "Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM/150 RPD; High tier: 10 RPM/50 RPD. No credit card required.",
+  "base_url": "https://models.inference.ai.azure.com",
+  "signup_url": "https://github.com/settings/tokens",
+  "website_url": "https://github.com/marketplace/models",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/github.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 15,
+  "rpd": 150,
+  "context_window": "8K",
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "multi-model",
+    "vision",
+    "function-call"
+  ],
+  "top_models": [
+    "gpt-4o",
+    "meta-llama/Llama-3.3-70B-Instruct",
+    "DeepSeek-R1"
+  ],
+  "models": [
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "context_window": "8K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "context_window": "8K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "meta-llama/Llama-3.3-70B-Instruct",
+      "name": "Llama 3.3 70B Instruct",
+      "context_window": "8K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "DeepSeek-R1",
+      "name": "DeepSeek R1",
+      "context_window": "8K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "microsoft/Phi-4",
+      "name": "Phi-4",
+      "context_window": "8K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-30",
+  "geo_restrictions": [],
+  "api_key_env": "GITHUB_TOKEN"
+}

@@ -1,0 +1,78 @@
+{
+  "id": "bigmodel",
+  "name": "BigModel",
+  "description": "Zhipu AI's open platform featuring GLM series models — permanently free API, available in China, OpenAI-compatible.",
+  "base_url": "https://open.bigmodel.cn/api/paas/v4",
+  "signup_url": "https://open.bigmodel.cn/usercenter/apikeys",
+  "website_url": "https://bigmodel.cn",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/Zhipu.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 30,
+  "rpd": null,
+  "context_window": "200K",
+  "auth": "required",
+  "tags": [
+    "china-available",
+    "openai-compatible",
+    "vision",
+    "thinking",
+    "function-call"
+  ],
+  "top_models": [
+    "glm-4.7-flash",
+    "glm-4-flash-250414",
+    "glm-4.1v-thinking-flash"
+  ],
+  "models": [
+    {
+      "id": "glm-4.7-flash",
+      "name": "GLM-4.7 Flash",
+      "context_window": "200K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "glm-4-flash-250414",
+      "name": "GLM-4 Flash (250414)",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "glm-4v-flash",
+      "name": "GLM-4V Flash",
+      "context_window": "8K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "glm-4.1v-thinking-flash",
+      "name": "GLM-4.1V Thinking Flash",
+      "context_window": "32K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 30,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-03-29",
+  "geo_restrictions": [],
+  "api_key_env": "BIGMODEL_API_KEY"
+}
