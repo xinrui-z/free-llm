@@ -1,8 +1,8 @@
 {
   "id": "github-models",
   "name": "GitHub Models",
-  "description": "Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM/150 RPD; High tier: 10 RPM/50 RPD. No credit card required.",
-  "base_url": "https://models.inference.ai.azure.com",
+  "description": "Free model inference via GitHub PAT — access GPT-5, GPT-4.1, o3/o4, Llama 4, DeepSeek R1, Grok 3, Mistral and more. Low tier: 15 RPM / 150 RPD; High tier: 10 RPM / 50 RPD; reasoning models on per-model custom quota. No credit card required.",
+  "base_url": "https://models.github.ai/inference",
   "signup_url": "https://github.com/settings/tokens",
   "website_url": "https://github.com/marketplace/models",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/github.svg",
@@ -10,181 +10,311 @@
   "latency_ms": null,
   "rpm": 15,
   "rpd": 150,
-  "context_window": "8K",
+  "context_window": "1M",
   "auth": "required",
   "tags": [
     "openai-compatible",
     "multi-model",
     "vision",
-    "function-call"
+    "function-call",
+    "reasoning"
   ],
   "top_models": [
-    "gpt-4o-mini",
-    "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-    "o4-mini"
+    "openai/gpt-4.1-mini",
+    "meta/llama-4-scout-17b-16e-instruct",
+    "openai/o4-mini"
   ],
   "models": [
     {
-      "id": "gpt-4o",
-      "name": "GPT-4o",
-      "context_window": "8K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
+      "id": "openai/gpt-4.1",
+      "name": "GPT-4.1",
+      "context_window": "1M",
+      "modalities": ["text", "vision"],
       "rpm": 10,
       "rpd": 50,
-      "status": "deprecated"
+      "status": "active"
     },
     {
-      "id": "gpt-4o-mini",
-      "name": "GPT-4o Mini",
-      "context_window": "8K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
+      "id": "openai/gpt-4.1-mini",
+      "name": "GPT-4.1 Mini",
+      "context_window": "1M",
+      "modalities": ["text", "vision"],
       "rpm": 15,
       "rpd": 150,
       "status": "active"
     },
     {
-      "id": "gpt-5",
+      "id": "openai/gpt-4.1-nano",
+      "name": "GPT-4.1 Nano",
+      "context_window": "1M",
+      "modalities": ["text", "vision"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-4o",
+      "name": "GPT-4o",
+      "context_window": "128K",
+      "modalities": ["text", "vision"],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "context_window": "128K",
+      "modalities": ["text", "vision"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-5",
       "name": "GPT-5",
-      "context_window": "128K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 10,
-      "rpd": 50,
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 1,
+      "rpd": 10,
       "status": "active"
     },
     {
-      "id": "gpt-5-mini",
+      "id": "openai/gpt-5-chat",
+      "name": "GPT-5 Chat",
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 1,
+      "rpd": 10,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-5-mini",
       "name": "GPT-5 Mini",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 10,
-      "rpd": 50,
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 2,
+      "rpd": 25,
       "status": "active"
     },
     {
-      "id": "o4-mini",
+      "id": "openai/gpt-5-nano",
+      "name": "GPT-5 Nano",
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 4,
+      "rpd": 100,
+      "status": "active"
+    },
+    {
+      "id": "openai/o4-mini",
       "name": "o4-mini",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 10,
-      "rpd": 50,
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 2,
+      "rpd": 25,
       "status": "active"
     },
     {
-      "id": "o3",
+      "id": "openai/o3",
       "name": "o3",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 10,
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 1,
+      "rpd": 10,
+      "status": "active"
+    },
+    {
+      "id": "openai/o3-mini",
+      "name": "o3-mini",
+      "context_window": "200K",
+      "modalities": ["text"],
+      "rpm": 3,
       "rpd": 50,
       "status": "active"
     },
     {
-      "id": "meta-llama/Llama-3.3-70B-Instruct",
-      "name": "Llama 3.3 70B Instruct",
-      "context_window": "8K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 10,
-      "rpd": 50,
+      "id": "openai/o1",
+      "name": "o1",
+      "context_window": "200K",
+      "modalities": ["text", "vision"],
+      "rpm": 1,
+      "rpd": 8,
       "status": "active"
     },
     {
-      "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "id": "meta/llama-4-scout-17b-16e-instruct",
       "name": "Llama 4 Scout 17B",
       "context_window": "10M",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 15,
-      "rpd": 150,
-      "status": "active"
-    },
-    {
-      "id": "DeepSeek-R1",
-      "name": "DeepSeek R1",
-      "context_window": "8K",
-      "modalities": [
-        "text"
-      ],
+      "modalities": ["text", "vision"],
       "rpm": 10,
       "rpd": 50,
       "status": "active"
     },
     {
-      "id": "DeepSeek-V3-0324",
+      "id": "meta/llama-4-maverick-17b-128e-instruct-fp8",
+      "name": "Llama 4 Maverick 17B",
+      "context_window": "1M",
+      "modalities": ["text", "vision"],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "meta/llama-3.3-70b-instruct",
+      "name": "Llama 3.3 70B Instruct",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "meta/llama-3.2-90b-vision-instruct",
+      "name": "Llama 3.2 90B Vision",
+      "context_window": "128K",
+      "modalities": ["text", "vision"],
+      "rpm": 10,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "deepseek/deepseek-r1-0528",
+      "name": "DeepSeek R1 (0528)",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 2,
+      "rpd": 25,
+      "status": "active"
+    },
+    {
+      "id": "deepseek/deepseek-r1",
+      "name": "DeepSeek R1",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 2,
+      "rpd": 25,
+      "status": "active"
+    },
+    {
+      "id": "deepseek/deepseek-v3-0324",
       "name": "DeepSeek V3 (0324)",
       "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
+      "modalities": ["text"],
       "rpm": 10,
       "rpd": 50,
       "status": "active"
     },
     {
-      "id": "microsoft/Phi-4",
-      "name": "Phi-4",
-      "context_window": "8K",
-      "modalities": [
-        "text"
-      ],
+      "id": "xai/grok-3",
+      "name": "Grok 3",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 2,
+      "rpd": 25,
+      "status": "active"
+    },
+    {
+      "id": "xai/grok-3-mini",
+      "name": "Grok 3 Mini",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 3,
+      "rpd": 50,
+      "status": "active"
+    },
+    {
+      "id": "mistral-ai/mistral-medium-2505",
+      "name": "Mistral Medium (2505)",
+      "context_window": "128K",
+      "modalities": ["text", "vision"],
       "rpm": 15,
       "rpd": 150,
       "status": "active"
     },
     {
-      "id": "Phi-4-multimodal-instruct",
+      "id": "mistral-ai/mistral-small-2503",
+      "name": "Mistral Small (2503)",
+      "context_window": "128K",
+      "modalities": ["text", "vision"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "mistral-ai/codestral-2501",
+      "name": "Codestral (2501)",
+      "context_window": "256K",
+      "modalities": ["text"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "microsoft/mai-ds-r1",
+      "name": "MAI-DS-R1",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 2,
+      "rpd": 25,
+      "status": "active"
+    },
+    {
+      "id": "microsoft/phi-4-reasoning",
+      "name": "Phi-4 Reasoning",
+      "context_window": "32K",
+      "modalities": ["text"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "microsoft/phi-4-multimodal-instruct",
       "name": "Phi-4 Multimodal",
       "context_window": "128K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
+      "modalities": ["text", "vision", "audio"],
       "rpm": 15,
       "rpd": 150,
       "status": "active"
     },
     {
-      "id": "Phi-4-reasoning",
-      "name": "Phi-4 Reasoning",
+      "id": "microsoft/phi-4-mini-reasoning",
+      "name": "Phi-4 Mini Reasoning",
       "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
+      "modalities": ["text"],
       "rpm": 15,
       "rpd": 150,
       "status": "active"
     },
     {
-      "id": "Phi-4-mini-instruct",
-      "name": "Phi-4 Mini",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
+      "id": "microsoft/phi-4",
+      "name": "Phi-4",
+      "context_window": "16K",
+      "modalities": ["text"],
       "rpm": 15,
       "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "cohere/cohere-command-a",
+      "name": "Cohere Command A",
+      "context_window": "128K",
+      "modalities": ["text"],
+      "rpm": 15,
+      "rpd": 150,
+      "status": "active"
+    },
+    {
+      "id": "ai21-labs/ai21-jamba-1.5-large",
+      "name": "AI21 Jamba 1.5 Large",
+      "context_window": "256K",
+      "modalities": ["text"],
+      "rpm": 10,
+      "rpd": 50,
       "status": "active"
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-05-20",
   "geo_restrictions": [],
   "api_key_env": "GITHUB_TOKEN"
 }
