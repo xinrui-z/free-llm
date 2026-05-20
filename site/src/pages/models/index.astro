@@ -1,0 +1,251 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import providers from '../../data/providers';
+import { MODEL_FAMILIES, CATEGORY_COLORS, TAG_LABELS, TAG_ICONS } from '../../data/model-families';
+
+type Provider = typeof providers[0];
+type Model = Provider['models'][0];
+
+const activeProviders = (providers as Provider[]).filter(p => p.status === 'active');
+
+// Filter out non-chat models (e.g. safety classifiers like llama-prompt-guard)
+function isListableModel(model: Model): boolean {
+  return model.status !== 'deprecated' && !/prompt[-_]?guard/i.test(model.id);
+}
+
+interface ProviderEntry {
+  provider: Provider;
+  bestRpd: number | null;   // null = unlimited
+  bestRpm: number | null;
+  bestModelId: string;
+  modelCount: number;
+}
+
+interface FamilyCard {
+  family: typeof MODEL_FAMILIES[0];
+  entries: ProviderEntry[];
+}
+
+const familyCards: FamilyCard[] = [];
+const matchedKeys = new Set<string>();
+
+for (const family of MODEL_FAMILIES) {
+  const entries: ProviderEntry[] = [];
+
+  for (const provider of activeProviders) {
+    const matching = (provider.models as Model[]).filter(
+      m => isListableModel(m) && family.match(m.id)
+    );
+    if (matching.length === 0) continue;
+
+    for (const m of matching) matchedKeys.add(`${provider.id}:${m.id}`);
+
+    const hasUnlimited = matching.some(m => m.rpd == null);
+    const explicitRpds = matching.map(m => m.rpd).filter((v): v is number => v != null);
+    const explicitRpms = matching.map(m => m.rpm).filter((v): v is number => v != null);
+
+    // Pick the best representative model: unlimited first, else highest rpd
+    const bestModel = [...matching].sort((a, b) => {
+      const ar = a.rpd == null ? Infinity : a.rpd;
+      const br = b.rpd == null ? Infinity : b.rpd;
+      return br - ar;
+    })[0];
+
+    entries.push({
+      provider,
+      bestRpd: hasUnlimited ? null : Math.max(...explicitRpds),
+      bestRpm: explicitRpms.length > 0 ? Math.max(...explicitRpms) : null,
+      bestModelId: bestModel.id,
+      modelCount: matching.length,
+    });
+  }
+
+  if (entries.length === 0) continue;
+
+  // Sort: unlimited (∞) first, then by RPD desc, then alpha
+  entries.sort((a, b) => {
+    if (a.bestRpd === null && b.bestRpd !== null) return -1;
+    if (a.bestRpd !== null && b.bestRpd === null) return 1;
+    if (a.bestRpd === null && b.bestRpd === null) return a.provider.name.localeCompare(b.provider.name);
+    return (b.bestRpd ?? 0) - (a.bestRpd ?? 0);
+  });
+
+  familyCards.push({ family, entries });
+}
+
+// "Other" bucket: unmatched models grouped by provider
+interface OtherEntry {
+  provider: Provider;
+  models: Model[];
+}
+const otherEntries: OtherEntry[] = [];
+for (const provider of activeProviders) {
+  const unmatched = (provider.models as Model[]).filter(
+    m => isListableModel(m) && !matchedKeys.has(`${provider.id}:${m.id}`)
+  );
+  if (unmatched.length > 0) otherEntries.push({ provider, models: unmatched });
+}
+
+function formatRpd(rpd: number | null): string {
+  if (rpd === null) return '∞/d';
+  if (rpd >= 1000) return `${(rpd / 1000).toFixed(0)}k/d`;
+  return `${rpd}/d`;
+}
+---
+
+<Layout
+  title="Models — Free LLM APIs"
+  description={`Browse ${familyCards.length} model families across ${activeProviders.length} free LLM API providers. Find which provider offers GPT-4, Gemini, Llama, DeepSeek and more, sorted by free quota.`}
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8">
+
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-white mb-1">Models</h1>
+      <p class="text-slate-500 text-sm">
+        {familyCards.length} model families · {activeProviders.length} providers · sorted by best free quota
+      </p>
+    </div>
+
+    <!-- Family cards grid -->
+    <div class="grid md:grid-cols-2 gap-4">
+      {familyCards.map(({ family, entries }) => {
+        const categoryStyle = CATEGORY_COLORS[family.category] ?? 'bg-slate-700/30 text-slate-400 border-slate-600/30';
+        return (
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col">
+            <!-- Family header -->
+            <div class="mb-3">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <h2 class="font-semibold text-slate-100 text-base">{family.name}</h2>
+                <span class={`inline-flex items-center px-1.5 py-0 text-[10px] rounded border font-medium ${categoryStyle}`}>
+                  {family.category}
+                </span>
+                {family.tags?.map(tag => (
+                  <span class="relative group inline-flex">
+                    <span class="inline-flex items-center justify-center w-4 h-4 rounded border border-slate-600 text-slate-500 group-hover:text-slate-200 group-hover:border-slate-500 transition-colors duration-150 cursor-help">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={TAG_ICONS[tag] ?? ''} />
+                    </span>
+                    <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-30 pointer-events-none">
+                      <span class="block bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[10px] text-slate-300 whitespace-nowrap shadow-xl">
+                        {TAG_LABELS[tag] ?? tag}
+                      </span>
+                    </span>
+                  </span>
+                ))}
+              </div>
+              <p class="text-[11px] text-slate-500">{family.description}</p>
+            </div>
+
+            <!-- Provider rows -->
+            <div class="-mx-5 mt-1 border-t border-slate-700/50 divide-y divide-slate-700/40">
+              {entries.map(({ provider, bestRpd, bestRpm, bestModelId, modelCount }) => (
+                <a
+                  href={`/providers/${provider.id}`}
+                  class="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-700/30 transition-colors duration-150 group"
+                >
+                  <span
+                    class="provider-status-dot w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-500"
+                    data-provider-id={provider.id}
+                    title="active"
+                  ></span>
+
+                  <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+                    {provider.logo ? (
+                      <img
+                        src={provider.logo}
+                        alt={provider.name}
+                        class="w-full h-full object-contain brightness-0 invert"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                      />
+                    ) : null}
+                    <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0)}</span>
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-slate-200 group-hover:text-white truncate">{provider.name}</div>
+                    <div class="text-[10px] font-mono text-slate-500 truncate">
+                      {bestModelId}{modelCount > 1 ? ` · +${modelCount - 1}` : ''}
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col items-end flex-shrink-0">
+                    <span class={`text-xs font-mono font-semibold ${bestRpd === null ? 'text-green-400' : 'text-slate-200'}`}>
+                      {formatRpd(bestRpd)}
+                    </span>
+                    {bestRpm !== null && (
+                      <span class="text-[10px] font-mono text-slate-500">{bestRpm}/min</span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <!-- Other bucket: unmatched models -->
+      {otherEntries.length > 0 && (
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 md:col-span-2">
+          <div class="mb-3">
+            <div class="flex items-center gap-2 mb-1">
+              <h2 class="font-semibold text-slate-100 text-base">Other</h2>
+              <span class="text-[10px] text-slate-600 font-mono">
+                {otherEntries.reduce((n, e) => n + e.models.length, 0)} models
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500">
+              Models not matched to a known family. Add a family to <code class="text-slate-400 font-mono">model-families.ts</code> to categorize them.
+            </p>
+          </div>
+
+          <div class="-mx-5 border-t border-slate-700/50 divide-y divide-slate-700/40">
+            {otherEntries.map(({ provider, models }) => (
+              <div class="flex items-start gap-3 px-5 py-3">
+                <div class="flex items-center gap-2 w-40 flex-shrink-0 pt-0.5">
+                  <span
+                    class="provider-status-dot w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-500"
+                    data-provider-id={provider.id}
+                    title="active"
+                  ></span>
+                  <a href={`/providers/${provider.id}`} class="text-sm text-slate-200 hover:text-white truncate">
+                    {provider.name}
+                  </a>
+                </div>
+                <div class="flex flex-wrap gap-1 flex-1 min-w-0">
+                  {models.map(m => (
+                    <span class="text-[10px] font-mono text-slate-400 bg-slate-700/30 border border-slate-700/60 rounded px-1.5 py-0.5">
+                      {m.id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  // Live status dot updates — same pattern used by other pages.
+  const STATUS_DOT: Record<string, string> = {
+    active:   'bg-green-500',
+    degraded: 'bg-yellow-500',
+    dead:     'bg-red-500',
+    unknown:  'bg-slate-600',
+  };
+
+  document.addEventListener('status-updated', (e: Event) => {
+    const data = (e as CustomEvent).detail as {
+      providers?: { id: string; status: string }[];
+    };
+    data.providers?.forEach(({ id, status }) => {
+      document.querySelectorAll(`.provider-status-dot[data-provider-id="${id}"]`).forEach(dot => {
+        dot.className = `provider-status-dot w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[status] ?? STATUS_DOT.unknown}`;
+        (dot as HTMLElement).title = status;
+      });
+    });
+  });
+</script>
