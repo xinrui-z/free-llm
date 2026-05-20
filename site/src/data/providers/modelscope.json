@@ -1,0 +1,165 @@
+{
+  "id": "modelscope",
+  "name": "ModelScope",
+  "description": "Alibaba's ModelScope (魔搭) community offers free OpenAI-compatible inference — 2,000 calls/day across most models, China-available.",
+  "base_url": "https://api-inference.modelscope.cn/v1",
+  "signup_url": "https://modelscope.cn/my/myaccesstoken",
+  "website_url": "https://modelscope.cn",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/modelscope.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": null,
+  "rpd": 2000,
+  "context_window": "262K",
+  "auth": "required",
+  "tags": [
+    "china-available",
+    "openai-compatible",
+    "deepseek",
+    "vision",
+    "thinking",
+    "function-call"
+  ],
+  "top_models": [
+    "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "deepseek-ai/DeepSeek-V3.1",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+  ],
+  "models": [
+    {
+      "id": "deepseek-ai/DeepSeek-V3.1",
+      "name": "DeepSeek V3.1",
+      "context_window": "164K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 200,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-0528",
+      "name": "DeepSeek R1 (0528)",
+      "context_window": "164K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 200,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "name": "Qwen3 235B Instruct (2507)",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+      "name": "Qwen3 235B Thinking (2507)",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "name": "Qwen3 30B Instruct (2507)",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "name": "Qwen3 Coder 480B",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "name": "Qwen3 Coder 30B",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
+      "name": "Qwen3 VL 235B Instruct",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "ZhipuAI/GLM-4.6",
+      "name": "GLM-4.6",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "ZhipuAI/GLM-4.5",
+      "name": "GLM-4.5",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    },
+    {
+      "id": "moonshotai/Kimi-K2-Instruct",
+      "name": "Kimi K2 Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": 2000,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-05-20",
+  "geo_restrictions": [],
+  "api_key_env": "MODELSCOPE_API_KEY"
+}

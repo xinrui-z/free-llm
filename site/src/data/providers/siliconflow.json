@@ -1,0 +1,150 @@
+{
+  "id": "siliconflow",
+  "name": "SiliconFlow",
+  "description": "硅基流动 — Chinese inference platform with a permanent free tier for models ≤9B parameters (Qwen3-8B, GLM-4-9B, DeepSeek R1 Distill 7B and more).",
+  "base_url": "https://api.siliconflow.com/v1",
+  "signup_url": "https://cloud.siliconflow.com/account/ak",
+  "website_url": "https://siliconflow.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/siliconcloud.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 1000,
+  "rpd": null,
+  "context_window": "131K",
+  "auth": "required",
+  "tags": [
+    "china-available",
+    "openai-compatible",
+    "deepseek",
+    "llama",
+    "vision",
+    "thinking"
+  ],
+  "top_models": [
+    "Qwen/Qwen3-8B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+    "THUDM/GLM-Z1-9B-0414"
+  ],
+  "models": [
+    {
+      "id": "Qwen/Qwen3-8B",
+      "name": "Qwen3 8B",
+      "context_window": "131K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen2.5-7B-Instruct",
+      "name": "Qwen2.5 7B Instruct",
+      "context_window": "32K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "name": "Qwen2.5 Coder 7B Instruct",
+      "context_window": "32K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "name": "Qwen2.5 VL 7B Instruct",
+      "context_window": "32K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+      "name": "DeepSeek R1 Distill Qwen 7B",
+      "context_window": "131K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "context_window": "32K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "THUDM/GLM-4-9B-0414",
+      "name": "GLM-4 9B (0414)",
+      "context_window": "32K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "THUDM/GLM-Z1-9B-0414",
+      "name": "GLM-Z1 9B Reasoning (0414)",
+      "context_window": "131K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "zai-org/GLM-4.1V-9B-Thinking",
+      "name": "GLM-4.1V 9B Thinking",
+      "context_window": "65K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "tencent/Hunyuan-MT-7B",
+      "name": "Hunyuan MT 7B",
+      "context_window": "32K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 1000,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-05-20",
+  "geo_restrictions": [],
+  "api_key_env": "SILICONFLOW_API_KEY"
+}

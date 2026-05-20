@@ -2,13 +2,17 @@
   "order": [
     "aihubmix",
     "openrouter",
+    "nvidia-nim",
     "groq",
+    "cerebras",
     "cohere",
     "huggingface",
-    "cerebras",
     "sambanova",
     "github-models",
+    "modelscope",
+    "siliconflow",
     "bigmodel",
+    "cloudflare-workers-ai",
     "ollama-cloud",
     "google-ai-studio",
     "mistral"

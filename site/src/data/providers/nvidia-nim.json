@@ -1,0 +1,215 @@
+{
+  "id": "nvidia-nim",
+  "name": "NVIDIA NIM",
+  "description": "NVIDIA's free DGX Cloud catalog — 100+ open models (DeepSeek V4, Llama, Nemotron, Kimi, GLM, gpt-oss, Qwen) accessible through an OpenAI-compatible endpoint.",
+  "base_url": "https://integrate.api.nvidia.com/v1",
+  "signup_url": "https://build.nvidia.com/settings/api-keys",
+  "website_url": "https://build.nvidia.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/nvidia.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": 40,
+  "rpd": null,
+  "context_window": "1M",
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "multi-provider",
+    "deepseek",
+    "llama",
+    "vision",
+    "thinking",
+    "function-call"
+  ],
+  "top_models": [
+    "meta/llama-3.3-70b-instruct",
+    "deepseek-ai/deepseek-v4-pro",
+    "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+  ],
+  "models": [
+    {
+      "id": "meta/llama-3.3-70b-instruct",
+      "name": "Llama 3.3 70B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "meta/llama-3.1-70b-instruct",
+      "name": "Llama 3.1 70B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "meta/llama-3.1-8b-instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "meta/llama-4-maverick-17b-128e-instruct",
+      "name": "Llama 4 Maverick 17B 128E",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro",
+      "context_window": "164K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "deepseek-ai/deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "context_window": "164K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+      "name": "Llama 3.1 Nemotron Ultra 253B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+      "name": "Llama 3.3 Nemotron Super 49B v1.5",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3-super-120b-a12b",
+      "name": "Nemotron 3 Super 120B A12B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "moonshotai/kimi-k2.6",
+      "name": "Kimi K2.6",
+      "context_window": "256K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-120b",
+      "name": "GPT OSS 120B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "openai/gpt-oss-20b",
+      "name": "GPT OSS 20B",
+      "context_window": "128K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "qwen/qwen3-coder-480b-a35b-instruct",
+      "name": "Qwen3 Coder 480B",
+      "context_window": "262K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "z-ai/glm-5.1",
+      "name": "GLM-5.1",
+      "context_window": "200K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "mistralai/mixtral-8x22b-instruct-v0.1",
+      "name": "Mixtral 8x22B Instruct",
+      "context_window": "64K",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": 40,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-05-20",
+  "geo_restrictions": [
+    "requires-vpn-in-china"
+  ],
+  "api_key_env": "NVIDIA_NIM_API_KEY"
+}
