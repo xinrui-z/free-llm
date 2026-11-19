@@ -8,9 +8,9 @@
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/openrouter.svg",
   "status": "active",
   "latency_ms": null,
-  "rpm": 20,
-  "rpd": 50,
-  "context_window": "128K",
+  "rpm": null,
+  "rpd": null,
+  "context_window": "1048576",
   "auth": "required",
   "tags": [
     "aggregator",
@@ -19,26 +19,29 @@
     "function-call"
   ],
   "top_models": [
-    "z-ai/glm-4.5-air:free",
-    "minimax/minimax-m2.5:free",
-    "nvidia/nemotron-3-super-120b-a12b:free"
+    "inclusionai/ling-3.2-flash:free",
+    "baidu/ernie-5.5-flash-preview:free",
+    "thinkingmachines/inkling-2-small:free",
+    "liquid/lfm-3-1.7b:free",
+    "particle-ai/particle-1:free"
   ],
   "models": [
     {
-      "id": "z-ai/glm-4.5-air:free",
-      "name": "GLM-4.5 Air",
-      "context_window": "128K",
+      "id": "inclusionai/ling-3.2-flash:free",
+      "name": "inclusionAI: Ling 3.2 Flash (free)",
+      "context_window": "1048576",
       "modalities": [
-        "text"
+        "text",
+        "vision"
       ],
-      "rpm": 20,
-      "rpd": 50,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
-      "id": "minimax/minimax-m2.5:free",
-      "name": "MiniMax M2.5",
-      "context_window": "131K",
+      "id": "baidu/ernie-5.5-flash-preview:free",
+      "name": "Baidu: ERNIE-5.5-Flash-Preview (free)",
+      "context_window": "1024000",
       "modalities": [
         "text"
       ],
@@ -47,41 +50,482 @@
       "status": "active"
     },
     {
-      "id": "nvidia/nemotron-3-super-120b-a12b:free",
-      "name": "Nemotron 3 Super 120B",
-      "context_window": "131K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "rpd": 50,
-      "status": "active"
-    },
-    {
-      "id": "nvidia/nemotron-3-nano-30b-a3b:free",
-      "name": "Nemotron 3 Nano 30B",
-      "context_window": "131K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "rpd": 50,
-      "status": "active"
-    },
-    {
-      "id": "google/gemma-4-31b-it:free",
-      "name": "Gemma 4 31B",
-      "context_window": "256K",
+      "id": "thinkingmachines/inkling-2-small:free",
+      "name": "Thinking Machines: Inkling 2 Small (free)",
+      "context_window": "1048576",
       "modalities": [
         "text",
         "vision"
       ],
-      "rpm": 20,
-      "rpd": 50,
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "liquid/lfm-3-1.7b:free",
+      "name": "LiquidAI: LFM3-1.7B (free)",
+      "context_window": "262144",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "particle-ai/particle-1:free",
+      "name": "Particle AI: Particle-1 (free)",
+      "context_window": "1048576",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "recursive/flint-v1.0:free",
+      "name": "Recursive: Flint (free)",
+      "context_window": "262144",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl:free",
+      "name": "NVIDIA: Nemotron 3.5 Super VL (free)",
+      "context_window": "1000000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "dots-studio/dots-3-note-preview:free",
+      "name": "Dots Studio: Dots3-Note Preview (free)",
+      "context_window": "512000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-lightning:free",
+      "name": "NVIDIA: Nemotron 3.5 Lightning (free)",
+      "context_window": "1000000",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "cohere/north-mini-code:free",
+      "name": "Cohere: North Mini Code (free)",
+      "context_window": "256000",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "name": "NVIDIA: Nemotron 3 Ultra (free)",
+      "context_window": "1000000",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "name": "NVIDIA: Nemotron 3 Nano Omni (free)",
+      "context_window": "256000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "google/gemma-4-26b-a4b-it:free",
+      "name": "Google: Gemma 4 26B A4B  (free)",
+      "context_window": "262144",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "google/gemma-4-31b-it:free",
+      "name": "Google: Gemma 4 31B (free)",
+      "context_window": "262144",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "OPENROUTER_API_KEY"
+  "api_key_env": "OPENROUTER_API_KEY",
+  "paid_models": [
+    {
+      "id": "anthropic/claude-sonnet-4.6",
+      "name": "Anthropic: Claude Sonnet 4.6",
+      "context_window": "1000000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 3,
+        "output_per_million": 15,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "openai/gpt-5.5-pro",
+      "name": "OpenAI: GPT-5.5 Pro",
+      "context_window": "1050000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 30,
+        "output_per_million": 180,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "openai/o3-pro",
+      "name": "OpenAI: o3 Pro",
+      "context_window": "200000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 20,
+        "output_per_million": 80,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "openai/gpt-4.1",
+      "name": "OpenAI: GPT-4.1",
+      "context_window": "1047576",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2,
+        "output_per_million": 8,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "openai/gpt-4o-2024-05-13",
+      "name": "OpenAI: GPT-4o (2024-05-13)",
+      "context_window": "128000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 5,
+        "output_per_million": 15,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "google/gemini-2.5-pro",
+      "name": "Google: Gemini 2.5 Pro",
+      "context_window": "1048576",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.25,
+        "output_per_million": 10,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "google/gemini-3-pro-image",
+      "name": "Google: Nano Banana Pro (Gemini 3 Pro Image)",
+      "context_window": "131072",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2,
+        "output_per_million": 12,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "x-ai/grok-4.5",
+      "name": "SpaceXAI: Grok 4.5",
+      "context_window": "500000",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2,
+        "output_per_million": 6,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "moonshotai/kimi-k3",
+      "name": "MoonshotAI: Kimi K3",
+      "context_window": "1048576",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.192,
+        "output_per_million": 16,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "moonshotai/kimi-k2.7-code",
+      "name": "MoonshotAI: Kimi K2.7 Code",
+      "context_window": "262144",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.6,
+        "output_per_million": 3.5,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "z-ai/glm-5v-turbo",
+      "name": "Z.ai: GLM 5V Turbo",
+      "context_window": "202752",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.2,
+        "output_per_million": 4,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "z-ai/glm-4.7",
+      "name": "Z.ai: GLM 4.7",
+      "context_window": "204800",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.4,
+        "output_per_million": 1.75,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "mistralai/mistral-large-2512",
+      "name": "Mistral: Mistral Large 3 2512",
+      "context_window": "262144",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.5,
+        "output_per_million": 1.5,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "mistralai/mistral-medium-3-5",
+      "name": "Mistral: Mistral Medium 3.5",
+      "context_window": "262144",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.5,
+        "output_per_million": 7.5,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "cohere/command-a",
+      "name": "Cohere: Command A",
+      "context_window": "256000",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2.5,
+        "output_per_million": 10,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "meta-llama/llama-4-maverick",
+      "name": "Meta: Llama 4 Maverick",
+      "context_window": "524288",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.35,
+        "output_per_million": 1,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    },
+    {
+      "id": "meta-llama/llama-3.3-70b-instruct",
+      "name": "Meta: Llama 3.3 70B Instruct",
+      "context_window": "131072",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.71,
+        "output_per_million": 0.71,
+        "currency": "USD",
+        "source_url": "https://openrouter.ai/api/v1/models",
+        "checked_at": "2026-11-17"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "label": "Account-level free model limits",
+      "url": "https://openrouter.ai/docs/api/reference/limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "label": "Live model catalog and token prices",
+      "url": "https://openrouter.ai/api/v1/models",
+      "checked_at": "2026-11-17"
+    }
+  ],
+  "quota_note": "Free model variants share account-level minute and daily caps that depend on purchase history. Check GET /api/v1/key for your current daily limit; the reviewed public page did not expose numeric ceilings. Per-model limits do not add together.",
+  "catalog_checked_at": "2026-11-17"
 }

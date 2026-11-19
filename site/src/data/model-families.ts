@@ -12,6 +12,13 @@ export interface ModelFamily {
 }
 
 export const MODEL_FAMILIES: ModelFamily[] = [
+  { id: 'ernie', name: 'ERNIE', category: 'Baidu', description: 'Baidu ERNIE models', match: id => /ernie/i.test(id) },
+  { id: 'inkling', name: 'Inkling', category: 'Thinking Machines', description: 'Thinking Machines models', match: id => /inkling/i.test(id) },
+  { id: 'lfm', name: 'LFM', category: 'Liquid', description: 'Liquid foundation models', match: id => /\blfm-/i.test(id) },
+  { id: 'particle', name: 'Particle', category: 'Particle', description: 'Particle AI models', match: id => /particle/i.test(id) },
+  { id: 'flint', name: 'Flint', category: 'Recursive', description: 'Recursive Flint models', match: id => /flint/i.test(id) },
+  { id: 'dots', name: 'Dots', category: 'Dots Studio', description: 'Dots Studio models', match: id => /dots-/i.test(id) },
+  { id: 'north', name: 'North', category: 'Cohere', description: 'Cohere North models', match: id => /north-/i.test(id) },
   {
     id: 'gpt4',
     name: 'GPT-4o / GPT-4.1',
@@ -47,13 +54,13 @@ export const MODEL_FAMILIES: ModelFamily[] = [
     id: 'gemini',
     name: 'Gemini',
     category: 'Google',
-    description: 'Gemini 2.5 / 3 series',
+    description: 'Gemini 3 / 4 series',
     tags: ['vision', 'thinking'],
     match: id => /gemini/i.test(id),
   },
   {
     id: 'gemma',
-    name: 'Gemma 3',
+    name: 'Gemma',
     category: 'Google',
     description: 'Google open Gemma models',
     match: id => /gemma/i.test(id),
@@ -179,7 +186,7 @@ export const MODEL_FAMILIES: ModelFamily[] = [
     name: 'Ling',
     category: 'Ant',
     description: 'Ant Group Ling series',
-    match: id => /^ling-/i.test(id),
+    match: id => /\bling-/i.test(id),
   },
   {
     id: 'allam',

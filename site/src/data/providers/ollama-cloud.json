@@ -1,16 +1,15 @@
 {
   "id": "ollama-cloud",
   "name": "Ollama Cloud",
-  "description": "Ollama's hosted cloud inference — free tier provides shared session/weekly credits across 30+ open models (gpt-oss, DeepSeek V3, Kimi K2, Qwen3, Gemma 3, etc.). Frontier flagships (DeepSeek V4, Kimi K2.6, GLM-5+) require a paid upgrade. OpenAI-compatible API, no credit card required for Free.",
+  "description": "Ollama Cloud now charges per token. The $0 subscription plan is pay-as-you-go, without included recurring free inference credits. Local inference on your own hardware remains free.",
   "base_url": "https://ollama.com/v1",
   "signup_url": "https://ollama.com/settings",
   "website_url": "https://ollama.com",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/ollama.svg",
-  "status": "active",
+  "status": "archived",
   "latency_ms": null,
   "rpm": null,
   "rpd": null,
-  "context_window": "128K",
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -20,283 +19,397 @@
     "reasoning"
   ],
   "top_models": [
-    "gpt-oss:120b",
-    "deepseek-v3.2",
-    "kimi-k2.5"
+    "beam",
+    "deepseek-v4.1-flash",
+    "deepseek-v4-pro"
   ],
   "models": [
     {
+      "id": "beam",
+      "name": "beam",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.125,
+        "output_per_million": 0.4,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash",
+      "name": "deepseek-v4.1-flash",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 1.2,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
       "id": "deepseek-v4-pro",
-      "name": "DeepSeek V4 Pro",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "name": "deepseek-v4-pro",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.32,
+        "output_per_million": 3.96,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "deepseek-v4-flash",
-      "name": "DeepSeek V4 Flash",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "gemma4",
+      "name": "gemma4",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.14,
+        "output_per_million": 0.4,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "deepseek-v3.2",
-      "name": "DeepSeek V3.2",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "glm-5.3",
+      "name": "glm-5.3",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.4,
+        "output_per_million": 4.4,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "deepseek-v3.1:671b",
-      "name": "DeepSeek V3.1 671B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "glm-5.3-flash",
+      "name": "glm-5.3-flash",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.5,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "kimi-k2.6",
-      "name": "Kimi K2.6",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "glm-5.2",
+      "name": "glm-5.2",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "kimi-k2.5",
-      "name": "Kimi K2.5",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "kimi-k2-thinking",
-      "name": "Kimi K2 Thinking",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "kimi-k2:1t",
-      "name": "Kimi K2 1T",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "glm-5.1",
-      "name": "GLM 5.1",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "glm-5",
-      "name": "GLM 5",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "glm-4.7",
-      "name": "GLM 4.7",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "glm-4.6",
-      "name": "GLM 4.6",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "qwen3-coder:480b",
-      "name": "Qwen3 Coder 480B",
-      "context_window": "256K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "qwen3-coder-next",
-      "name": "Qwen3 Coder Next",
-      "context_window": "256K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "qwen3-next:80b",
-      "name": "Qwen3 Next 80B",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "qwen3.5:397b",
-      "name": "Qwen 3.5 397B",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "qwen3-vl:235b",
-      "name": "Qwen3 VL 235B",
-      "context_window": "128K",
-      "modalities": ["text", "vision"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "minimax-m2.7",
-      "name": "MiniMax M2.7",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "minimax-m2.5",
-      "name": "MiniMax M2.5",
-      "context_window": "128K",
-      "modalities": ["text"],
-      "rpm": null,
-      "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.4,
+        "output_per_million": 4.4,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
       "id": "gpt-oss:120b",
-      "name": "GPT OSS 120B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "name": "gpt-oss:120b",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.6,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
       "id": "gpt-oss:20b",
-      "name": "GPT OSS 20B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "name": "gpt-oss:20b",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.07,
+        "output_per_million": 0.3,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemma4:31b",
-      "name": "Gemma 4 31B",
-      "context_window": "128K",
-      "modalities": ["text", "vision"],
+      "id": "inkling-2-small",
+      "name": "inkling-2-small",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 1.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemma3:27b",
-      "name": "Gemma 3 27B",
-      "context_window": "128K",
-      "modalities": ["text", "vision"],
+      "id": "kimi-k3.1-pro",
+      "name": "kimi-k3.1-pro",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2.0,
+        "output_per_million": 10.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemma3:12b",
-      "name": "Gemma 3 12B",
-      "context_window": "128K",
-      "modalities": ["text", "vision"],
+      "id": "kimi-k3",
+      "name": "kimi-k3",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 3.0,
+        "output_per_million": 15.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemma3:4b",
-      "name": "Gemma 3 4B",
-      "context_window": "128K",
-      "modalities": ["text", "vision"],
+      "id": "kimi-k2.7-code",
+      "name": "kimi-k2.7-code",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.95,
+        "output_per_million": 4.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemini-3-flash-preview",
-      "name": "Gemini 3 Flash Preview",
-      "context_window": "1M",
-      "modalities": ["text", "vision"],
+      "id": "kimi-k2.6",
+      "name": "kimi-k2.6",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.95,
+        "output_per_million": 4.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "mistral-large-3:675b",
-      "name": "Mistral Large 3 675B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "mimo-v2.6-flash",
+      "name": "mimo-v2.6-flash",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.14,
+        "output_per_million": 0.28,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "devstral-2:123b",
-      "name": "Devstral 2 123B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "mimo-v2.6-pro",
+      "name": "mimo-v2.6-pro",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.435,
+        "output_per_million": 0.87,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "minimax-m3.1-flash",
+      "name": "minimax-m3.1-flash",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.6,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "minimax-m3",
+      "name": "minimax-m3",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.6,
+        "output_per_million": 2.4,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "mistral-large-4",
+      "name": "mistral-large-4",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.7,
+        "output_per_million": 2.1,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "muse-spark-open",
+      "name": "muse-spark-open",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.25,
+        "output_per_million": 4.25,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
       "id": "nemotron-3-super",
-      "name": "Nemotron 3 Super",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "name": "nemotron-3-super",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.015,
+        "output_per_million": 0.6,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "cogito-2.1:671b",
-      "name": "Cogito 2.1 671B",
-      "context_window": "128K",
-      "modalities": ["text"],
+      "id": "nemotron-3-ultra",
+      "name": "nemotron-3-ultra",
+      "modalities": [
+        "text"
+      ],
       "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.1,
+        "output_per_million": 3.0,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-16"
+      }
     }
   ],
-  "last_verified": "2026-05-20",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "OLLAMA_API_KEY"
+  "api_key_env": "OLLAMA_API_KEY",
+  "archive_reason": "Ollama Cloud now charges per token. The $0 subscription plan is pay-as-you-go, without included recurring free inference credits. Local inference on your own hardware remains free.",
+  "quota_note": "Ollama Cloud now charges per token. The $0 subscription plan is pay-as-you-go, without included recurring free inference credits. Local inference on your own hardware remains free.",
+  "sources": [
+    {
+      "label": "Current service and free-tier policy",
+      "url": "https://ollama.com/pricing",
+      "checked_at": "2026-11-16"
+    }
+  ],
+  "catalog_note": "Current cloud models with standard token prices. Off-peak and cached-input discounts are not included."
 }

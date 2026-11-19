@@ -1,17 +1,18 @@
 {
   "id": "huggingface",
   "name": "Hugging Face Inference",
-  "description": "Unified inference router across 18+ providers (Groq, SambaNova, Together, Cerebras, etc.) — free users get $0.10/month in credits, no credit card required. OpenAI-compatible endpoint with 200+ models.",
+  "description": "Free Hugging Face accounts no longer receive monthly Inference Providers credits. Credits must be purchased or included in a paid subscription.",
   "base_url": "https://router.huggingface.co/v1",
   "signup_url": "https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained",
   "website_url": "https://huggingface.co/docs/inference-providers",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/huggingface.svg",
-  "status": "active",
+  "status": "archived",
   "latency_ms": null,
   "rpm": null,
   "rpd": null,
   "context_window": "128K",
   "auth": "required",
+  "pricing_note": "No unified per-token rate — paid usage passes through whichever partner (Groq, SambaNova, Together, Cerebras, etc.) serves the request at that partner's own price, with no HF markup.",
   "tags": [
     "aggregator",
     "openai-compatible",
@@ -93,7 +94,17 @@
       "status": "active"
     }
   ],
-  "last_verified": "2026-03-30",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "HF_TOKEN"
+  "api_key_env": "HF_TOKEN",
+  "archive_reason": "Free Hugging Face accounts no longer receive monthly Inference Providers credits. Credits must be purchased or included in a paid subscription.",
+  "quota_note": "Free Hugging Face accounts no longer receive monthly Inference Providers credits. Credits must be purchased or included in a paid subscription.",
+  "sources": [
+    {
+      "label": "Current service and free-tier policy",
+      "url": "https://huggingface.co/docs/inference-providers/pricing",
+      "checked_at": "2026-11-16"
+    }
+  ],
+  "catalog_note": "Historical model list retained for reference; not a current free API catalog."
 }

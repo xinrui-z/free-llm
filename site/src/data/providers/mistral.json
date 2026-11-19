@@ -1,16 +1,15 @@
 {
   "id": "mistral",
   "name": "Mistral AI",
-  "description": "Mistral's Experiment plan gives free access to all models — including Mistral Small, Large, Codestral, and Magistral reasoning — with 1 billion tokens per month. No credit card required, phone verification only.",
+  "description": "Mistral Free mode does not include API access. Creating API keys and using the API require billing activation and pay-as-you-go.",
   "base_url": "https://api.mistral.ai/v1",
   "signup_url": "https://console.mistral.ai",
   "website_url": "https://mistral.ai",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/mistral.svg",
-  "status": "active",
+  "status": "archived",
   "latency_ms": null,
-  "rpm": 2,
+  "rpm": null,
   "rpd": null,
-  "context_window": "256K",
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -21,105 +20,181 @@
     "embedding"
   ],
   "top_models": [
-    "mistral-small-latest",
-    "open-mistral-nemo",
-    "codestral-latest",
-    "magistral-small-latest"
+    "zai-glm-5-3-flash",
+    "deepseek-v4-1-flash-1017",
+    "zai-glm-5-3"
   ],
   "models": [
     {
-      "id": "mistral-small-latest",
+      "id": "zai-glm-5-3-flash",
+      "name": "Z.ai GLM 5.3 Flash",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.5,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "deepseek-v4-1-flash-1017",
+      "name": "DeepSeek V4.1 Flash 1017",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 1.2,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "zai-glm-5-3",
+      "name": "Z.ai GLM 5.3",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.4,
+        "output_per_million": 4.4,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "mistral-small-2603",
       "name": "Mistral Small 4",
-      "context_window": "256K",
       "modalities": [
         "text"
       ],
-      "rpm": 2,
+      "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.6,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "mistral-large-latest",
-      "name": "Mistral Large 3",
-      "context_window": "128K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 2,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "open-mistral-nemo",
-      "name": "Mistral Nemo 12B",
-      "context_window": "128K",
+      "id": "mistral-large-4",
+      "name": "Mistral Large 4",
       "modalities": [
         "text"
       ],
-      "rpm": 2,
+      "rpm": null,
       "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.7,
+        "output_per_million": 2.1,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "codestral-latest",
+      "id": "ministral-14b-2512",
+      "name": "Ministral 3 14B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.2,
+        "output_per_million": 0.2,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "ministral-8b-2512",
+      "name": "Ministral 3 8B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.15,
+        "output_per_million": 0.15,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "ministral-3b-2512",
+      "name": "Ministral 3 3B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.1,
+        "output_per_million": 0.1,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "codestral-2508",
       "name": "Codestral",
-      "context_window": "256K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": 2,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "magistral-small-latest",
-      "name": "Magistral Small",
-      "context_window": "128K",
       "modalities": [
         "text"
       ],
-      "rpm": 2,
+      "rpm": null,
       "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "magistral-medium-latest",
-      "name": "Magistral Medium",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 2,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "pixtral-12b-2409",
-      "name": "Pixtral 12B",
-      "context_window": "128K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 2,
-      "rpd": null,
-      "status": "active"
-    },
-    {
-      "id": "mistral-embed",
-      "name": "Mistral Embed",
-      "context_window": "8K",
-      "modalities": [
-        "embedding"
-      ],
-      "rpm": 2,
-      "rpd": null,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 0.9,
+        "currency": "USD",
+        "source_url": "https://docs.mistral.ai/inference/pricing",
+        "checked_at": "2026-11-16"
+      }
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "MISTRAL_API_KEY"
+  "api_key_env": "MISTRAL_API_KEY",
+  "archive_reason": "Mistral Free mode does not include API access. Creating API keys and using the API require billing activation and pay-as-you-go.",
+  "quota_note": "Mistral Free mode does not include API access. Creating API keys and using the API require billing activation and pay-as-you-go.",
+  "sources": [
+    {
+      "label": "Current service and free-tier policy",
+      "url": "https://docs.mistral.ai/admin/billing-usage/usage-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "label": "Current paid token prices",
+      "url": "https://docs.mistral.ai/inference/pricing",
+      "checked_at": "2026-11-16"
+    }
+  ],
+  "catalog_note": "Current paid API models; no free API tier."
 }
