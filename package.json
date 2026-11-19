@@ -3,10 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "catalog:sync": "node scripts/sync-catalog.mjs",
+    "catalog:sources": "node scripts/sync-catalog.mjs --list",
     "validate": "node scripts/validate.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "check": "node scripts/check-public-tree.mjs && npm run validate && npm test && npm --prefix site run check && npm --prefix site run build",
+    "check:public": "node scripts/check-public-tree.mjs"
   },
   "devDependencies": {
     "husky": "^9.1.7"
+  },
+  "engines": {
+    "node": ">=22.23.4"
   }
 }

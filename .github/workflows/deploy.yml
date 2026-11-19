@@ -1,204 +1,181 @@
 name: Deploy
-
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'site/**'
-      - 'checker-worker/**'
+      - 'scripts/**'
+      - 'catalog/**'
+      - 'tests/**'
+      - 'package.json'
       - '.github/workflows/deploy.yml'
-
+  workflow_dispatch:
+    inputs:
+      catalog_base:
+        description: 'Previous commit for changes produced by catalog sync'
+        type: string
+        required: false
+permissions:
+  contents: read
+# Deploys are serialized. GitHub keeps only the newest pending run in a group, so a queued
+# catalog dispatch can be superseded; the changelog base below therefore comes from the last
+# run whose sync succeeded, not from the triggering event, and no catalog change is skipped.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 jobs:
-  # ── 1. Deploy Worker when its source changes ───────────────────────────────
-  deploy-worker:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
-    outputs:
-      changed: ${{ steps.check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 2
-
-      - name: Check if worker changed
-        id: check
-        run: |
-          if git rev-parse HEAD~1 &>/dev/null; then
-            DIFF=$(git diff --name-only HEAD~1 HEAD)
-          else
-            DIFF=$(git diff --name-only HEAD)
-          fi
-          if echo "$DIFF" | grep -q '^checker-worker/'; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/setup-node@v4
-        if: steps.check.outputs.changed == 'true'
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: checker-worker/package-lock.json
-
-      - name: Install worker dependencies
-        if: steps.check.outputs.changed == 'true'
-        working-directory: checker-worker
-        run: npm ci
-
-      - name: Deploy Worker to Cloudflare
-        if: steps.check.outputs.changed == 'true'
-        uses: cloudflare/wrangler-action@v3
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci --prefix site
+      - run: npm run check
+        env:
+          # Expired promotional prices fail PR validation but only warn on deploy.
+          CATALOG_ALLOW_EXPIRED: '1'
+          PUBLIC_STATUS_WORKER_URL: ${{ secrets.PUBLIC_STATUS_WORKER_URL }}
+          CATALOG_MODE: ${{ vars.CATALOG_MODE }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+      - run: npx playwright install --with-deps chromium
+        working-directory: site
+      - run: npm run test:e2e
+        working-directory: site
+      - run: npm run test:dynamic
+        working-directory: site
+      # Local Wrangler secrets must never reach the deployed bundle.
+      - run: find site/dist -name '.dev.vars*' -print -delete
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
-          workingDirectory: checker-worker
-
-  # ── 2. Sync provider catalog → Worker KV when catalog changes ─────────────
-  # This lets the Worker pick up new providers / model updates without
-  # redeploying its code. Also triggers an immediate health check so the
-  # status snapshot fetched in the next job reflects the latest catalog.
+          name: site
+          path: site/dist
+          # The Cloudflare adapter writes dist/client/.assetsignore, which keeps server files out of public assets.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
   sync-providers:
+    needs: verify
     runs-on: ubuntu-latest
-    needs: [deploy-worker]
-    if: always() && !failure() && !cancelled()
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    env:
+      WORKER_URL: ${{ secrets.WORKER_URL }}
+      REFRESH_SECRET: ${{ secrets.REFRESH_SECRET }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 2
-
-      - name: Check which data files changed
-        id: check
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Sync catalog and curated changelog
+        if: env.WORKER_URL != '' && vars.CATALOG_MODE != 'dynamic'
         run: |
-          if git rev-parse HEAD~1 &>/dev/null; then
-            changed=$(git diff --name-only HEAD~1 HEAD)
-          else
-            changed=$(git diff --name-only HEAD)
+          test -n "$REFRESH_SECRET" || { echo 'REFRESH_SECRET must be configured'; exit 1; }
+          node scripts/validate.mjs --allow-expired
+          node scripts/build-providers-bundle.mjs --out "$RUNNER_TEMP/providers.bundle.json"
+          curl --fail-with-body --max-time 60 -X PUT "$WORKER_URL/api/providers" -H 'Content-Type: application/json' -H "X-Refresh-Secret: $REFRESH_SECRET" --data @"$RUNNER_TEMP/providers.bundle.json"
+          curl --fail-with-body --max-time 60 -X POST "$WORKER_URL/api/changelog/replace" -H 'Content-Type: application/json' -H "X-Refresh-Secret: $REFRESH_SECRET" --data @site/src/data/changelog.json
+      # Dynamic mode: the catalog lives in D1, but hand-written changelog.json entries still come from git.
+      # The checker stores them as permanent 'curated' D1 events (no KV TTL).
+      - name: Sync curated changelog (dynamic)
+        if: env.WORKER_URL != '' && vars.CATALOG_MODE == 'dynamic'
+        run: |
+          test -n "$REFRESH_SECRET" || { echo 'REFRESH_SECRET must be configured'; exit 1; }
+          node scripts/validate.mjs --allow-expired
+          curl --fail-with-body --max-time 60 -X POST "$WORKER_URL/api/changelog/replace" -H 'Content-Type: application/json' -H "X-Refresh-Secret: $REFRESH_SECRET" --data @site/src/data/changelog.json
+      - name: Choose the changelog base
+        id: changelog-base
+        if: env.WORKER_URL != '' && vars.CATALOG_MODE != 'dynamic'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_BASE: ${{ github.event.before || inputs.catalog_base }}
+        run: |
+          # Prefer the head of the newest earlier run that actually appended catalog changes: superseded
+          # pending runs never execute, so their event bases would otherwise drop catalog changes. A
+          # successful sync-providers job is not enough, because dynamic-mode, unconfigured or no-base
+          # runs skip the append step and still succeed.
+          base=''
+          runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --branch main --status completed --limit 30 --json databaseId --jq '.[].databaseId' || true)
+          for id in $runs; do
+            [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            sha=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json headSha,jobs --jq 'select(any(.jobs[]; .name == "sync-providers" and any(.steps[]?; .name == "Append catalog changes across the entire update" and .conclusion == "success"))) | .headSha' || true)
+            if [ -n "$sha" ]; then
+              if [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && git merge-base --is-ancestor "$sha" HEAD; then base=$sha; fi
+              break
+            fi
+          done
+          if [ -z "$base" ] && [[ "$EVENT_BASE" =~ ^[0-9a-f]{40}$ ]] && { [[ "$EVENT_BASE" =~ ^0+$ ]] || git merge-base --is-ancestor "$EVENT_BASE" HEAD; }; then
+            base=$EVENT_BASE
           fi
-          echo "$changed" | grep -qE 'site/src/data/providers/' \
-            && echo "providers=true" >> "$GITHUB_OUTPUT" \
-            || echo "providers=false" >> "$GITHUB_OUTPUT"
-          echo "$changed" | grep -q 'site/src/data/changelog.json' \
-            && echo "changelog=true" >> "$GITHUB_OUTPUT" \
-            || echo "changelog=false" >> "$GITHUB_OUTPUT"
-
-      - name: Build catalog bundle
-        if: steps.check.outputs.providers == 'true'
+          if [ -z "$base" ]; then
+            echo '::warning::No synced ancestor or valid event base; catalog changelog entries were not generated for this run.'
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+      - name: Append catalog changes across the entire update
+        if: steps.changelog-base.outputs.sha != ''
+        env:
+          BASE_REV: ${{ steps.changelog-base.outputs.sha }}
+        run: node scripts/gen-changelog.mjs --base "$BASE_REV"
+      - name: Refresh probes
+        if: env.WORKER_URL != '' && vars.CATALOG_MODE != 'dynamic' && inputs.catalog_base == ''
         run: |
-          mkdir -p checker-worker/src
-          node scripts/build-providers-bundle.mjs
-
-      - name: Sync catalog to Worker KV
-        if: steps.check.outputs.providers == 'true'
-        run: |
-          curl -sf -X PUT "${{ secrets.WORKER_URL }}/api/providers" \
-            -H "Content-Type: application/json" \
-            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
-            --data @checker-worker/src/providers.bundle.json
-          echo "Catalog synced ($(jq length checker-worker/src/providers.bundle.json) providers)"
-
-      - name: Trigger immediate health check after catalog update
-        if: steps.check.outputs.providers == 'true'
-        run: |
-          curl -sf "${{ secrets.WORKER_URL }}/api/refresh" \
-            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
-            -o /dev/null && echo "Health check triggered"
-
-      - name: Sync changelog.json to Worker KV
-        if: steps.check.outputs.changelog == 'true'
-        run: |
-          curl -sf -X POST "${{ secrets.WORKER_URL }}/api/changelog/replace" \
-            -H "Content-Type: application/json" \
-            -H "X-Refresh-Secret: ${{ secrets.REFRESH_SECRET }}" \
-            --data @site/src/data/changelog.json
-          echo "Changelog synced ($(jq length site/src/data/changelog.json) entries)"
-
-  # ── 3. Build and deploy site ───────────────────────────────────────────────
-  # Fetches a fresh status snapshot from the Worker before building so the
-  # SSR initial render shows real data instead of the hand-maintained fallback.
+          curl --fail-with-body --max-time 90 "$WORKER_URL/api/refresh" -H "X-Refresh-Secret: $REFRESH_SECRET" -o /dev/null
   deploy-site:
+    needs: sync-providers
     runs-on: ubuntu-latest
-    needs: [sync-providers]
-    if: always() && !failure() && !cancelled()
+    timeout-minutes: 15
     permissions:
       contents: read
       deployments: write
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: site/package-lock.json
-
-      - name: Install dependencies
-        working-directory: site
-        run: npm ci
-
-      - name: Fetch live status snapshot for SSR
-        # Overwrites status_summary.json with current KV state so the first
-        # paint shows real provider counts without waiting for client JS.
-        # Falls through silently if the Worker is unreachable (stale file used).
-        run: |
-          curl -sf "${{ secrets.PUBLIC_STATUS_WORKER_URL }}/api/status" \
-            -o site/src/data/status_summary.json \
-            && echo "Status snapshot updated" \
-            || echo "Worker unreachable — using existing status_summary.json"
-
-      - name: Build
-        working-directory: site
+      - name: Require a live D1 catalog before switching to the dynamic site
+        if: vars.CATALOG_MODE == 'dynamic'
         env:
-          PUBLIC_STATUS_WORKER_URL: ${{ secrets.PUBLIC_STATUS_WORKER_URL }}
-        run: npm run build
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+          # The site falls back to this URL when no runtime CATALOG_API_URL is configured.
+          CATALOG_URL: ${{ secrets.PUBLIC_STATUS_WORKER_URL }}
+        run: |
+          test -n "$CATALOG_URL" || { echo '::error::PUBLIC_STATUS_WORKER_URL must be configured in dynamic mode'; exit 1; }
+          code=$(curl -sS --max-time 30 -o "$RUNNER_TEMP/catalog.json" -w '%{http_code}' "${CATALOG_URL%/}/api/catalog") || code=000
+          [ "$code" = 200 ] || { echo "::error::Catalog API returned HTTP $code"; exit 1; }
+          revision=$(jq -er 'select((.providers | type) == "array" and (.providers | length) > 0) | .revision | strings | select(length > 0)' "$RUNNER_TEMP/catalog.json") \
+            || { echo '::error::Catalog API response has no revision or providers'; exit 1; }
+          # "legacy" means the checker has no D1 binding, so dynamic routes would not be backed by D1.
+          [ "$revision" != legacy ] || { echo '::error::Checker is serving the legacy KV catalog; bind and bootstrap D1 first'; exit 1; }
+          echo "Catalog revision: $revision"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: site
+          path: site/dist
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        if: vars.CATALOG_MODE != 'dynamic'
+        with:
+          wranglerVersion: '4.163.0' # keep in sync with site/package-lock.json
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=free-llm-apis
           workingDirectory: site
-
-  # ── 4. Generate changelog entries when provider catalog changes ───────────
-  update-changelog:
-    runs-on: ubuntu-latest
-    needs: [sync-providers]
-    if: always() && !failure() && !cancelled()
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        if: vars.CATALOG_MODE == 'dynamic'
         with:
-          fetch-depth: 2
-
-      - name: Check if any provider file changed
-        id: check
-        run: |
-          if git rev-parse HEAD~1 &>/dev/null; then
-            DIFF=$(git diff --name-only HEAD~1 HEAD)
-          else
-            DIFF=$(git diff --name-only HEAD)
-          fi
-          if echo "$DIFF" | grep -qE 'site/src/data/providers/'; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/setup-node@v4
-        if: steps.check.outputs.changed == 'true'
-        with:
-          node-version: '24'
-
-      - name: Generate and push changelog
-        if: steps.check.outputs.changed == 'true'
-        env:
-          WORKER_URL: ${{ secrets.WORKER_URL }}
-          REFRESH_SECRET: ${{ secrets.REFRESH_SECRET }}
-        run: node scripts/gen-changelog.mjs
+          wranglerVersion: '4.163.0' # keep in sync with site/package-lock.json
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config dist/server/wrangler.json
+          workingDirectory: site
+# The checker Worker is deployed separately; this workflow only syncs its public catalog.

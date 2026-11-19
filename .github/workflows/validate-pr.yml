@@ -1,16 +1,49 @@
 name: Validate PR
-
 on:
   pull_request:
     paths:
-      - 'site/src/data/providers/**'
-      - 'site/src/data/changelog.json'
-
+      - 'site/**'
+      - 'scripts/**'
+      - 'catalog/**'
+      - 'tests/**'
+      - 'package.json'
+      - '.github/workflows/**'
+permissions:
+  contents: read
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate provider files and changelog.json
-        run: node scripts/validate.mjs
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci --prefix site
+      - name: Validate catalog, run unit tests and build site
+        run: |
+          npm run check
+      - run: npx playwright install --with-deps chromium
+        working-directory: site
+      - run: npm run test:e2e
+        working-directory: site
+      - run: npm run test:dynamic
+        working-directory: site
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            site/test-results/
+            site/dynamic-test-results/
+            site/playwright-report/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
