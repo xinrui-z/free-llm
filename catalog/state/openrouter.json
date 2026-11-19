@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "provider_id": "openrouter",
+  "checked_at": "2026-11-17T02:51:16.342Z",
+  "source_url": "https://openrouter.ai/api/v1/models",
+  "policy_hash": "fce013961e9dcfedd7e6b147bf592064f927aa779600a5bdf9e0659350633b2d",
+  "source_hash": "5e4d2965030d2a3dfa6509b9f4f6ba63cebbd2862f960954e524f8868a05965c",
+  "missing": {},
+  "candidates": []
+}

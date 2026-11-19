@@ -1,0 +1,198 @@
+name: Sync catalog
+on:
+  # Scheduled sync is off until the workflow has been observed with manual runs. To enable it, uncomment:
+  # schedule:
+  #   - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Save validated changes and deploy (false previews only)'
+        type: boolean
+        default: false
+permissions: {}
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+jobs:
+  # Collects with Node built-ins only. No third-party code runs on this runner, so its outputs
+  # (including the digest of the generated changes) cannot be altered by a poisoned dependency.
+  collect:
+    if: github.ref == 'refs/heads/main' && vars.CATALOG_MODE != 'dynamic'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      base: ${{ steps.baseline.outputs.sha }}
+      changed: ${{ steps.changes.outputs.changed }}
+      digest: ${{ steps.changes.outputs.digest }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Remember the catalog baseline
+        id: baseline
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Collect official catalogs
+        env:
+          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          if [ "$APPLY" = 'true' ]; then
+            node scripts/sync-catalog.mjs --write
+          else
+            node scripts/sync-catalog.mjs
+          fi
+      - name: Stage generated changes
+        id: changes
+        run: |
+          mkdir -p "$RUNNER_TEMP/catalog-changes"
+          git ls-files -z --modified --others --exclude-standard -- site/src/data/providers catalog/state > "$RUNNER_TEMP/changed.list"
+          if [ -s "$RUNNER_TEMP/changed.list" ]; then
+            xargs -0 cp --parents -t "$RUNNER_TEMP/catalog-changes" < "$RUNNER_TEMP/changed.list"
+            # publish recomputes this over the downloaded artifact; any added, missing or edited file changes it.
+            digest=$(cd "$RUNNER_TEMP/catalog-changes" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload generated changes
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: catalog-changes
+          path: ${{ runner.temp }}/catalog-changes/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload source evidence and diff report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: catalog-sync-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .catalog-reports/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Runs third-party code (npm dependencies) on a separate runner with a read-only token and no
+  # stored git credentials. It can fail the run but cannot change what publish accepts.
+  check:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.collect.outputs.base }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: needs.collect.outputs.changed == 'true'
+        with:
+          name: catalog-changes
+          path: ${{ runner.temp }}/catalog-changes
+      - name: Apply generated changes for validation
+        if: needs.collect.outputs.changed == 'true'
+        run: cp -R -- "$RUNNER_TEMP/catalog-changes/." "$GITHUB_WORKSPACE/"
+      - name: Install site dependencies
+        # esbuild and workerd resolve their platform packages without postinstall scripts.
+        run: npm ci --prefix site --ignore-scripts
+      - name: Validate catalog and build site
+        run: npm run check
+        env:
+          CATALOG_ALLOW_EXPIRED: '1'
+
+  # Holds write credentials and never installs or runs npm packages.
+  publish:
+    needs: [collect, check]
+    if: (github.event_name == 'schedule' || inputs.apply) && vars.CATALOG_MODE != 'dynamic'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.collect.outputs.base }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: needs.collect.outputs.changed == 'true'
+        with:
+          name: catalog-changes
+          path: ${{ runner.temp }}/catalog-changes
+      - name: Apply generated changes
+        if: needs.collect.outputs.changed == 'true'
+        env:
+          CHANGES: ${{ runner.temp }}/catalog-changes
+          EXPECTED_DIGEST: ${{ needs.collect.outputs.digest }}
+        run: |
+          cd "$CHANGES"
+          # The artifact must be exactly what collect produced before any dependency ran elsewhere.
+          digest=$(find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          [[ "$EXPECTED_DIGEST" =~ ^[0-9a-f]{64}$ ]] && [ "$digest" = "$EXPECTED_DIGEST" ] || { echo '::error::Generated changes do not match the collected digest'; exit 1; }
+          # Only generated data files may be applied; provider files must already exist.
+          find . -mindepth 1 ! -type d -print | sed 's|^\./||' | sort > "$RUNNER_TEMP/files.list"
+          while IFS= read -r path; do
+            [ -f "$path" ] && [ ! -L "$path" ] || { echo "::error::Unexpected artifact entry: $path"; exit 1; }
+            case "$path" in
+              site/src/data/providers/*.json)
+                [[ "$path" =~ ^site/src/data/providers/[a-z0-9-]+\.json$ ]] && [ -f "$GITHUB_WORKSPACE/$path" ] || { echo "::error::Unexpected provider file: $path"; exit 1; } ;;
+              catalog/state/*.json)
+                [[ "$path" =~ ^catalog/state/[a-z0-9-]+\.json$ ]] || { echo "::error::Unexpected state file: $path"; exit 1; } ;;
+              *) echo "::error::Unexpected artifact file: $path"; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/files.list"
+          while IFS= read -r path; do
+            mkdir -p "$GITHUB_WORKSPACE/$(dirname "$path")"
+            cp -- "$path" "$GITHUB_WORKSPACE/$path"
+          done < "$RUNNER_TEMP/files.list"
+      - name: Validate applied catalog
+        if: needs.collect.outputs.changed == 'true'
+        # Expired promotional prices only warn here so one provider cannot stop every sync.
+        run: node scripts/validate.mjs --allow-expired
+      - name: Commit and push
+        id: commit
+        if: needs.collect.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- site/src/data/providers catalog/state
+          if git diff --cached --quiet; then
+            echo 'deploy=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --cached --name-only -- site/src/data/providers | grep -q .; then deploy=true; else deploy=false; fi
+          git -c core.hooksPath=/dev/null commit -m 'chore(catalog): sync official model catalogs'
+          # A concurrent main-branch update makes this fail safely; do not force or rebase generated data.
+          git push origin HEAD:main
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+      - name: Publish through the existing deployment checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BASE_REV: ${{ needs.collect.outputs.base }}
+          DEPLOY: ${{ steps.commit.outputs.deploy }}
+        # GITHUB_TOKEN pushes do not trigger push workflows, so catalog changes dispatch explicitly.
+        # Runs without a catalog change redeploy only when the latest main deployment failed, so a
+        # failed deploy still recovers within one sync interval without redeploying unchanged data.
+        run: |
+          if [ "$DEPLOY" != 'true' ]; then
+            last=$(gh run list --workflow deploy.yml --branch main --limit 1 --json conclusion --jq '.[0].conclusion // ""')
+            case "$last" in
+              failure|timed_out|startup_failure) echo "Latest deployment ended with '$last'; redeploying." ;;
+              *) exit 0 ;;
+            esac
+          fi
+          gh workflow run deploy.yml --ref main -f catalog_base="$BASE_REV"

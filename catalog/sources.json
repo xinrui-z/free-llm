@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "provider_id": "openrouter",
+      "adapter": "openrouter",
+      "enabled": true,
+      "removal_confirmations": 2,
+      "removal_interval_hours": 6,
+      "max_removal_fraction": 0.25,
+      "max_additions": 25
+    },
+    {
+      "provider_id": "aihubmix",
+      "adapter": "openai-discovery",
+      "enabled": true,
+      "url": "https://aihubmix.com/v1/models",
+      "candidate_suffix": "-free",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models"
+    }
+  ]
+}
