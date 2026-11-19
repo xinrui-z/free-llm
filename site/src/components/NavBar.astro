@@ -2,7 +2,8 @@
 const currentPath = Astro.url.pathname;
 
 const navLinks = [
-  { href: '/', label: 'Status' },
+  { href: '/', label: 'Free' },
+  { href: '/pricing', label: 'Pricing' },
   { href: '/providers', label: 'Providers' },
   { href: '/models', label: 'Models' },
   { href: '/configs', label: 'Configs' },
@@ -24,7 +25,7 @@ function isActive(href: string): boolean {
     </a>
 
     <!-- Desktop Navigation -->
-    <nav class="hidden md:flex items-center gap-1">
+    <nav class="hidden md:flex items-center gap-1" aria-label="Main">
       {navLinks.map(link => (
         <a
           href={link.href}
@@ -65,15 +66,17 @@ function isActive(href: string): boolean {
       <button
         id="mobile-menu-btn"
         class="md:hidden p-2 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors duration-150"
+        type="button"
         aria-label="Open menu"
+        aria-controls="mobile-menu"
         aria-expanded="false"
       >
-        <svg id="menu-icon-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg id="menu-icon-open" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
-        <svg id="menu-icon-close" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden">
+        <svg id="menu-icon-close" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -91,7 +94,7 @@ function isActive(href: string): boolean {
   <div id="mobile-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
   <!-- Drawer -->
   <div class="absolute top-14 left-0 right-0 bg-slate-950 border-b border-slate-800 shadow-2xl transform transition-transform duration-200 ease-out" id="mobile-drawer">
-    <nav class="py-2">
+    <nav class="py-2" aria-label="Mobile">
       {navLinks.map(link => (
         <a
           href={link.href}
@@ -136,6 +139,7 @@ function isActive(href: string): boolean {
   function openMenu() {
     menu?.classList.remove('hidden');
     btn?.setAttribute('aria-expanded', 'true');
+    btn?.setAttribute('aria-label', 'Close menu');
     openIcon?.classList.add('hidden');
     closeIcon?.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -144,10 +148,18 @@ function isActive(href: string): boolean {
   function closeMenu() {
     menu?.classList.add('hidden');
     btn?.setAttribute('aria-expanded', 'false');
+    btn?.setAttribute('aria-label', 'Open menu');
     openIcon?.classList.remove('hidden');
     closeIcon?.classList.add('hidden');
     document.body.style.overflow = '';
   }
+
+  // Escape closes the open menu and returns focus to the toggle.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || btn?.getAttribute('aria-expanded') !== 'true') return;
+    closeMenu();
+    btn.focus();
+  });
 
   btn?.addEventListener('click', () => {
     const isOpen = btn.getAttribute('aria-expanded') === 'true';

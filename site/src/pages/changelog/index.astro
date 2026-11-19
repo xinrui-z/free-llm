@@ -1,38 +1,19 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import providers from '../../data/providers';
+import { siteURL } from '../../lib/site-url';
+import { getProviders } from '../../lib/providers';
+const providers = getProviders(Astro.locals);
 
-const workerUrl = import.meta.env.PUBLIC_STATUS_WORKER_URL ?? '';
+import changelog from '../../data/changelog.json';
 
-const typeLabels: Record<string, string> = {
-  model_added:       'Model Added',
-  status_change:     'Status Change',
-  rate_limit_change: 'Rate Limit Change',
-  outage:            'Outage',
-  recovery:          'Recovery',
-  degraded:          'Degraded',
-  provider_added:    'Provider Added',
-  provider_removed:  'Provider Removed',
-  model_removed:     'Model Removed',
-};
-
-const typeBgColors: Record<string, string> = {
-  model_added:       'bg-green-500/10 border-green-500/20 text-green-400',
-  status_change:     'bg-green-500/10 border-green-500/20 text-green-400',
-  rate_limit_change: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-  outage:            'bg-red-500/10 border-red-500/20 text-red-400',
-  recovery:          'bg-green-500/10 border-green-500/20 text-green-400',
-  degraded:          'bg-yellow-500/10 border-yellow-500/20 text-yellow-400',
-};
-
-const typeDotColors: Record<string, string> = {
-  model_added:       'bg-green-500',
-  status_change:     'bg-green-500',
-  rate_limit_change: 'bg-yellow-500',
-  outage:            'bg-red-500',
-  recovery:          'bg-green-500',
-  degraded:          'bg-yellow-500',
-};
+// Filter options come from the changelog itself (plus the current catalog),
+// so entries for removed or archived providers stay filterable.
+const providerNames = new Map<string, string>();
+for (const entry of changelog as { provider_id?: string; provider_name?: string }[]) {
+  if (entry.provider_id && !providerNames.has(entry.provider_id)) providerNames.set(entry.provider_id, entry.provider_name || entry.provider_id);
+}
+for (const p of providers) providerNames.set(p.id, p.name);
+const providerOptions = [...providerNames].sort((a, b) => a[1].localeCompare(b[1]));
 ---
 
 <Layout
@@ -43,12 +24,12 @@ const typeDotColors: Record<string, string> = {
     "@type": "WebPage",
     "name": "Free LLM API Changelog",
     "description": "Historical log of status changes, outages, recoveries, and model updates across free LLM API providers.",
-    "url": "https://free-llm-apis.pages.dev/changelog",
+    "url": siteURL(Astro.site, '/changelog/'),
     "breadcrumb": {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://free-llm-apis.pages.dev" },
-        { "@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://free-llm-apis.pages.dev/changelog" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
+        { "@type": "ListItem", "position": 2, "name": "Changelog", "item": siteURL(Astro.site, '/changelog/') }
       ]
     }
   }}
@@ -68,14 +49,14 @@ const typeDotColors: Record<string, string> = {
     <div class="flex flex-wrap items-center gap-2 mb-6">
       <span class="text-sm text-slate-500">Filter:</span>
       <select
-        id="provider-filter"
+        id="provider-filter" aria-label="Filter by provider"
         class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
       >
         <option value="">All Providers</option>
-        {providers.map(p => <option value={p.id}>{p.name}</option>)}
+        {providerOptions.map(([id, name]) => <option value={id}>{name}</option>)}
       </select>
       <select
-        id="type-filter"
+        id="type-filter" aria-label="Filter by change type"
         class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
       >
         <option value="">All Types</option>
@@ -85,124 +66,41 @@ const typeDotColors: Record<string, string> = {
         <option value="status_change">Status Change</option>
         <option value="provider_added">Provider Added</option>
         <option value="model_added">Model Added</option>
+        <option value="model_removed">Model Removed</option>
+        <option value="provider_removed">Provider Removed</option>
+        <option value="rate_limit_change">Rate Limit Change</option>
       </select>
     </div>
 
     <!-- Timeline (rendered client-side) -->
     <div id="changelog-list">
-      <div id="changelog-loading" class="py-20 text-center text-slate-500 text-sm">Loading…</div>
+      {[...changelog].sort((a, b) => b.date.localeCompare(a.date)).map(entry => <article class="border-l-2 border-slate-700 pl-5 py-3 mb-3"><p class="text-xs text-slate-400">{entry.date}</p><h2 class="text-sm text-slate-200">{entry.title}</h2><p class="text-sm text-slate-400">{entry.description}</p></article>)}
     </div>
 
-    <div id="changelog-footer" class="hidden pb-12 text-center text-sm text-slate-600"></div>
+    <div id="changelog-footer" class="hidden pb-12 text-center text-sm text-slate-400"></div>
   </div>
 </Layout>
 
-<script define:vars={{ workerUrl, typeLabels, typeBgColors, typeDotColors }}>
+<script>
+  import { loadChangelog, renderChangelog, type ChangeEntry } from '../../lib/changelog-client';
   const list = document.getElementById('changelog-list');
-  const loading = document.getElementById('changelog-loading');
-  const footer = document.getElementById('changelog-footer');
-  const providerFilter = document.getElementById('provider-filter');
-  const typeFilter = document.getElementById('type-filter');
-
-  let allEntries = [];
-
-  function renderEntries(entries) {
-    if (!list) return;
-
-    if (entries.length === 0) {
-      list.innerHTML = '<div class="py-20 text-center text-slate-500 text-sm">No changes recorded yet</div>';
-      if (footer) footer.classList.add('hidden');
-      return;
-    }
-
-    // Group by date
-    const grouped = {};
-    for (const e of entries) {
-      if (!grouped[e.date]) grouped[e.date] = [];
-      grouped[e.date].push(e);
-    }
-    const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
-    list.innerHTML = dates.map(date => {
-      const dayEntries = grouped[date];
-      const rows = dayEntries.map(e => {
-        const bg = typeBgColors[e.type] ?? 'bg-gray-500/10 border-gray-500/20 text-gray-400';
-        const dot = typeDotColors[e.type] ?? 'bg-gray-500';
-        const label = typeLabels[e.type] ?? e.type;
-        const timeStr = e.timestamp
-          ? new Date(e.timestamp).toISOString().slice(11, 16) + ' UTC'
-          : '';
-        return `
-          <div class="changelog-entry relative pl-6 py-3 hover:bg-slate-800/30 rounded-r-lg transition-colors duration-150"
-               data-provider="${e.provider_id}" data-type="${e.type}">
-            <div class="absolute left-0 top-4 w-2.5 h-2.5 rounded-full -translate-x-[5px] ${dot}"></div>
-            <div class="flex items-start gap-2 flex-wrap">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${bg}">${label}</span>
-              <span class="text-sm font-semibold text-slate-200">${e.provider_name}</span>
-              <span class="text-slate-600">—</span>
-              <span class="text-sm text-slate-300">${e.title}</span>
-              ${timeStr ? `<span class="text-xs text-slate-600 font-mono ml-auto">${timeStr}</span>` : ''}
-            </div>
-            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">${e.description}</p>
-          </div>`;
-      }).join('');
-
-      return `
-        <div class="changelog-date-group mb-8" data-date="${date}" id="${date}">
-          <div class="flex items-center gap-3 mb-3">
-            <a href="#${date}" class="group flex items-center gap-2">
-              <h2 class="text-sm font-semibold text-slate-400 font-mono group-hover:text-slate-200 transition-colors">${date}</h2>
-              <span class="opacity-0 group-hover:opacity-40 text-slate-400 text-xs transition-opacity">#</span>
-            </a>
-            <div class="flex-1 h-px bg-slate-800"></div>
-          </div>
-          <div class="border-l-2 border-slate-800 ml-1 space-y-0">${rows}</div>
-        </div>`;
-    }).join('');
-
-    if (footer) {
-      footer.textContent = `Showing all ${entries.length} entries`;
-      footer.classList.remove('hidden');
-    }
-
-    applyFilters();
+  const provider = document.getElementById('provider-filter') as HTMLSelectElement;
+  const type = document.getElementById('type-filter') as HTMLSelectElement;
+  let entries: ChangeEntry[] = [];
+  function render() {
+    const filtered = entries.filter(e => (!provider.value || e.provider_id === provider.value) && (!type.value || e.type === type.value));
+    if (list) renderChangelog(list, filtered);
+    const footer = document.getElementById('changelog-footer');
+    if (footer) { footer.textContent = `${filtered.length} of ${entries.length} recent entries`; footer.classList.remove('hidden'); }
   }
-
-  function applyFilters() {
-    const provider = providerFilter?.value ?? '';
-    const type = typeFilter?.value ?? '';
-
-    document.querySelectorAll('.changelog-entry').forEach(entry => {
-      const matchProvider = !provider || entry.getAttribute('data-provider') === provider;
-      const matchType = !type || entry.getAttribute('data-type') === type;
-      entry.style.display = (matchProvider && matchType) ? '' : 'none';
-    });
-
-    document.querySelectorAll('.changelog-date-group').forEach(group => {
-      const hasVisible = [...group.querySelectorAll('.changelog-entry')]
-        .some(e => e.style.display !== 'none');
-      group.style.display = hasVisible ? '' : 'none';
-    });
+  // Live entries may mention providers missing from the bundled list.
+  function addProviderOptions(data: ChangeEntry[]) {
+    const known = new Set(Array.from(provider.options, o => o.value));
+    const added = new Map<string, string>();
+    for (const e of data) if (e.provider_id && !known.has(e.provider_id) && !added.has(e.provider_id)) added.set(e.provider_id, e.provider_name || e.provider_id);
+    for (const [id, name] of added) provider.add(new Option(name, id));
   }
-
-  async function fetchChangelog() {
-    if (!workerUrl) {
-      if (loading) loading.textContent = 'Worker URL not configured';
-      return;
-    }
-    try {
-      const resp = await fetch(`${workerUrl}/api/changelog?limit=200`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      allEntries = await resp.json();
-      if (loading) loading.remove();
-      renderEntries(allEntries);
-    } catch (err) {
-      if (loading) loading.textContent = 'Failed to load, please refresh';
-    }
-  }
-
-  providerFilter?.addEventListener('change', applyFilters);
-  typeFilter?.addEventListener('change', applyFilters);
-
-  fetchChangelog();
+  provider.addEventListener('change', render);
+  type.addEventListener('change', render);
+  loadChangelog().then(data => { entries = data; addProviderOptions(data); render(); });
 </script>
