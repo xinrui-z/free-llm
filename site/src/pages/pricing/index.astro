@@ -1,0 +1,261 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { siteURL } from '../../lib/site-url';
+import { getProviders } from '../../lib/providers';
+import { contextToNumber, formatPrice } from '../../lib/format';
+const providers = getProviders(Astro.locals);
+
+interface PriceRow {
+  providerId: string;
+  providerName: string;
+  providerLogo?: string;
+  modelId: string;
+  modelName: string;
+  contextWindow?: string;
+  input: number;
+  output: number;
+  currency: string;
+  source?: string;
+  checkedAt?: string;
+  // Last day a promotional price applies (pricing.valid_until).
+  validUntil?: string;
+}
+
+const rows: PriceRow[] = [];
+for (const p of providers) {
+  const catalog = [...(p.models ?? []), ...(p.paid_models ?? [])];
+  for (const m of catalog) {
+    const pricing = m.pricing;
+    if (pricing && typeof pricing.input_per_million === 'number') {
+      rows.push({
+        providerId: p.id,
+        providerName: p.name,
+        providerLogo: p.logo,
+        modelId: m.id,
+        modelName: m.name,
+        contextWindow: m.context_window,
+        input: pricing.input_per_million,
+        output: pricing.output_per_million,
+        currency: String(pricing.currency || 'USD').toUpperCase(),
+        source: pricing.source_url,
+        checkedAt: pricing.checked_at,
+        validUntil: pricing.valid_until,
+      });
+    }
+  }
+}
+
+// Prices in different currencies are not comparable, so rows are grouped by
+// currency (USD first) and sorted high to low only within each group.
+const currencies = [...new Set(rows.map(r => r.currency))].sort((a, b) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b)));
+const currencyRank = new Map(currencies.map((c, i) => [c, i]));
+rows.sort((a, b) => currencyRank.get(a.currency)! - currencyRank.get(b.currency)! || b.input - a.input);
+const rankInCurrency = rows.map((row, i) => rows.slice(0, i).filter(r => r.currency === row.currency).length + 1);
+const providerCount = new Set(rows.map(r => r.providerId)).size;
+const currencyLabel = currencies.length > 1 ? `per 1M tokens, sorted within each currency (${currencies.join(', ')})` : `${currencies[0] ?? 'USD'} per 1M tokens`;
+
+const subscriptionProviders = providers.filter(p => p.pricing_note);
+
+---
+
+<Layout
+  title="LLM API Pricing Comparison — $/1M Tokens Across Providers"
+  description={`Compare paid per-token pricing for ${rows.length} LLM API models across ${new Set(rows.map(r => r.providerId)).size} providers — input/output cost per million tokens, sorted by price.`}
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "LLM API Pricing Comparison",
+    "description": "Compare paid per-token pricing across LLM API providers.",
+    "url": siteURL(Astro.site, '/pricing/')
+  }}
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+    <!-- Hero section -->
+    <div class="pt-10 pb-6">
+      <h1 class="text-2xl font-bold text-white mb-2">Pricing</h1>
+      <p class="text-slate-500 text-sm font-mono">
+        Comparing <span class="text-slate-300 font-semibold">{rows.length}</span> paid models across <span class="text-slate-300 font-semibold">{providerCount}</span> {providerCount === 1 ? 'provider' : 'providers'} — {currencyLabel}
+      </p>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="bg-slate-800/30 border border-slate-700/50 rounded-xl px-4 py-3 mb-5 text-xs text-slate-500">
+      Prices are sourced from each provider's official pricing page and change often — verify on the provider's site before budgeting. Includes paid services whose free tiers have ended. Text input prices and standard/base rates are shown; some providers offer batch or cached-input discounts not reflected here.
+    </div>
+
+    <!-- Search -->
+    <div class="flex items-center gap-3 mb-5">
+      <div class="relative flex-1 sm:max-w-xs">
+        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+        <input
+          type="search"
+          aria-label="Search prices by provider or model"
+          id="pricing-search"
+          placeholder="Search provider or model..."
+          class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <!-- Pricing table -->
+    <div class="overflow-x-auto border border-slate-800 rounded-xl mb-8">
+      <table class="w-full text-sm border-collapse" id="pricing-table">
+        <thead>
+          <tr class="border-b border-slate-800 bg-slate-900/60 text-left text-xs text-slate-500 uppercase tracking-wide select-none">
+            <th class="px-4 py-3 w-10 font-medium">#</th>
+            <th class="px-4 py-3 font-medium">Model</th>
+            <th class="px-4 py-3 font-medium">Provider</th>
+            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="input">
+              Input / 1M <span class="sort-arrow">↓</span>
+            </th>
+            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="output">
+              Output / 1M <span class="sort-arrow"></span>
+            </th>
+            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300 hidden md:table-cell" data-sort-key="context">
+              Context <span class="sort-arrow"></span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr
+              class="price-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
+              data-name={`${row.providerName} ${row.modelName} ${row.modelId}`.toLowerCase()}
+              data-href={`/providers/${row.providerId}`}
+              data-currency={row.currency}
+              data-currency-rank={currencyRank.get(row.currency)}
+              data-input={row.input}
+              data-output={row.output}
+              data-context={contextToNumber(row.contextWindow)}
+            >
+              <td class="px-4 py-3 text-slate-500 font-mono text-xs rank-cell">{rankInCurrency[i]}</td>
+              <td class="px-4 py-3 min-w-0">
+                <a href={`/providers/${row.providerId}`} class="font-semibold text-slate-100 text-sm truncate">{row.modelName}</a>
+                <div class="text-xs text-slate-500 font-mono truncate">{row.modelId}</div>
+                {row.source && <a href={row.source} target="_blank" rel="noopener noreferrer" class="text-xs text-blue-300 underline">Source · {row.checkedAt}</a>}
+                {row.validUntil && <div class="text-xs text-amber-300">Promotional price until {row.validUntil}</div>}
+              </td>
+              <td class="px-4 py-3 min-w-0">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 flex-shrink-0 overflow-hidden">
+                    {row.providerLogo ? (
+                      <img
+                        src={row.providerLogo}
+                        alt={row.providerName}
+                        class="w-full h-full object-contain brightness-0 invert"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                      />
+                    ) : null}
+                    <span class={row.providerLogo ? 'hidden' : 'flex'}>{row.providerName.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span class="text-sm text-slate-300 truncate">{row.providerName}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right font-mono text-slate-200">{formatPrice(row.input, row.currency)}</td>
+              <td class="px-4 py-3 text-right font-mono text-slate-400">{formatPrice(row.output, row.currency)}</td>
+              <td class="px-4 py-3 text-right font-mono text-slate-400 hidden md:table-cell">{row.contextWindow ?? '—'}</td>
+            </tr>
+          ))}
+          <tr id="no-results-row" class="hidden">
+            <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">No models match your search</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {subscriptionProviders.length > 0 && (
+      <div class="pb-16">
+        <h2 class="text-sm font-semibold text-slate-200 mb-3">Not shown — no per-token rate</h2>
+        <div class="space-y-2">
+          {subscriptionProviders.map(p => (
+            <div class="flex items-start gap-3 bg-slate-800/30 border border-slate-700/50 rounded-lg px-4 py-3">
+              <span class="text-sm font-medium text-slate-300 flex-shrink-0">{p.name}</span>
+              <span class="text-xs text-slate-500">{p.pricing_note}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</Layout>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.price-row').forEach(row => {
+    row.addEventListener('click', (event) => {
+      if ((event.target as HTMLElement).closest('a, button')) return;
+      const href = row.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+  });
+
+  const tbody = document.querySelector('#pricing-table tbody');
+  let currentSort: { key: string; dir: 'asc' | 'desc' } = { key: 'input', dir: 'desc' };
+
+  function sortRows(key: string, preserveDirection = false) {
+    if (!tbody) return;
+    const dir: 'asc' | 'desc' = preserveDirection ? currentSort.dir : currentSort.key === key && currentSort.dir === 'desc' ? 'asc' : 'desc';
+    currentSort = { key, dir };
+
+    const rows = Array.from(tbody.querySelectorAll<HTMLElement>('.price-row'));
+    // Never compare prices across currencies: keep currency groups together.
+    rows.sort((a, b) => {
+      const group = Number(a.dataset.currencyRank ?? 0) - Number(b.dataset.currencyRank ?? 0);
+      if (group) return group;
+      const av = parseFloat(a.getAttribute(`data-${key}`) ?? '0');
+      const bv = parseFloat(b.getAttribute(`data-${key}`) ?? '0');
+      return dir === 'asc' ? av - bv : bv - av;
+    });
+
+    const ranks = new Map<string, number>();
+    rows.forEach(r => {
+      tbody.appendChild(r);
+      const rank = (ranks.get(r.dataset.currency ?? '') ?? 0) + 1;
+      ranks.set(r.dataset.currency ?? '', rank);
+      const rankCell = r.querySelector('.rank-cell');
+      if (rankCell) rankCell.textContent = String(rank);
+    });
+
+    document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
+      th.setAttribute('aria-sort', th.dataset.sortKey === key ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      const arrow = th.querySelector('.sort-arrow');
+      if (!arrow) return;
+      if (th.getAttribute('data-sort-key') === key) {
+        arrow.textContent = dir === 'asc' ? '↑' : '↓';
+        th.classList.add('text-slate-200');
+      } else {
+        arrow.textContent = '';
+        th.classList.remove('text-slate-200');
+      }
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
+    th.tabIndex = 0;
+    th.setAttribute('aria-label', `Sort by ${th.dataset.sortKey}`);
+    th.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); th.click(); } });
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-sort-key');
+      if (key) sortRows(key);
+    });
+  });
+
+  const searchInput = document.getElementById('pricing-search') as HTMLInputElement | null;
+  const noResultsRow = document.getElementById('no-results-row');
+
+  searchInput?.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    let visibleCount = 0;
+    document.querySelectorAll<HTMLElement>('.price-row').forEach(row => {
+      const visible = !q || (row.getAttribute('data-name')?.includes(q) ?? false);
+      row.style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
+    });
+    noResultsRow?.classList.toggle('hidden', visibleCount > 0);
+  });
+</script>

@@ -1,17 +1,16 @@
 {
   "id": "cerebras",
   "name": "Cerebras",
-  "description": "Ultra-fast LLM inference via custom wafer-scale chips — free tier offers 30 RPM and 1M tokens/day with no credit card required.",
+  "description": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
   "base_url": "https://api.cerebras.ai/v1",
   "signup_url": "https://cloud.cerebras.ai",
   "website_url": "https://cerebras.ai",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/cerebras.svg",
-  "status": "active",
+  "status": "archived",
   "latency_ms": null,
-  "rpm": 30,
-  "rpd": 14400,
-  "context_window": "128K",
-  "auth": "required",
+  "rpm": null,
+  "rpd": null,
+  "auth": "credit_card_required",
   "tags": [
     "fast-inference",
     "openai-compatible",
@@ -19,57 +18,43 @@
     "function-call"
   ],
   "top_models": [
-    "llama3.1-8b",
-    "qwen-3-235b-a22b-instruct-2507",
-    "gpt-oss-120b"
+    "gpt-oss-120b",
+    "qwen-3.8-27b"
   ],
   "models": [
     {
-      "id": "llama3.1-8b",
-      "name": "Llama 3.1 8B",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 30,
-      "rpd": 14400,
-      "status": "active"
-    },
-    {
       "id": "gpt-oss-120b",
-      "name": "GPT OSS 120B",
-      "context_window": "128K",
+      "name": "GPT-OSS 120B",
       "modalities": [
         "text"
       ],
-      "rpm": 30,
-      "rpd": 14400,
+      "rpm": 5,
+      "rpd": null,
       "status": "active"
     },
     {
-      "id": "qwen-3-235b-a22b-instruct-2507",
-      "name": "Qwen3 235B A22B (Preview)",
-      "context_window": "128K",
+      "id": "qwen-3.8-27b",
+      "name": "Qwen 3.8 27B",
       "modalities": [
-        "text"
+        "text",
+        "vision"
       ],
-      "rpm": 30,
-      "rpd": 14400,
-      "status": "active"
-    },
-    {
-      "id": "zai-glm-4.7",
-      "name": "Z.ai GLM 4.7 (Preview)",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 10,
-      "rpd": 100,
+      "rpm": 300,
+      "rpd": null,
       "status": "active"
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "CEREBRAS_API_KEY"
+  "api_key_env": "CEREBRAS_API_KEY",
+  "archive_reason": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
+  "quota_note": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
+  "sources": [
+    {
+      "label": "Current service and free-tier policy",
+      "url": "https://inference-docs.cerebras.ai/support/rate-limits",
+      "checked_at": "2026-11-16"
+    }
+  ],
+  "catalog_note": "Current trial models. Trial token and time limits apply; these are not recurring free allowances."
 }

@@ -8,9 +8,8 @@
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/aihubmix.svg",
   "status": "active",
   "latency_ms": null,
-  "rpm": 5,
-  "rpd": 500,
-  "context_window": "1M",
+  "rpm": null,
+  "rpd": null,
   "auth": "required",
   "tags": [
     "aggregator",
@@ -20,66 +19,10 @@
   ],
   "top_models": [
     "coding-glm-5.1-free",
+    "kimi-for-coding-free",
     "coding-minimax-m2.7-free"
   ],
   "models": [
-    {
-      "id": "gpt-4.1-free",
-      "name": "GPT-4.1 Free",
-      "context_window": "1M",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "gpt-4.1-mini-free",
-      "name": "GPT-4.1 Mini Free",
-      "context_window": "1M",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "gpt-4.1-nano-free",
-      "name": "GPT-4.1 Nano Free",
-      "context_window": "1M",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "gpt-4o-free",
-      "name": "GPT-4o Free",
-      "context_window": "1M",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "gemini-3-flash-preview-free",
-      "name": "Gemini 3 Flash Preview Free",
-      "context_window": "1M",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 5,
-      "rpd": 250,
-      "status": "active"
-    },
     {
       "id": "coding-glm-5.1-free",
       "name": "Coding GLM 5.1 Free",
@@ -88,8 +31,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -100,8 +43,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -112,8 +55,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -124,8 +67,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -135,8 +78,8 @@
       "modalities": [
         "text"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -147,8 +90,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -159,8 +102,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -171,8 +114,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -183,8 +126,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -195,20 +138,8 @@
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "step-3.5-flash-free",
-      "name": "Step 3.5 Flash Free",
-      "context_window": "256K",
-      "modalities": [
-        "text",
-        "vision"
-      ],
-      "rpm": 5,
-      "rpd": 250,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -218,8 +149,8 @@
       "modalities": [
         "text"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -229,8 +160,8 @@
       "modalities": [
         "text"
       ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     },
     {
@@ -240,45 +171,20 @@
       "modalities": [
         "text"
       ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "ling-2.6-flash-free",
-      "name": "Ling 2.6 Flash Free",
-      "context_window": "262K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "crush-glm-5-turbo-free",
-      "name": "Crush GLM 5 Turbo Free",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
-      "status": "active"
-    },
-    {
-      "id": "crush-glm-5.1-free",
-      "name": "Crush GLM 5.1 Free",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 5,
-      "rpd": 500,
+      "rpm": null,
+      "rpd": null,
       "status": "active"
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "AIHUBMIX_API_KEY"
+  "api_key_env": "AIHUBMIX_API_KEY",
+  "quota_note": "Official documentation describes per-model RPM and daily token quotas; check the model page for the current values. One-time promotional calls (such as GPT-5.5 signup credits) are excluded from this recurring-free catalog.",
+  "sources": [
+    {
+      "label": "Official recurring free-model guide",
+      "url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "checked_at": "2026-11-16"
+    }
+  ]
 }

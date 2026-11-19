@@ -1,6 +1,13 @@
 # ── Private infrastructure ─────────────────────────────────────────────────
-# The checker worker contains API keys and private logic; never commit it.
+# The checker Worker, review console, management CLI, monitoring budgets and onboarding reviews live
+# in a separate private repository. These guards stop any copy of them from being committed here.
 checker-worker/
+admin/
+scripts/local/
+scripts/catalog-admin.mjs
+scripts/dev-catalog.mjs
+catalog/monitoring.json
+catalog/reviews/
 
 # ── Internal documents ─────────────────────────────────────────────────────
 # Planning, design, and implementation notes are kept out of the public repo.
@@ -23,6 +30,10 @@ dist/
 .env
 .env.*
 !.env.local.example
+# Wrangler/Astro local secrets (astro build copies .dev.vars into dist/server/)
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 
 # ── Logs ───────────────────────────────────────────────────────────────────
 *.log
@@ -45,3 +56,16 @@ Thumbs.db
 
 # ── Claude Code ────────────────────────────────────────────────────────────
 .claude/
+
+# Browser regression artifacts
+site/test-dist/
+site/test-results/
+playwright-report/
+
+# Public source snapshots and local catalog previews (CI uploads them as artifacts)
+.catalog-reports/
+.catalog-local/
+site/dynamic-dist/
+site/dynamic-test-dist/
+site/dynamic-test-results/
+site/.wrangler/

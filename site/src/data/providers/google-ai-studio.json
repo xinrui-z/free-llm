@@ -1,16 +1,15 @@
 {
   "id": "google-ai-studio",
   "name": "Google AI Studio",
-  "description": "Google's free API gateway for Gemini models — Gemini 2.5 Flash and Flash-Lite are permanently free with no credit card required.",
+  "description": "Selected Gemini models have free input and output token allowances. Availability and limits depend on your project, region and usage tier.",
   "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
   "signup_url": "https://aistudio.google.com/apikey",
   "website_url": "https://ai.google.dev",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/gemini.svg",
   "status": "active",
   "latency_ms": null,
-  "rpm": 15,
-  "rpd": 1000,
-  "context_window": "1M",
+  "rpm": null,
+  "rpd": null,
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -19,61 +18,113 @@
     "function-call"
   ],
   "top_models": [
-    "gemini-2.5-flash",
-    "gemini-3-flash-preview",
-    "gemini-2.5-pro"
+    "gemini-4-hydrogen",
+    "gemini-3.8-flash",
+    "gemini-3.6-flash"
   ],
   "models": [
     {
-      "id": "gemini-3-flash-preview",
-      "name": "Gemini 3 Flash Preview",
-      "context_window": "1M",
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
       "modalities": [
         "text",
         "vision"
       ],
-      "rpm": 10,
-      "rpd": 100,
-      "status": "active"
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 1.5,
+        "output_per_million": 7.5,
+        "currency": "USD",
+        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "checked_at": "2026-11-16"
+      }
     },
     {
-      "id": "gemini-2.5-flash-lite",
-      "name": "Gemini 2.5 Flash-Lite",
-      "context_window": "1M",
+      "id": "gemini-3.8-flash",
+      "name": "Gemini 3.8 Flash",
       "modalities": [
         "text",
         "vision"
       ],
-      "rpm": 15,
-      "rpd": 1000,
-      "status": "active"
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.75,
+        "output_per_million": 3.75,
+        "currency": "USD",
+        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "checked_at": "2026-11-16",
+        "valid_until": "2026-12-31"
+      }
     },
     {
-      "id": "gemini-2.5-flash",
-      "name": "Gemini 2.5 Flash",
-      "context_window": "1M",
+      "id": "gemini-3.6-flash",
+      "name": "Gemini 3.6 Flash",
       "modalities": [
         "text",
         "vision"
       ],
-      "rpm": 10,
-      "rpd": 250,
-      "status": "active"
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.75,
+        "output_per_million": 3.75,
+        "currency": "USD",
+        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "checked_at": "2026-11-16",
+        "valid_until": "2026-12-31"
+      }
     },
     {
-      "id": "gemini-2.5-pro",
-      "name": "Gemini 2.5 Pro",
-      "context_window": "1M",
+      "id": "gemini-3.5-flash-lite",
+      "name": "Gemini 3.5 Flash-Lite",
       "modalities": [
         "text",
         "vision"
       ],
-      "rpm": 5,
-      "rpd": 100,
-      "status": "active"
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 2.5,
+        "currency": "USD",
+        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "checked_at": "2026-11-16"
+      }
+    },
+    {
+      "id": "gemini-3.1-flash-lite",
+      "name": "Gemini 3.1 Flash-Lite",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.25,
+        "output_per_million": 1.5,
+        "currency": "USD",
+        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "checked_at": "2026-11-16"
+      }
     }
   ],
-  "last_verified": "2026-04-28",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "GOOGLE_API_KEY"
+  "api_key_env": "GOOGLE_API_KEY",
+  "quota_note": "Check the project limits in AI Studio. No universal RPM/RPD is claimed. Free-tier content can be used to improve Google products. Paid prices shown use standard text input; Gemini 3.8/3.6 Flash promotional prices end December 31, 2026.",
+  "sources": [
+    {
+      "label": "Free tier availability and standard token prices",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "checked_at": "2026-11-16"
+    }
+  ]
 }

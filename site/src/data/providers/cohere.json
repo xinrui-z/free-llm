@@ -1,7 +1,7 @@
 {
   "id": "cohere",
   "name": "Cohere",
-  "description": "Cohere's Trial API key — free access to Command A, Command R+, Command R7B and Aya Expanse. Limited to 20 RPM and 1,000 calls/month. Non-commercial use only.",
+  "description": "Cohere offers free, limited evaluation keys for its Command chat models. Evaluation usage is capped monthly.",
   "base_url": "https://api.cohere.ai/compatibility/v1",
   "signup_url": "https://dashboard.cohere.com",
   "website_url": "https://cohere.com",
@@ -9,8 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": 20,
-  "rpd": 33,
-  "context_window": "256K",
+  "rpd": null,
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -21,79 +20,105 @@
     "rerank"
   ],
   "top_models": [
+    "command-a-plus-05-2026",
     "command-a-03-2025",
-    "command-r-plus",
     "command-r7b-12-2024"
   ],
   "models": [
     {
+      "id": "command-a-plus-05-2026",
+      "name": "Command A+",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active",
+      "context_window": "128K"
+    },
+    {
       "id": "command-a-03-2025",
       "name": "Command A",
-      "context_window": "256K",
       "modalities": [
         "text"
       ],
       "rpm": 20,
-      "rpd": 33,
-      "status": "active"
-    },
-    {
-      "id": "command-r-plus",
-      "name": "Command R+",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "rpd": 33,
-      "status": "active"
-    },
-    {
-      "id": "command-r",
-      "name": "Command R",
-      "context_window": "128K",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "rpd": 33,
-      "status": "active"
+      "rpd": null,
+      "status": "active",
+      "context_window": "256K"
     },
     {
       "id": "command-r7b-12-2024",
       "name": "Command R7B",
-      "context_window": "128K",
       "modalities": [
         "text"
       ],
       "rpm": 20,
-      "rpd": 33,
-      "status": "active"
+      "rpd": null,
+      "status": "active",
+      "context_window": "128K"
     },
     {
-      "id": "aya-expanse-32b",
-      "name": "Aya Expanse 32B",
-      "context_window": "128K",
+      "id": "command-r-08-2024",
+      "name": "Command R",
       "modalities": [
         "text"
       ],
       "rpm": 20,
-      "rpd": 33,
-      "status": "active"
+      "rpd": null,
+      "status": "active",
+      "context_window": "128K"
     },
     {
-      "id": "aya-expanse-8b",
-      "name": "Aya Expanse 8B",
-      "context_window": "8K",
+      "id": "command-r-plus-08-2024",
+      "name": "Command R+",
       "modalities": [
         "text"
       ],
       "rpm": 20,
-      "rpd": 33,
-      "status": "active"
+      "rpd": null,
+      "status": "active",
+      "context_window": "128K"
+    },
+    {
+      "id": "command-a-reasoning-08-2025",
+      "name": "Command A Reasoning",
+      "modalities": [
+        "text"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active",
+      "context_window": "256K"
+    },
+    {
+      "id": "command-a-vision-07-2025",
+      "name": "Command A Vision",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": 20,
+      "rpd": null,
+      "status": "active",
+      "context_window": "128K"
     }
   ],
-  "last_verified": "2026-03-30",
+  "last_verified": "2026-11-16",
   "geo_restrictions": [],
-  "api_key_env": "COHERE_API_KEY"
+  "api_key_env": "COHERE_API_KEY",
+  "quota_note": "Evaluation keys have a 1,000-call monthly cap and a 20 RPM chat limit. There is no documented fixed daily allowance; evaluation keys are not production keys.",
+  "sources": [
+    {
+      "label": "Current and deprecated models",
+      "url": "https://docs.cohere.com/docs/models",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "label": "Evaluation key rate limits",
+      "url": "https://docs.cohere.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    }
+  ]
 }

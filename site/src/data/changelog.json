@@ -1,5 +1,113 @@
 [
   {
+    "id": "catalog-2026-11-16-google-ai-studio",
+    "date": "2026-11-16",
+    "provider_id": "google-ai-studio",
+    "provider_name": "Google AI Studio",
+    "type": "model_added",
+    "title": "Google AI Studio catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-huggingface",
+    "date": "2026-11-16",
+    "provider_id": "huggingface",
+    "provider_name": "Hugging Face Inference",
+    "type": "provider_removed",
+    "title": "Hugging Face Inference archived from recurring free API recommendations",
+    "description": "Free Hugging Face accounts no longer receive monthly Inference Providers credits. Credits must be purchased or included in a paid subscription."
+  },
+  {
+    "id": "catalog-2026-11-16-sambanova",
+    "date": "2026-11-16",
+    "provider_id": "sambanova",
+    "provider_name": "SambaNova Cloud",
+    "type": "model_added",
+    "title": "SambaNova Cloud catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-mistral",
+    "date": "2026-11-16",
+    "provider_id": "mistral",
+    "provider_name": "Mistral AI",
+    "type": "provider_removed",
+    "title": "Mistral AI archived from recurring free API recommendations",
+    "description": "Mistral Free mode does not include API access. Creating API keys and using the API require billing activation and pay-as-you-go."
+  },
+  {
+    "id": "catalog-2026-11-16-openrouter",
+    "date": "2026-11-16",
+    "provider_id": "openrouter",
+    "provider_name": "OpenRouter",
+    "type": "model_added",
+    "title": "OpenRouter catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-cohere",
+    "date": "2026-11-16",
+    "provider_id": "cohere",
+    "provider_name": "Cohere",
+    "type": "model_added",
+    "title": "Cohere catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-cerebras",
+    "date": "2026-11-16",
+    "provider_id": "cerebras",
+    "provider_name": "Cerebras",
+    "type": "provider_removed",
+    "title": "Cerebras archived from recurring free API recommendations",
+    "description": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier."
+  },
+  {
+    "id": "catalog-2026-11-16-bigmodel",
+    "date": "2026-11-16",
+    "provider_id": "bigmodel",
+    "provider_name": "BigModel",
+    "type": "model_added",
+    "title": "BigModel catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-groq",
+    "date": "2026-11-16",
+    "provider_id": "groq",
+    "provider_name": "Groq",
+    "type": "model_added",
+    "title": "Groq catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
+    "id": "catalog-2026-11-16-github-models",
+    "date": "2026-11-16",
+    "provider_id": "github-models",
+    "provider_name": "GitHub Models",
+    "type": "provider_removed",
+    "title": "GitHub Models archived from recurring free API recommendations",
+    "description": "GitHub Models was fully retired on July 30, 2026. Its catalog, playground, inference API and BYOK are no longer available."
+  },
+  {
+    "id": "catalog-2026-11-16-ollama-cloud",
+    "date": "2026-11-16",
+    "provider_id": "ollama-cloud",
+    "provider_name": "Ollama Cloud",
+    "type": "provider_removed",
+    "title": "Ollama Cloud archived from recurring free API recommendations",
+    "description": "Ollama Cloud now charges per token. The $0 subscription plan is pay-as-you-go, without included recurring free inference credits. Local inference on your own hardware remains free."
+  },
+  {
+    "id": "catalog-2026-11-16-aihubmix",
+    "date": "2026-11-16",
+    "provider_id": "aihubmix",
+    "provider_name": "AIHubMix",
+    "type": "model_added",
+    "title": "AIHubMix catalog and free-tier documentation refreshed",
+    "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
+  },
+  {
     "id": "cl-auto-1743292816",
     "timestamp": "2026-03-30T00:00:00.000Z",
     "date": "2026-03-30",

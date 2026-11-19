@@ -1,165 +1,86 @@
 {
   "id": "modelscope",
   "name": "ModelScope",
-  "description": "Alibaba's ModelScope (魔搭) community offers free OpenAI-compatible inference — 2,000 calls/day across most models, China-available.",
+  "description": "ModelScope (魔搭) API-Inference serves selected open models through an OpenAI-compatible API; calls are redeemed with free daily login credits (魔粒), and a linked, real-name-verified Alibaba Cloud account is required.",
   "base_url": "https://api-inference.modelscope.cn/v1",
-  "signup_url": "https://modelscope.cn/my/myaccesstoken",
-  "website_url": "https://modelscope.cn",
+  "signup_url": "https://www.modelscope.cn/my/myaccesstoken",
+  "website_url": "https://www.modelscope.cn",
   "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/modelscope.svg",
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": 2000,
-  "context_window": "262K",
+  "rpd": null,
   "auth": "required",
   "tags": [
-    "china-available",
     "openai-compatible",
-    "deepseek",
+    "china-available",
     "vision",
-    "thinking",
-    "function-call"
+    "multi-model"
   ],
   "top_models": [
-    "Qwen/Qwen3-30B-A3B-Instruct-2507",
-    "deepseek-ai/DeepSeek-V3.1",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+    "Qwen/Qwen3.5-35B-A3B",
+    "Qwen/Qwen3.5-27B",
+    "ZhipuAI/GLM-4.7-Flash"
   ],
   "models": [
     {
-      "id": "deepseek-ai/DeepSeek-V3.1",
-      "name": "DeepSeek V3.1",
-      "context_window": "164K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 200,
-      "status": "active"
-    },
-    {
-      "id": "deepseek-ai/DeepSeek-R1-0528",
-      "name": "DeepSeek R1 (0528)",
-      "context_window": "164K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 200,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
-      "name": "Qwen3 235B Instruct (2507)",
-      "context_window": "262K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
-      "name": "Qwen3 235B Thinking (2507)",
-      "context_window": "262K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-30B-A3B-Instruct-2507",
-      "name": "Qwen3 30B Instruct (2507)",
-      "context_window": "262K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-      "name": "Qwen3 Coder 480B",
-      "context_window": "262K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-      "name": "Qwen3 Coder 30B",
-      "context_window": "262K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
-      "name": "Qwen3 VL 235B Instruct",
-      "context_window": "262K",
+      "id": "Qwen/Qwen3.5-35B-A3B",
+      "name": "Qwen3.5 35B A3B",
       "modalities": [
         "text",
         "vision"
       ],
       "rpm": null,
-      "rpd": 2000,
+      "rpd": null,
       "status": "active"
     },
     {
-      "id": "ZhipuAI/GLM-4.6",
-      "name": "GLM-4.6",
-      "context_window": "200K",
+      "id": "Qwen/Qwen3.5-27B",
+      "name": "Qwen3.5 27B",
       "modalities": [
         "text",
-        "code"
+        "vision"
       ],
       "rpm": null,
-      "rpd": 2000,
+      "rpd": null,
       "status": "active"
     },
     {
-      "id": "ZhipuAI/GLM-4.5",
-      "name": "GLM-4.5",
-      "context_window": "128K",
+      "id": "ZhipuAI/GLM-4.7-Flash",
+      "name": "GLM 4.7 Flash",
       "modalities": [
-        "text",
-        "code"
+        "text"
       ],
       "rpm": null,
-      "rpd": 2000,
-      "status": "active"
-    },
-    {
-      "id": "moonshotai/Kimi-K2-Instruct",
-      "name": "Kimi K2 Instruct",
-      "context_window": "128K",
-      "modalities": [
-        "text",
-        "code"
-      ],
-      "rpm": null,
-      "rpd": 2000,
+      "rpd": null,
       "status": "active"
     }
   ],
-  "last_verified": "2026-05-20",
+  "last_verified": "2026-11-19",
   "geo_restrictions": [],
-  "api_key_env": "MODELSCOPE_API_KEY"
+  "api_key_env": "MODELSCOPE_API_KEY",
+  "quota_note": "Requires a ModelScope account linked to a real-name-verified Alibaba Cloud account; using credits also requires a verified profile email. Logging in each day grants 200 short-term credits, plus 50 more once an Alibaba Cloud account is linked; short-term credits expire after 24 hours. API-Inference calls cost about 0.5, 1 or 2 credits for lightweight, mainstream or flagship models, and calls are allowed while the credit balance lasts. Credits are shared with AIGC and training services, so this is not a fixed requests-per-day allowance. Concurrency is adjusted dynamically, aiming to keep single-concurrency use working. The service is free and non-commercial, intended for development and evaluation, and should not be used for workloads needing high concurrency or an SLA.",
+  "catalog_note": "This selection includes three current models whose IDs appear in the public /v1/models list as of 2026-11-19. Older models may be withdrawn from API-Inference as new ones launch. Authenticated inference has not been checked.",
+  "sources": [
+    {
+      "label": "Daily recurring credits and deductions",
+      "url": "https://www.modelscope.cn/docs/magicube/intro",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "Account requirements and usage limits",
+      "url": "https://www.modelscope.cn/docs/model-service/API-Inference/limits",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "OpenAI-compatible API guide",
+      "url": "https://www.modelscope.cn/docs/model-service/API-Inference/intro",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "Current official model IDs",
+      "url": "https://api-inference.modelscope.cn/v1/models",
+      "checked_at": "2026-11-19"
+    }
+  ]
 }

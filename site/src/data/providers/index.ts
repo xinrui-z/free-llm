@@ -4,6 +4,17 @@
 // back to alphabetical order at the end.
 
 import orderData from './_order.json';
+import { sortProviders } from '../../../../scripts/lib/catalog-validation.mjs';
+
+export interface ModelPricing {
+  input_per_million: number;
+  output_per_million: number;
+  currency: string;
+  source_url?: string;
+  checked_at?: string;
+  // Last day (YYYY-MM-DD) a promotional price applies; validation fails after it.
+  valid_until?: string;
+}
 
 export interface ProviderModel {
   id: string;
@@ -13,6 +24,10 @@ export interface ProviderModel {
   rpm?: number | null;
   rpd?: number | null;
   status?: string;
+  // Present only when this model has a public, per-token paid rate. Absent/null
+  // means free-only or no publicly disclosed per-token price (e.g. subscription
+  // or compute-time billing — see the provider's `pricing_note`).
+  pricing?: ModelPricing | null;
   [key: string]: unknown;
 }
 
@@ -33,9 +48,23 @@ export interface Provider {
   tags?: string[];
   top_models: string[];
   models: ProviderModel[];
+  // Curated flagship paid-catalog entries for providers whose tracked `models`
+  // are distinct free-tier SKUs (e.g. "-free"/":free" suffixed ids) with no
+  // direct paid counterpart by the same id. Only consumed by the /pricing
+  // page — never by the free-tier status/family-browser pages.
+  paid_models?: ProviderModel[];
   last_verified?: string;
+  // Machine catalog observation, independent of the human policy review date.
+  catalog_checked_at?: string;
+  archive_reason?: string;
+  quota_note?: string;
+  catalog_note?: string;
+  sources?: { label: string; url: string; checked_at: string }[];
   geo_restrictions?: string[] | null;
   api_key_env?: string | null;
+  // Human-readable caveat for providers whose paid tier doesn't fit a clean
+  // per-million-token rate (subscription billing, compute-time billing, etc.)
+  pricing_note?: string | null;
   [key: string]: unknown;
 }
 
@@ -45,18 +74,10 @@ const modules = import.meta.glob<{ default: Provider }>('./*.json', {
 });
 
 const order: string[] = (orderData as { order: string[] }).order ?? [];
-const orderIndex = new Map(order.map((id, i) => [id, i]));
 
-const all: Provider[] = Object.entries(modules)
+const all: Provider[] = sortProviders(Object.entries(modules)
   .filter(([path]) => !path.endsWith('/_order.json'))
-  .map(([, mod]) => mod as unknown as Provider);
-
-all.sort((a, b) => {
-  const ai = orderIndex.has(a.id) ? orderIndex.get(a.id)! : Number.MAX_SAFE_INTEGER;
-  const bi = orderIndex.has(b.id) ? orderIndex.get(b.id)! : Number.MAX_SAFE_INTEGER;
-  if (ai !== bi) return ai - bi;
-  return a.id.localeCompare(b.id);
-});
+  .map(([, mod]) => mod as unknown as Provider), order);
 
 export const providers: Provider[] = all;
 export default providers;

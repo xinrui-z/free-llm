@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "free-llm-site",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS" },
+  // Keep variables set in the Cloudflare dashboard (e.g. CATALOG_API_URL, CATALOG_CACHE_TTL_MS) across deploys.
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}

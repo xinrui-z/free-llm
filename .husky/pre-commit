@@ -1,7 +1,9 @@
 #!/bin/sh
-# Only run validation if relevant JSON files are staged.
+# Only run validation if catalog data or its validators are staged.
 # Matches: site/src/data/providers/*.json (per-provider files + _order.json)
 #          site/src/data/changelog.json
-if git diff --cached --name-only | grep -qE 'site/src/data/(providers/.*|changelog)\.json'; then
+#          catalog/** (sources, monitoring policies, sync state, reviews)
+#          scripts/lib/** (shared validation library)
+if git diff --cached --name-only | grep -qE '^(site/src/data/(providers/.*|changelog)\.json|catalog/|scripts/lib/)'; then
   node scripts/validate.mjs
 fi

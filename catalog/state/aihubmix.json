@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "provider_id": "aihubmix",
+  "checked_at": "2026-11-17T02:51:16.401Z",
+  "source_url": "https://aihubmix.com/v1/models",
+  "policy_hash": "03ae47f20fcf733f622a3f5bb7e07ca708c887eae6f11a68e441c110276aac77",
+  "source_hash": "ab0d3253da1aa2231bf6b41489f94e1a0d1dc9df1af5a5df47f0fde50323630d",
+  "missing": {},
+  "candidates": [
+    {
+      "id": "agents-a1-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "coding-glm-5.2-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "coding-glm-5.3-flash-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "coding-glm-5.3-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "coding-kimi-k3-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "coding-minimax-m3-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "dots-3-note-preview-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "ernie-5.5-flash-preview-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "flint-v1.0-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "gemma-4-26b-a4b-it-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "gemma-4-31b-it-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "intern-s2-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "lfm-2.5-2.6b-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "lfm-3-1.7b-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "ling-3.2-flash-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "nemotron-3-nano-omni-30b-a3b-reasoning-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "nemotron-3-ultra-550b-a55b-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "nemotron-3.5-lightning-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "nemotron-3.5-super-vl-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "north-mini-code-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "particle-1-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "qwen3.6-plus-preview-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "xiaomi-mimo-v2.6-flash-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    },
+    {
+      "id": "xiaomi-mimo-v2.6-pro-free",
+      "reason": "Recurring free eligibility requires official evidence",
+      "source_url": "https://aihubmix.com/v1/models",
+      "policy_url": "https://docs.aihubmix.com/cn/blogs/free-ai-models",
+      "first_seen_at": "2026-11-17T02:51:16.401Z"
+    }
+  ]
+}
