@@ -1,0 +1,155 @@
+{
+  "id": "nvidia-nim",
+  "name": "NVIDIA NIM",
+  "description": "NVIDIA-hosted NIM endpoints on build.nvidia.com, free to NVIDIA Developer Program members for prototyping, research, development and testing. Rate limits vary by model and are not published; production use needs an NVIDIA AI Enterprise license.",
+  "base_url": "https://integrate.api.nvidia.com/v1",
+  "signup_url": "https://build.nvidia.com/settings/api-keys",
+  "website_url": "https://build.nvidia.com",
+  "logo": "https://unpkg.com/@lobehub/icons-static-svg@latest/icons/nvidia.svg",
+  "status": "active",
+  "latency_ms": null,
+  "rpm": null,
+  "rpd": null,
+  "auth": "required",
+  "tags": [
+    "openai-compatible",
+    "vision",
+    "thinking",
+    "function-call",
+    "non-commercial",
+    "multi-model"
+  ],
+  "top_models": [
+    "nvidia/nemotron-3-ultra-550b-a55b",
+    "z-ai/glm-5.3-flash",
+    "google/gemma-4-31b-it"
+  ],
+  "models": [
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b",
+      "name": "Nemotron 3 Ultra 550B A55B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "context_window": "1M"
+    },
+    {
+      "id": "z-ai/glm-5.3-flash",
+      "name": "GLM-5.3 Flash",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "context_window": "1M"
+    },
+    {
+      "id": "moonshotai/kimi-k3.1-pro",
+      "name": "Kimi K3.1 Pro",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "context_window": "1M"
+    },
+    {
+      "id": "google/gemma-4-31b-it",
+      "name": "Gemma 4 31B IT",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active",
+      "context_window": "256K"
+    },
+    {
+      "id": "mistralai/mistral-large-4-1t-a52b",
+      "name": "Mistral Large 4",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "minimaxai/minimax-m3.1-flash",
+      "name": "MiniMax M3.1 Flash",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "name": "Nemotron 3.5 Lightning 30B A3B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "name": "Nemotron 3.5 Super VL 120B A12B",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    },
+    {
+      "id": "poolside/laguna-xs-2.1",
+      "name": "Laguna XS 2.1",
+      "modalities": [
+        "text",
+        "code"
+      ],
+      "rpm": null,
+      "rpd": null,
+      "status": "active"
+    }
+  ],
+  "last_verified": "2026-11-19",
+  "geo_restrictions": [],
+  "api_key_env": "NVIDIA_NIM_API_KEY",
+  "context_window": "1M",
+  "quota_note": "Free hosted API access is for NVIDIA Developer Program members for the duration of program membership, limited to prototyping, research, development and testing. Rate limits vary per model and are not published; your own limit is shown in your build.nvidia.com account. NVIDIA's API Trial Terms of Service (v. 2025-09-19, section 1.4) reserve the right to limit access by time, request count or credits. Production use requires an NVIDIA AI Enterprise license.",
+  "sources": [
+    {
+      "label": "NIM product FAQ (free Developer Program access, production licensing)",
+      "url": "https://docs.api.nvidia.com/nim/docs/product",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "NVIDIA NIM FAQ (API catalog rate limits)",
+      "url": "https://forums.developer.nvidia.com/t/nvidia-nim-faq/300317",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "Hosted model list (OpenAI-compatible /v1/models)",
+      "url": "https://integrate.api.nvidia.com/v1/models",
+      "checked_at": "2026-11-19"
+    },
+    {
+      "label": "NVIDIA API Trial Terms of Service",
+      "url": "https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf",
+      "checked_at": "2026-11-19"
+    }
+  ]
+}
