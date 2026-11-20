@@ -6,6 +6,10 @@ interface ImportMetaEnv {
   readonly CATALOG_CACHE_TTL_MS: string;
   readonly PUBLIC_STATUS_WORKER_URL?: string;
 }
+// Provided by astro.config.mjs: the CHECKER service binding in a production dynamic build, otherwise undefined.
+declare module 'virtual:checker-binding' {
+  export function checkerBinding(): Promise<import('./lib/catalog').CatalogBinding | undefined>;
+}
 declare namespace App {
   interface Locals {
     catalog?: import('./lib/catalog').CatalogState;

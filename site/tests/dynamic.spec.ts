@@ -18,6 +18,10 @@ test('pages render the live catalog served through the public DTO, not the bundl
   expect(response?.headers()['x-catalog-source']).toBe('live');
   await expect(page.getByText(/Live catalog is temporarily unavailable/)).toHaveCount(0);
 });
+test('the site Worker reads the catalog through its CHECKER service binding, not over HTTP',async({page,request})=>{
+  expect((await page.goto('/'))?.headers()['x-catalog-source']).toBe('live');
+  expect(await (await request.get(`${catalogAPI}/test/last-via`)).json()).toEqual({via:'checker-binding'});
+});
 test('new providers and their models appear without rebuilding the server',async({page,request},testInfo)=>{
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(404);
   await request.post(`${catalogAPI}/test/state`,{data:{extra:true}});

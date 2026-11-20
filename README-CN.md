@@ -161,7 +161,8 @@ npm run dev                       # http://localhost:4321
 |------|----------|------|
 | `CATALOG_MODE` | 仓库 variable / 构建环境 | `static`（默认）或 `dynamic`，其他值会导致构建失败 |
 | `PUBLIC_STATUS_WORKER_URL` | 仓库 secret / 构建环境 / `site/.env.local` | 浏览器读取状态和变更日志的 checker 地址；动态模式下也是 catalog 的兜底地址 |
-| `CATALOG_API_URL` | 站点 Worker 运行时变量（或构建环境） | 动态模式服务端渲染读取的 catalog API 地址，默认使用 `PUBLIC_STATUS_WORKER_URL` |
+| `CATALOG_API_URL` | 站点 Worker 运行时变量（或构建环境） | 站点 Worker 没有 `CHECKER` 服务绑定时（`astro dev`，或用 `CATALOG_CHECKER_BINDING=off` 构建），动态渲染通过 HTTP 读取的 catalog API 地址，默认使用 `PUBLIC_STATUS_WORKER_URL` |
+| `CATALOG_CHECKER_BINDING` | 构建环境 | `on`（默认）或 `off`；设为 `off` 时，动态站点忽略 `CHECKER` 绑定，始终使用 `CATALOG_API_URL` |
 | `CATALOG_CACHE_TTL_MS` | 站点 Worker 运行时变量（或构建环境） | 动态模式下每个隔离实例的目录缓存时间，默认 60000，`0` 表示不缓存 |
 | `PUBLIC_SITE_URL` | 仓库 variable / 构建环境 | 站点正式地址，用于 canonical、sitemap 和 `robots.txt` |
 | `CATALOG_ALLOW_EXPIRED` | 构建环境 | 设为 `1` 时促销价过期只报 warning（部署和同步使用） |
@@ -186,7 +187,9 @@ cd site && npx wrangler pages deploy dist --project-name=your-project-name
 
 ### 动态模式
 
-页面在 Cloudflare Workers 上按请求渲染，目录来自 catalog API（`GET /api/catalog`），新增服务商无需重新构建。设置 `CATALOG_MODE=dynamic`，并在 `free-llm-site` Worker 上用 `wrangler secret put` 设置 `CATALOG_API_URL`（`keep_vars` 保证部署时不被覆盖）。API 不可用或返回无效数据时，页面先回退到最近一次校验通过的目录，再回退到打包的 provider JSON，并显示提示。
+页面在 Cloudflare Workers 上按请求渲染，目录来自 catalog API（`GET /api/catalog`），新增服务商无需重新构建。设置 `CATALOG_MODE=dynamic` 即可。`free-llm-site` Worker 通过 [`site/wrangler.jsonc`](site/wrangler.jsonc) 里的 `CHECKER` 服务绑定读取 `free-llm-checker` 的目录：同一账号下的 `workers.dev` Worker 之间不能直接用 HTTP 互相请求，所以要先部署 checker。浏览器仍然通过 HTTPS 直接请求 checker 公开的 `/api/status` 和 `/api/changelog`。没有绑定时（`astro dev`），站点改用 `CATALOG_API_URL`。生产构建在本地预览时也带着这个绑定，本机没有运行 `free-llm-checker` 时会显示内置快照；构建时设 `CATALOG_CHECKER_BINDING=off`，预览才会读取 `CATALOG_API_URL`。目录不可用或数据无效时，页面先回退到最近一次校验通过的目录，再回退到打包的 provider JSON，并显示提示。
+
+切换到动态模式后，站点地址是 https://free-llm-site.free-llm-status.workers.dev，旧地址 https://free-llm-apis.pages.dev 会 301 跳转过去（见 [`redirect/`](redirect/README.md)）。本 README 顶部的链接在正式切换时再改。
 
 ### GitHub Actions 密钥
 

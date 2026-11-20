@@ -144,7 +144,8 @@ jobs:
       - name: Require a live D1 catalog before switching to the dynamic site
         if: vars.CATALOG_MODE == 'dynamic'
         env:
-          # The site falls back to this URL when no runtime CATALOG_API_URL is configured.
+          # The checker's public URL. The deployed site reads the same Worker through its CHECKER service binding,
+          # and browsers call this URL for /api/status and /api/changelog.
           CATALOG_URL: ${{ secrets.PUBLIC_STATUS_WORKER_URL }}
         run: |
           test -n "$CATALOG_URL" || { echo '::error::PUBLIC_STATUS_WORKER_URL must be configured in dynamic mode'; exit 1; }
@@ -162,6 +163,8 @@ jobs:
         with:
           name: site
           path: site/dist
+      # Static mode deploys to the free-llm-apis Pages project. After the dynamic cutover that project serves
+      # only redirect/ (deployed by hand), so a static deploy here would replace the redirect.
       - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         if: vars.CATALOG_MODE != 'dynamic'
         with:
@@ -170,6 +173,14 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=free-llm-apis
           workingDirectory: site
+      # The generated config carries site/wrangler.jsonc, including the CHECKER service binding the site Worker
+      # uses to read the catalog (workers.dev Workers on one account cannot fetch each other over HTTP).
+      - name: Require the CHECKER service binding in the generated Worker config
+        if: vars.CATALOG_MODE == 'dynamic'
+        working-directory: site
+        run: |
+          jq -e '.name == "free-llm-site" and any(.services[]?; .binding == "CHECKER" and .service == "free-llm-checker")' dist/server/wrangler.json > /dev/null \
+            || { echo '::error::dist/server/wrangler.json has no CHECKER service binding to free-llm-checker'; exit 1; }
       - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         if: vars.CATALOG_MODE == 'dynamic'
         with:

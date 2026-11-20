@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { catalogResponsePolicy, fetchLiveCatalog, parseLiveCatalog } from '../site/src/lib/catalog.ts';
+import { CHECKER_BINDING_ORIGIN, catalogResponsePolicy, catalogSource, fetchLiveCatalog, parseLiveCatalog } from '../site/src/lib/catalog.ts';
 import { normalizeStatus, freshWindow } from '../site/src/lib/status.ts';
 import { siteURL, canonicalPath } from '../site/src/lib/site-url.ts';
 
@@ -64,6 +64,23 @@ test('without a previous live catalog, failures use the bundled snapshot', async
   const partial = await fetchLiveCatalog('https://api.test', fallback, { fetcher: async () => reply({ revision: 'r', providers: [...bundled, { id: 'bad' }] }), cache: {}, warn: m => { warned = m; } });
   assert.deepEqual(partial.dropped, ['bad']);
   assert.match(warned, /bad/);
+});
+
+test('the CHECKER service binding wins over the HTTP catalog URL; HTTP is the fallback', async () => {
+  const seen = [];
+  const binding = { marker: 'fetcher', async fetch(input, init) { seen.push([String(input), init?.headers?.Accept, this?.marker]); return reply({ revision: 'b1', providers: bundled }); } };
+  const viaBinding = catalogSource(binding, 'https://api.test');
+  assert.equal(viaBinding.via, 'binding');
+  assert.equal(viaBinding.url, CHECKER_BINDING_ORIGIN);
+  const state = await fetchLiveCatalog(viaBinding.url, fallback, { fetcher: viaBinding.fetcher, cache: {}, warn: quiet });
+  assert.equal(state.revision, 'b1');
+  assert.deepEqual(seen, [[`${CHECKER_BINDING_ORIGIN}/api/catalog`, 'application/json', 'fetcher']], 'the binding is called as a method with an absolute URL');
+  assert.deepEqual(catalogSource(undefined, ' https://api.test '), { url: 'https://api.test', via: 'http' });
+  assert.deepEqual(catalogSource(null, 'https://api.test'), { url: 'https://api.test', via: 'http' });
+  assert.deepEqual(catalogSource({}, 'https://api.test'), { url: 'https://api.test', via: 'http' }, 'a value without fetch() is not a binding');
+  assert.equal(catalogSource(binding, '').via, 'binding', 'the binding needs no URL');
+  assert.equal(catalogSource(undefined, ''), undefined);
+  assert.equal(catalogSource(undefined, undefined), undefined);
 });
 
 test('a provider dropped by validation is never served as a cacheable 404', () => {
