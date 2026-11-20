@@ -9,6 +9,16 @@ export function publicHTTPS(value) {
 // The www. prefix is the only host normalization: other subdomains can be separate APIs.
 const origin = url => { try { const u = new URL(url); u.hostname = u.hostname.replace(/^www\./, ''); return u.origin; } catch { return ''; } };
 
+// Subscription plans (coding/token plans) list every model at $0 because usage is prepaid by the plan, not free.
+// They are never recurring free APIs, so discovery drops them before they reach the review queue. Matching is on
+// the registry ID, display name and API path, all of which carry the plan wording in models.dev.
+const SUBSCRIPTION_PLAN = /(?:^|[-_\s/])(?:coding|token)[-_\s]?plans?(?:$|[-_\s/(])|\bfor[-_\s]coding\b|\/(?:api\/)?coding\/|token-plan/i;
+export function isSubscriptionPlan(id, entry) {
+  let path = '';
+  try { const u = new URL(entry?.api); path = u.hostname + u.pathname; } catch {}
+  return [id, entry?.name, path].some(value => typeof value === 'string' && SUBSCRIPTION_PLAN.test(value));
+}
+
 // Third-party metadata creates candidates only. No discovered URL is fetched or sent a key.
 // Existing providers are matched by API origin (or ID) only: a shared website or docs host
 // does not make two APIs the same provider. Every skipped registry entry is recorded with a reason.
@@ -28,6 +38,7 @@ export function discoverProvidersReport(raw, existing) {
       continue;
     }
     if (!publicHTTPS(p.api)) { filtered.push({ provider_id: id, reason: 'API is not a public HTTPS URL' }); continue; }
+    if (isSubscriptionPlan(id, p)) { filtered.push({ provider_id: id, reason: 'subscription plan (not a free API)' }); continue; }
     const match = byId.get(id) ?? byOrigin.get(origin(p.api));
     if (match && match.status !== 'archived') {
       filtered.push({ provider_id: id, reason: 'already in catalog', existing_provider_id: match.id });
