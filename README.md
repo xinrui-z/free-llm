@@ -48,7 +48,7 @@ A provider is listed as `active` only when its official documentation describes 
 
 Evidence rules:
 
-- Every active provider needs a nonempty `sources` array of official HTTPS URLs with a label and `checked_at` date.
+- `sources` is optional: an array of official HTTPS URLs with a label and `checked_at` date, kept for maintainers (not shown on the site). When present it must be nonempty and valid.
 - Missing, blank or boolean prices never count as zero. A model API's `:free`/`-free` suffix alone is not evidence; automated free classification also requires explicit zero billing values.
 - A `null` RPM/RPD means unpublished or account-dependent, never unlimited. Monthly credit or token budgets go in `quota_note`, not invented daily request limits.
 - Catalog `active` means listed, not operational. Health checks sample specific models with the monitoring account; missing or stale observations and account/quota errors (401/402/403/429) are `unknown`, not outages. Daily history records the worst result each day; the percentage is healthy days / observed days, not a time-based uptime SLA.
@@ -108,7 +108,7 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
     }
   ],
   "paid_models": [],                // optional, same shape; curated paid comparison, IDs must not repeat models
-  "sources": [                      // required (nonempty) for active providers
+  "sources": [                      // optional; nonempty when present
     { "label": "Official free tier", "url": "https://example.com/pricing", "checked_at": "2026-11-16" }
   ],
   "last_verified": "2026-11-16",    // YYYY-MM-DD: date the policy claims were reviewed

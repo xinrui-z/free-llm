@@ -236,7 +236,6 @@ function formatNum(n: number | null | undefined): string {
       <p>Documentation checked: <time datetime={provider.last_verified}>{provider.last_verified}</time>. Model availability is subject to the provider's current catalog.</p>
       {provider.quota_note && <p>{provider.quota_note}</p>}
       {provider.catalog_note && <p>{provider.catalog_note}</p>}
-      <ul class="space-y-1">{provider.sources?.map(source => <li><a href={source.url} target="_blank" rel="noopener noreferrer" class="text-blue-300 underline underline-offset-2">{source.label}</a> <span class="text-xs">· {source.checked_at}</span></li>)}</ul>
     </div>
     <!-- Main content: info + models -->
     <div class="grid md:grid-cols-2 gap-5 mb-5">

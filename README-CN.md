@@ -48,7 +48,7 @@
 
 证据要求：
 
-- 每个 active 服务商都必须有非空的 `sources`，每条包含官方 HTTPS 链接、说明文字和 `checked_at` 日期。
+- `sources` 为可选字段：官方 HTTPS 链接、说明文字和 `checked_at` 日期，供维护者留档，站点上不显示。填写时必须非空且合法。
 - 缺失、空白或布尔类型的价格一律不视为 0。模型 API 中 `:free`/`-free` 后缀本身不构成证据；自动判定免费还需要明确的零计费值。
 - RPM/RPD 为 `null` 表示未公布或取决于账号，不代表无限。按月的额度或 token 预算写进 `quota_note`，不要换算成编造的每日请求数。
 - 目录中的 `active` 只表示收录，不代表可用。健康检查用监测账号抽样探测指定模型；无数据、数据过期和账号/额度错误（401/402/403/429）记为 `unknown`，不等同于宕机。每日历史显示当日最差结果，百分比是正常天数 / 已监测天数，不是按时间计算的 SLA。
@@ -108,7 +108,7 @@
     }
   ],
   "paid_models": [],                // 可选，结构同上；用于付费价格对比，ID 不能与 models 重复
-  "sources": [                      // active 服务商必填（非空）
+  "sources": [                      // 可选；填写时不能为空
     { "label": "Official free tier", "url": "https://example.com/pricing", "checked_at": "2026-11-16" }
   ],
   "last_verified": "2026-11-16",    // YYYY-MM-DD：人工核实政策的日期
