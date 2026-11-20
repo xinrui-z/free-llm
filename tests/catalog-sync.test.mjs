@@ -393,3 +393,29 @@ test('fetch honors bounded Retry-After and treats empty bodies as permanent', as
   assert.equal(retryAfterMs('Wed, 18 Nov 2026 00:00:30 GMT', Date.parse('2026-11-18T00:00:00Z')), 30_000);
   assert.equal(retryAfterMs('soon'), null);
 });
+
+test('provider discovery drops subscription coding/token plans before review', async () => {
+  const { isSubscriptionPlan } = await import('../scripts/catalog/provider-discovery.mjs');
+  const entry = (name, api) => ({ name, api, models: { m: { cost: { input: 0, output: 0 } } } });
+  const plans = {
+    'alibaba-coding-plan': entry('Alibaba Coding Plan', 'https://coding-intl.dashscope.aliyuncs.com/v1'),
+    'alibaba-token-plan-cn': entry('Alibaba Token Plan (China)', 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'),
+    'kimi-code-plan-global': entry('Kimi For Coding (kimi.ai)', 'https://api.kimi.ai/coding/v1'),
+    'tencent-coding-plan': entry('Tencent Coding Plan (China)', 'https://api.lkeap.cloud.tencent.com/coding/v3'),
+    'zhipuai-coding-plan': entry('Zhipu AI Coding Plan', 'https://open.bigmodel.cn/api/coding/paas/v4'),
+    'minimax-coding-plan': entry('MiniMax Token Plan (minimax.io)', 'https://api.minimax.io/anthropic/v1'),
+  };
+  // Free APIs and pay-as-you-go platforms with similar words stay reviewable.
+  const keep = {
+    zai: entry('Z.AI', 'https://api.z.ai/api/paas/v4'),
+    'tencent-tokenhub': entry('Tencent TokenHub', 'https://tokenhub.tencentmaas.com/v1'),
+    commandcode: entry('CommandCode', 'https://api.commandcode.ai/provider/v1'),
+    'opencode-go': entry('OpenCode Go', 'https://opencode.ai/inference/go/openai/v1'),
+    'siliconflow-cn': entry('SiliconFlow (China)', 'https://api.siliconflow.cn/v1'),
+  };
+  const { candidates, filtered } = discoverProvidersReport({ ...plans, ...keep }, []);
+  assert.deepEqual(candidates.map(c => c.provider_id).sort(), Object.keys(keep).sort());
+  assert.deepEqual(filtered.map(f => f.provider_id).sort(), Object.keys(plans).sort());
+  assert.ok(filtered.every(f => f.reason === 'subscription plan (not a free API)'));
+  for (const [id, p] of Object.entries(keep)) assert.equal(isSubscriptionPlan(id, p), false, id);
+});
