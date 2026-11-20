@@ -4,10 +4,10 @@
 
 免费大模型 API 服务商目录：额度和价格均附官方来源，并通过探测监控记录可用状态、响应延迟和 90 天每日历史。
 
-**网站：https://free-llm-apis.pages.dev**
+**网站：https://free-llm-site.free-llm-status.workers.dev**
 
-[![在线站点](https://img.shields.io/badge/在线站点-free--llm--apis.pages.dev-22c55e?style=flat-square)](https://free-llm-apis.pages.dev)
-[![服务商数量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-apis.pages.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=%E6%9C%8D%E5%8A%A1%E5%95%86&style=flat-square&color=3b82f6)](https://free-llm-apis.pages.dev/providers)
+[![在线站点](https://img.shields.io/badge/在线站点-free--llm--site.free--llm--status.workers.dev-22c55e?style=flat-square)](https://free-llm-site.free-llm-status.workers.dev)
+[![服务商数量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-site.free-llm-status.workers.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=%E6%9C%8D%E5%8A%A1%E5%95%86&style=flat-square&color=3b82f6)](https://free-llm-site.free-llm-status.workers.dev/providers/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ---

@@ -1,4 +1,4 @@
-export const DEFAULT_SITE = 'https://free-llm-apis.pages.dev';
+export const DEFAULT_SITE = 'https://free-llm-site.free-llm-status.workers.dev';
 
 // Pages build to `<route>/index.html`, so the canonical form of every page URL ends in '/'
 // (matching @astrojs/sitemap output and the static host's redirects). Paths with a file

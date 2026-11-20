@@ -4,10 +4,10 @@
 
 Free LLM API directory with sourced limits, prices and probe monitoring, including status, latency and 90-day daily probe history.
 
-**Website: https://free-llm-apis.pages.dev**
+**Website: https://free-llm-site.free-llm-status.workers.dev**
 
-[![Live Site](https://img.shields.io/badge/Live_Site-free--llm--apis.pages.dev-22c55e?style=flat-square)](https://free-llm-apis.pages.dev)
-[![Providers](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-apis.pages.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=providers&style=flat-square&color=3b82f6)](https://free-llm-apis.pages.dev/providers)
+[![Live Site](https://img.shields.io/badge/Live_Site-free--llm--site.free--llm--status.workers.dev-22c55e?style=flat-square)](https://free-llm-site.free-llm-status.workers.dev)
+[![Providers](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-site.free-llm-status.workers.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=providers&style=flat-square&color=3b82f6)](https://free-llm-site.free-llm-status.workers.dev/providers/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ---
