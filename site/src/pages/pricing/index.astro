@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-import { contextToNumber, formatPrice } from '../../lib/format';
+import { contextToNumber, dateRange, daysSince, formatPrice, isStale, latestDate, liveCatalogSource } from '../../lib/format';
 const providers = getProviders(Astro.locals);
 
 interface PriceRow {
@@ -19,10 +19,14 @@ interface PriceRow {
   checkedAt?: string;
   // Last day a promotional price applies (pricing.valid_until).
   validUntil?: string;
+  // Price comes from the provider's live API via the catalog sync job; its
+  // checkedAt is then the date the price last changed, not the last check.
+  autoSynced: boolean;
 }
 
 const rows: PriceRow[] = [];
 for (const p of providers) {
+  const live = liveCatalogSource(p);
   const catalog = [...(p.models ?? []), ...(p.paid_models ?? [])];
   for (const m of catalog) {
     const pricing = m.pricing;
@@ -40,6 +44,8 @@ for (const p of providers) {
         source: pricing.source_url,
         checkedAt: pricing.checked_at,
         validUntil: pricing.valid_until,
+        // A price recorded from another page stays manual even for a synced provider.
+        autoSynced: live !== null && (!live.url || !pricing.source_url || pricing.source_url === live.url),
       });
     }
   }
@@ -56,6 +62,49 @@ const currencyLabel = currencies.length > 1 ? `per 1M tokens, sorted within each
 
 const subscriptionProviders = providers.filter(p => p.pricing_note);
 
+// Freshness is evaluated against the build time (static mode) or the request
+// time (dynamic mode). Manually maintained prices checked more than
+// STALE_DAYS ago get a badge; auto-synced prices never do, because the sync
+// job only moves their date when the price itself changes.
+const STALE_DAYS = 30;
+const now = new Date();
+const isRowStale = (r: PriceRow) => !r.autoSynced && isStale(r.checkedAt, now, STALE_DAYS);
+// Rows carry different dates, so the page shows their range rather than one
+// "last updated" date that would imply the whole table was refreshed then.
+const priceDates = dateRange(rows.map(r => r.checkedAt));
+const pricesLastUpdated = latestDate(rows.map(r => r.checkedAt));
+
+// One summary per provider that has priced rows, in catalog order. A provider
+// is auto-synced when its catalog comes from the sync job (liveCatalogSource);
+// everything else is maintained by hand.
+const providerSummaries = providers
+  .map(p => {
+    const providerRows = rows.filter(r => r.providerId === p.id);
+    const live = liveCatalogSource(p);
+    const manualRows = providerRows.filter(r => !r.autoSynced);
+    const lastChecked = latestDate(manualRows.map(r => r.checkedAt));
+    return {
+      id: p.id,
+      name: p.name,
+      count: providerRows.length,
+      autoSynced: live !== null && manualRows.length === 0,
+      // Date the live catalog last changed (it is not re-stamped on quiet syncs).
+      catalogChanged: live?.checkedAt,
+      lastChecked,
+      stale: manualRows.some(isRowStale),
+    };
+  })
+  .filter(s => s.count > 0);
+const autoSyncedNames = providerSummaries.filter(s => s.autoSynced).map(s => s.name);
+const manualNames = providerSummaries.filter(s => !s.autoSynced).map(s => s.name);
+const staleRowCount = rows.filter(isRowStale).length;
+
+// Active free providers with no published per-token price and no pricing note
+// (typically newly onboarded free tiers) never appear in the table.
+const pricedProviderIds = new Set(rows.map(r => r.providerId));
+const unpricedFreeProviders = providers.filter(p => p.status === 'active' && !pricedProviderIds.has(p.id) && !p.pricing_note);
+const listFormat = (names: string[]) => names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
 ---
 
 <Layout
@@ -66,21 +115,72 @@ const subscriptionProviders = providers.filter(p => p.pricing_note);
     "@type": "WebPage",
     "name": "LLM API Pricing Comparison",
     "description": "Compare paid per-token pricing across LLM API providers.",
-    "url": siteURL(Astro.site, '/pricing/')
+    "url": siteURL(Astro.site, '/pricing/'),
+    ...(pricesLastUpdated ? { "dateModified": pricesLastUpdated } : {})
   }}
 >
   <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
     <!-- Hero section -->
     <div class="pt-10 pb-6">
       <h1 class="text-2xl font-bold text-white mb-2">Pricing</h1>
+      <p class="text-slate-300 text-sm mb-2">Paid reference prices for when free quotas run out.</p>
       <p class="text-slate-500 text-sm font-mono">
         Comparing <span class="text-slate-300 font-semibold">{rows.length}</span> paid models across <span class="text-slate-300 font-semibold">{providerCount}</span> {providerCount === 1 ? 'provider' : 'providers'} — {currencyLabel}
       </p>
+      <p class="text-slate-500 text-xs mt-2" id="pricing-freshness">
+        {priceDates
+          ? (priceDates.oldest === priceDates.newest
+            ? <>Price dates: <span class="text-slate-300 font-mono">{priceDates.newest}</span></>
+            : <>Price dates range from <span class="text-slate-300 font-mono">{priceDates.oldest}</span> to <span class="text-slate-300 font-mono">{priceDates.newest}</span> (newest)</>)
+          : <>Price dates: <span class="text-slate-300 font-mono">unknown</span></>}
+        {autoSyncedNames.length > 0 && <> · Synced from live API: <span class="text-emerald-300">{listFormat(autoSyncedNames)}</span></>}
+        {manualNames.length > 0 && <> · Manually maintained: <span class="text-slate-300">{listFormat(manualNames)}</span></>}
+      </p>
     </div>
 
+    <!-- Per-provider freshness summary -->
+    {providerSummaries.length > 0 && (
+      <div class="flex flex-wrap gap-2 mb-5" aria-label="Price sources by provider">
+        {providerSummaries.map(s => (
+          <button
+            type="button"
+            class="provider-chip inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 bg-slate-800/40 border border-slate-700/60 hover:border-slate-500 aria-pressed:border-blue-500 aria-pressed:bg-blue-500/10 rounded-lg px-3 py-1.5 text-xs text-slate-400 text-left transition-colors duration-150"
+            data-provider={s.id}
+            aria-pressed="false"
+            title={`Show only ${s.name} prices (click again to show all)`}
+          >
+            <span class="font-medium text-slate-200">{s.name}</span>
+            <span aria-hidden="true">·</span>
+            <span>{s.count} {s.count === 1 ? 'price' : 'prices'}</span>
+            <span aria-hidden="true">·</span>
+            {s.autoSynced
+              ? <>
+                  <span class="text-emerald-300">synced from live API</span>
+                  {s.catalogChanged && <><span aria-hidden="true">·</span><span title="The sync job only records a date when the catalog changes">catalog last changed {s.catalogChanged}</span></>}
+                </>
+              : <>
+                  <span class="text-slate-300">manual</span>
+                  <span aria-hidden="true">·</span>
+                  <span class={s.stale ? 'text-amber-300' : ''}>last checked {s.lastChecked ?? 'unknown'}</span>
+                </>}
+          </button>
+        ))}
+      </div>
+    )}
+
     <!-- Disclaimer -->
-    <div class="bg-slate-800/30 border border-slate-700/50 rounded-xl px-4 py-3 mb-5 text-xs text-slate-500">
-      Prices are sourced from each provider's official pricing page and change often — verify on the provider's site before budgeting. Includes paid services whose free tiers have ended. Text input prices and standard/base rates are shown; some providers offer batch or cached-input discounts not reflected here.
+    <div class="bg-slate-800/30 border border-slate-700/50 rounded-xl px-4 py-3 mb-5 text-xs text-slate-500 space-y-1.5">
+      <p>
+        Auto-synced prices are read from the provider's live API on each catalog sync, and their date shows when the price last changed; manually maintained prices are only updated when someone re-checks the provider's pricing page{staleRowCount > 0 ? <>, so <span class="text-amber-300">{staleRowCount} {staleRowCount === 1 ? 'price is' : 'prices are'}</span> marked "May be outdated" (checked more than {STALE_DAYS} days ago)</> : null}. Always verify on the provider's site before budgeting.
+      </p>
+      <p>
+        Includes paid services whose free tiers have ended. Text input prices and standard/base rates are shown; some providers offer batch or cached-input discounts not reflected here.
+      </p>
+      {unpricedFreeProviders.length > 0 && (
+        <p>
+          Free providers without published per-token prices — such as {listFormat(unpricedFreeProviders.slice(-3).map(p => p.name))} — are not listed here. See <a href="/providers" class="text-blue-300 underline underline-offset-2">all providers</a> for their free quotas.
+        </p>
+      )}
     </div>
 
     <!-- Search -->
@@ -128,6 +228,7 @@ const subscriptionProviders = providers.filter(p => p.pricing_note);
               class="price-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
               data-name={`${row.providerName} ${row.modelName} ${row.modelId}`.toLowerCase()}
               data-href={`/providers/${row.providerId}`}
+              data-provider={row.providerId}
               data-currency={row.currency}
               data-currency-rank={currencyRank.get(row.currency)}
               data-input={row.input}
@@ -138,7 +239,22 @@ const subscriptionProviders = providers.filter(p => p.pricing_note);
               <td class="px-4 py-3 min-w-0">
                 <a href={`/providers/${row.providerId}`} class="font-semibold text-slate-100 text-sm truncate">{row.modelName}</a>
                 <div class="text-xs text-slate-500 font-mono truncate">{row.modelId}</div>
-                {row.source && <a href={row.source} target="_blank" rel="noopener noreferrer" class="text-xs text-blue-300 underline">Source · {row.checkedAt}</a>}
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mt-0.5">
+                  {(() => {
+                    const label = row.autoSynced
+                      ? (row.checkedAt ? `Price unchanged since ${row.checkedAt}` : 'Synced from live API')
+                      : `Checked ${row.checkedAt ?? 'date unknown'}`;
+                    return row.source
+                      ? <a href={row.source} target="_blank" rel="noopener noreferrer" class="text-blue-300 underline">{label}</a>
+                      : <span>{label}</span>;
+                  })()}
+                  {isRowStale(row) && (
+                    <span
+                      class="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-px text-[10px] font-medium text-amber-300"
+                      title={daysSince(row.checkedAt, now) === null ? 'No check date recorded' : `Last checked ${daysSince(row.checkedAt, now)} days ago`}
+                    >May be outdated</span>
+                  )}
+                </div>
                 {row.validUntil && <div class="text-xs text-amber-300">Promotional price until {row.validUntil}</div>}
               </td>
               <td class="px-4 py-3 min-w-0">
@@ -248,14 +364,30 @@ const subscriptionProviders = providers.filter(p => p.pricing_note);
   const searchInput = document.getElementById('pricing-search') as HTMLInputElement | null;
   const noResultsRow = document.getElementById('no-results-row');
 
-  searchInput?.addEventListener('input', () => {
-    const q = searchInput.value.trim().toLowerCase();
+  // Provider chips narrow the table to one provider (click again to clear);
+  // the filter combines with the text search.
+  let providerFilter = '';
+  const chips = document.querySelectorAll<HTMLElement>('.provider-chip');
+
+  function applyFilters() {
+    const q = searchInput?.value.trim().toLowerCase() ?? '';
     let visibleCount = 0;
     document.querySelectorAll<HTMLElement>('.price-row').forEach(row => {
-      const visible = !q || (row.getAttribute('data-name')?.includes(q) ?? false);
+      const visible = (!providerFilter || row.dataset.provider === providerFilter)
+        && (!q || (row.getAttribute('data-name')?.includes(q) ?? false));
       row.style.display = visible ? '' : 'none';
       if (visible) visibleCount++;
     });
     noResultsRow?.classList.toggle('hidden', visibleCount > 0);
+  }
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      providerFilter = providerFilter === chip.dataset.provider ? '' : chip.dataset.provider ?? '';
+      chips.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.provider === providerFilter)));
+      applyFilters();
+    });
   });
+
+  searchInput?.addEventListener('input', applyFilters);
 </script>
