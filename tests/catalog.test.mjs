@@ -17,7 +17,7 @@ test('catalog rejects data that would break pages or publish invalid metadata', 
   assert.deepEqual(validateProvider({ ...valid, paid_models: [{ ...paidModel, pricing }] }), []);
 });
 test('active providers need evidence; dates must not be in the future', () => {
-  assert.match(validateProvider({ ...valid, sources: undefined }).join(), /sources/);
+  assert.deepEqual(validateProvider({ ...valid, sources: undefined }), [], 'sources is optional');
   assert.match(validateProvider({ ...valid, sources: [] }).join(), /sources/);
   const { sources, ...archived } = { ...valid, status: 'archived' };
   assert.deepEqual(validateProvider(archived), []);

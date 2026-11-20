@@ -88,8 +88,9 @@ export function validateProvider(p, expectedId, options) {
   }
   if (idsByKey.models && idsByKey.paid_models) for (const id of idsByKey.paid_models) require(!idsByKey.models.has(id), `${id}: listed in both models and paid_models`);
   if (Array.isArray(p.models) && Array.isArray(p.top_models)) for (const id of p.top_models) require(p.models.some(m => m?.id === id && m.status !== 'deprecated'), `top model ${id} must reference an active model`);
-  if (p.status === 'active' || p.sources !== undefined) {
-    require(Array.isArray(p.sources) && p.sources.length > 0, p.status === 'active' ? 'active providers need a nonempty sources array' : 'sources must be a nonempty array');
+  // sources is optional (the operator attests recurring free access at review time); when present it must be valid.
+  if (p.sources !== undefined) {
+    require(Array.isArray(p.sources) && p.sources.length > 0, 'sources must be a nonempty array when present');
     for (const s of Array.isArray(p.sources) ? p.sources : []) {
       require(object(s) && httpsURL(s.url) && typeof s.label === 'string' && s.label.trim() && validDate(s.checked_at), 'sources need an HTTPS URL, label and checked_at date');
       if (object(s)) notFuture(s.checked_at, `source ${s.url} checked_at`);
