@@ -59,6 +59,31 @@ export function catalogResponsePolicy(catalog: CatalogState, pathname: string, s
 export const snapshotState = (fallback: Provider[], reason: CatalogState['reason']): CatalogState =>
   ({ providers: fallback, revision: 'bundled', origin: 'snapshot', unavailable: true, reason });
 
+/** The subset of a Cloudflare service binding (Fetcher) the site uses. */
+export interface CatalogBinding {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
+// A service binding ignores the hostname, but fetch() still needs an absolute URL.
+export const CHECKER_BINDING_ORIGIN = 'https://checker.internal';
+
+export interface CatalogSource { url: string; via: 'binding' | 'http'; fetcher?: typeof fetch }
+
+/**
+ * Chooses how the site reaches the checker's public catalog. The CHECKER service binding wins when
+ * the Worker has one: on workers.dev a Worker cannot fetch another workers.dev Worker on the same
+ * account (error 1042). Without a binding (`astro dev`, tests, local previews) the HTTP URL is used.
+ * Returns undefined when neither is configured.
+ */
+export function catalogSource(binding: CatalogBinding | null | undefined, httpUrl: string | null | undefined): CatalogSource | undefined {
+  if (binding && typeof binding.fetch === 'function') {
+    // Call as a method: a Fetcher must keep its `this`.
+    return { url: CHECKER_BINDING_ORIGIN, via: 'binding', fetcher: ((input, init) => binding.fetch(input, init)) as typeof fetch };
+  }
+  const url = typeof httpUrl === 'string' ? httpUrl.trim() : '';
+  return url ? { url, via: 'http' } : undefined;
+}
+
 interface CacheEntry { url: string; state: CatalogState; checkedAt: number }
 
 export interface CatalogCache { entry?: CacheEntry; failedAt?: number }

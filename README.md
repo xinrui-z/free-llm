@@ -161,7 +161,8 @@ The dev server reads `site/src/data/providers/` (aggregated by `index.ts`). For 
 |----------|-------|---------|
 | `CATALOG_MODE` | Repository variable / build env | `static` (default) or `dynamic`; any other value fails the build |
 | `PUBLIC_STATUS_WORKER_URL` | Repository secret / build env / `site/.env.local` | Checker origin for browser status and changelog requests; dynamic-mode catalog fallback |
-| `CATALOG_API_URL` | Site Worker runtime variable (or build env) | Catalog API origin for dynamic server rendering; defaults to `PUBLIC_STATUS_WORKER_URL` |
+| `CATALOG_API_URL` | Site Worker runtime variable (or build env) | HTTP catalog API origin for dynamic rendering when the Worker has no `CHECKER` service binding (`astro dev`, or a build with `CATALOG_CHECKER_BINDING=off`); defaults to `PUBLIC_STATUS_WORKER_URL` |
+| `CATALOG_CHECKER_BINDING` | Build env | `on` (default) or `off`; `off` builds a dynamic site that ignores the `CHECKER` binding and always uses `CATALOG_API_URL` |
 | `CATALOG_CACHE_TTL_MS` | Site Worker runtime variable (or build env) | Dynamic-mode per-isolate catalog cache, default 60000; `0` disables |
 | `PUBLIC_SITE_URL` | Repository variable / build env | Canonical site URL for canonical links, sitemap and `robots.txt` |
 | `CATALOG_ALLOW_EXPIRED` | Build env | `1` makes expired promotional prices warnings instead of errors (deploy and sync use this) |
@@ -186,7 +187,9 @@ The site is prerendered from the provider JSON files and deployed to Cloudflare 
 
 ### Dynamic mode
 
-Pages are rendered on Cloudflare Workers from a catalog API (`GET /api/catalog`), so new providers appear without a rebuild. Set `CATALOG_MODE=dynamic` and set `CATALOG_API_URL` on the `free-llm-site` Worker with `wrangler secret put` (`keep_vars` preserves it across deploys). If the API is unreachable or returns invalid data, pages fall back to the last validated catalog and then to the bundled provider JSON, with a visible notice.
+Pages are rendered on Cloudflare Workers from a catalog API (`GET /api/catalog`), so new providers appear without a rebuild. Set `CATALOG_MODE=dynamic`. The `free-llm-site` Worker reads the catalog from the `free-llm-checker` Worker through the `CHECKER` service binding in [`site/wrangler.jsonc`](site/wrangler.jsonc), because a `workers.dev` Worker cannot fetch another `workers.dev` Worker on the same account; deploy the checker first. Browsers still call the checker's public `/api/status` and `/api/changelog` over HTTPS. Without the binding (`astro dev`) the site uses `CATALOG_API_URL`. A production build keeps the binding in a local preview as well, so without a running `free-llm-checker` the preview shows the bundled snapshot; build with `CATALOG_CHECKER_BINDING=off` for a preview that reads `CATALOG_API_URL`. If the catalog is unreachable or invalid, pages fall back to the last validated catalog and then to the bundled provider JSON, with a visible notice.
+
+After the dynamic cutover the site is served at https://free-llm-site.free-llm-status.workers.dev, and https://free-llm-apis.pages.dev redirects there with a 301 (see [`redirect/`](redirect/README.md)). The links at the top of this README change at cutover.
 
 ### GitHub Actions secrets
 

@@ -53,7 +53,7 @@ Deployment (`.github/workflows/deploy.yml`) runs on pushes to `main` and on disp
 
 1. `verify` runs `npm run check` and both browser suites, then uploads the built site.
 2. `sync-providers` replaces the checker's KV catalog with the complete provider bundle (`PUT /api/providers`) and the curated changelog (`POST /api/changelog/replace`). It then appends generated catalog changelog entries with `gen-changelog.mjs`, comparing against the head of the most recent deployment whose append step succeeded, so a superseded queued run does not lose changes. If no valid base exists it warns and skips the generated entries; the deployment continues. A push (not a catalog dispatch) also triggers one authorized probe refresh.
-3. `deploy-site` publishes `site/dist` to Pages.
+3. `deploy-site` publishes `site/dist` to Pages (static mode) or deploys the `free-llm-site` Worker (dynamic mode).
 
 `gen-changelog.mjs` reads `WORKER_URL` and `REFRESH_SECRET` from the environment only. The legacy checker probes each provider once per hour.
 
@@ -63,6 +63,25 @@ The live catalog is maintained in the private checker and served read-only from 
 
 - `sync-catalog.yml` and the deployment's KV catalog replacement are skipped. The deployment still posts `changelog.json` to the checker ("Sync curated changelog (dynamic)"), which keeps those entries permanently. The site Worker deploys only after the checker's `/api/catalog` returns a non-legacy revision with providers.
 - The provider JSON files are the checker's seed and the site's bundled fallback snapshot. Maintainers refresh them from the live catalog through a pull request.
+- The `free-llm-site` Worker reads the catalog through its `CHECKER` service binding to `free-llm-checker` ([`site/wrangler.jsonc`](../site/wrangler.jsonc)). A `workers.dev` Worker cannot fetch another `workers.dev` Worker on the same account over HTTP (error 1042), so the binding is required in production; the deploy job fails if the generated `site/dist/server/wrangler.json` lacks it. `astro dev` has no binding and uses `CATALOG_API_URL` (or `PUBLIC_STATUS_WORKER_URL`). A production build keeps the `CHECKER` binding in a local preview too: without a running `free-llm-checker` the preview serves the bundled snapshot. Build with `CATALOG_CHECKER_BINDING=off` to make a preview read `CATALOG_API_URL`. Browsers call the checker's public `/api/status` and `/api/changelog` directly.
+- `npm --prefix site run test:dynamic` runs a stand-in `free-llm-checker` Worker (`site/tests/fake-checker/worker.mjs`) next to the site, so the suite covers the service binding path.
+
+### Cutover to dynamic mode on workers.dev
+
+The checker answers CORS for one origin only (`ALLOWED_ORIGIN`). Until the Pages site becomes a redirect, it keeps serving visitors and their browsers still call the checker's `/api/status` and `/api/changelog` (`site/src/lib/status-client.ts`, `changelog-client.ts`); with the checker's origin set to the Worker site, those calls fail CORS and the Pages site loses its live status and changelog.
+
+The private runbook covers the checker side (D1, bootstrap and its own deployment). For this repository, in order:
+
+1. The checker (`https://free-llm-checker.free-llm-status.workers.dev`) is deployed with a bootstrapped D1 catalog and its `/api/catalog` returns a non-legacy revision. Deploy it with its CORS origin still on the Pages site (`npm run deploy -- --var ALLOWED_ORIGIN:https://free-llm-apis.pages.dev` in `checker-worker/`), not the `https://free-llm-site.free-llm-status.workers.dev` value from its `wrangler.toml`.
+2. Set the repository variables `CATALOG_MODE=dynamic` and `PUBLIC_SITE_URL=https://free-llm-site.free-llm-status.workers.dev`, and point the `PUBLIC_STATUS_WORKER_URL` secret at the checker. Run the deploy workflow. It checks the checker's catalog, then deploys `free-llm-site` with `wrangler deploy --config dist/server/wrangler.json`.
+3. Check https://free-llm-site.free-llm-status.workers.dev: pages return `X-Catalog-Source: live` and show no snapshot notice. Then redeploy the checker without the override, so `ALLOWED_ORIGIN` is `https://free-llm-site.free-llm-status.workers.dev`. From this moment the Pages site's live status and changelog stop loading, so go straight on to step 4.
+4. Deploy [`redirect/`](../redirect/README.md) once by hand to the `free-llm-apis` Pages project. From then on, https://free-llm-apis.pages.dev answers every path with a 301 to the same path on the Worker site. The workflow deploys nothing to Pages while `CATALOG_MODE=dynamic`; switching back to `static` would redeploy the static site over the redirect.
+5. Update the README links and badges to the new URL.
+
+Rollback:
+
+- Before step 4 the static Pages site is still live. If the checker's CORS origin already points at the Worker site, redeploy the checker with `--var ALLOWED_ORIGIN:https://free-llm-apis.pages.dev` so the Pages site's status and changelog work again.
+- Back to static mode: a checker bound to D1 rejects the static deployment's full catalog replacement (`PUT /api/providers` returns 409), so `sync-providers` fails and nothing is published. Return the checker to legacy KV mode first, following the private runbook's full legacy rollback, and deploy it with `ALLOWED_ORIGIN=https://free-llm-apis.pages.dev`. Then set `CATALOG_MODE` back to `static` and `PUBLIC_SITE_URL` to the Pages URL, and rerun the deploy workflow. It republishes the static site to Pages, replacing the redirect.
 
 ## Checks and deployment
 

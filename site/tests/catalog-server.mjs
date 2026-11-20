@@ -18,13 +18,17 @@ const replicaCatalog=snapshot=>({...pick(snapshot,['revision','updated_at']),pro
 }))});
 const publicCatalog=replicaCatalog;
 let state={extra:false,mode:'live'};
+// How the last /api/catalog request arrived: 'checker-binding' via tests/fake-checker/worker.mjs, else 'http'.
+let lastVia='';
 createServer(async(req,res)=>{
   res.setHeader('Content-Type','application/json');
   if(req.url==='/test/state'&&req.method==='POST'){
     let body='';for await(const chunk of req)body+=chunk;
     state={extra:false,mode:'live',...JSON.parse(body)};res.end('{}');return;
   }
+  if(req.url==='/test/last-via'){res.end(JSON.stringify({via:lastVia}));return;}
   if(req.url==='/api/catalog'){
+    lastVia=req.headers['x-test-via']||'http';
     if(state.mode==='offline'){res.statusCode=503;res.end('{}');return;}
     if(state.mode==='malformed'){res.end('{"providers":[null]}');return;}
     const revision=state.extra?'revision-two':'revision-one';

@@ -1,7 +1,8 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getSecret } from 'astro:env/server';
 import fallback from './data/providers';
-import { CATALOG_TTL_MS, catalogResponsePolicy, fetchLiveCatalog, snapshotState } from './lib/catalog';
+import { checkerBinding } from 'virtual:checker-binding';
+import { CATALOG_TTL_MS, catalogResponsePolicy, catalogSource, fetchLiveCatalog, snapshotState } from './lib/catalog';
 
 let reportedMisconfiguration = false;
 const ttl = (value: unknown) => {
@@ -12,16 +13,19 @@ const ttl = (value: unknown) => {
 export const onRequest = defineMiddleware(async (context, next) => {
   // Prerendered routes (robots.txt) never depend on the live catalog.
   if (import.meta.env.CATALOG_DYNAMIC && !context.isPrerendered) {
-    const url = getSecret('CATALOG_API_URL') || import.meta.env.CATALOG_API_URL || import.meta.env.PUBLIC_STATUS_WORKER_URL;
-    if (url) {
-      context.locals.catalog = await fetchLiveCatalog(url, fallback, {
+    // The CHECKER service binding (production Worker) wins; otherwise the catalog is read over HTTP.
+    const source = catalogSource(await checkerBinding(),
+      getSecret('CATALOG_API_URL') || import.meta.env.CATALOG_API_URL || import.meta.env.PUBLIC_STATUS_WORKER_URL);
+    if (source) {
+      context.locals.catalog = await fetchLiveCatalog(source.url, fallback, {
+        ...(source.fetcher ? { fetcher: source.fetcher } : {}),
         // `astro dev` defaults to no reuse so catalog changes show up on the next request.
         ttlMs: ttl(getSecret('CATALOG_CACHE_TTL_MS')) ?? ttl(import.meta.env.CATALOG_CACHE_TTL_MS) ?? (import.meta.env.DEV ? 0 : CATALOG_TTL_MS),
       });
     } else {
       if (!reportedMisconfiguration) {
         reportedMisconfiguration = true;
-        console.error('[catalog] CATALOG_MODE=dynamic but no CATALOG_API_URL (runtime variable or build-time) or PUBLIC_STATUS_WORKER_URL is configured; serving the bundled snapshot.');
+        console.error('[catalog] CATALOG_MODE=dynamic but there is no CHECKER service binding, CATALOG_API_URL (runtime variable or build-time) or PUBLIC_STATUS_WORKER_URL; serving the bundled snapshot.');
       }
       context.locals.catalog = snapshotState(fallback, 'misconfigured');
     }

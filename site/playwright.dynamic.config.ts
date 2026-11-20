@@ -14,7 +14,9 @@ export default defineConfig({
     { command:'node tests/catalog-server.mjs',url:`${catalogURL}/api/catalog`,reuseExistingServer:false,env:{CATALOG_TEST_PORT:catalogPort} },
     { command:'npm run build -- --outDir dynamic-test-dist && npm run preview -- --outDir dynamic-test-dist --ignore-lock --host 127.0.0.1 --port 4325',
       url:'http://127.0.0.1:4325',reuseExistingServer:false,timeout:120000,stdout:'pipe',
-      env:{CATALOG_MODE:'dynamic',CATALOG_API_URL:catalogURL,PUBLIC_STATUS_WORKER_URL:'https://status.test',CATALOG_CACHE_TTL_MS:'0'},
+      // CATALOG_TEST_CHECKER_UPSTREAM runs tests/fake-checker/worker.mjs as the free-llm-checker service, so pages
+      // read the catalog through the real CHECKER binding. CATALOG_API_URL is also set: the binding must win over it.
+      env:{CATALOG_MODE:'dynamic',CATALOG_API_URL:catalogURL,CATALOG_TEST_CHECKER_UPSTREAM:catalogURL,PUBLIC_STATUS_WORKER_URL:'https://status.test',CATALOG_CACHE_TTL_MS:'0'},
     },
   ],
 });

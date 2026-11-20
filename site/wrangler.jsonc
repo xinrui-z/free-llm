@@ -5,6 +5,10 @@
   "compatibility_date": "2026-11-17",
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "binding": "ASSETS" },
+  // Dynamic mode reads the catalog from the checker through this service binding (default entrypoint, public
+  // routes only). A workers.dev Worker cannot fetch another workers.dev Worker on the same account (error 1042).
+  // Without a deployed free-llm-checker, `wrangler deploy` of the site fails, so deploy the checker first.
+  "services": [{ "binding": "CHECKER", "service": "free-llm-checker" }],
   // Keep variables set in the Cloudflare dashboard (e.g. CATALOG_API_URL, CATALOG_CACHE_TTL_MS) across deploys.
   "keep_vars": true,
   "observability": { "enabled": true }
