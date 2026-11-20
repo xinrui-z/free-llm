@@ -3,17 +3,11 @@ import Layout from '../../layouts/Layout.astro';
 import { getProviders } from '../../lib/providers';
 const providers = getProviders(Astro.locals);
 import { compareQuota, formatQuota } from '../../lib/status';
-import { MODEL_FAMILIES, CATEGORY_COLORS, TAG_LABELS, TAG_ICONS } from '../../data/model-families';
+import { CATEGORY_COLORS, TAG_LABELS, TAG_ICONS, classifyModels, type ModelFamily } from '../../data/model-families';
 
 type Provider = typeof providers[0];
-type Model = Provider['models'][0];
 
 const activeProviders = (providers as Provider[]).filter(p => p.status === 'active');
-
-// Filter out non-chat models (e.g. safety classifiers like llama-prompt-guard)
-function isListableModel(model: Model): boolean {
-  return model.status !== 'deprecated' && !/prompt[-_]?guard/i.test(model.id);
-}
 
 interface ProviderEntry {
   provider: Provider;
@@ -24,56 +18,31 @@ interface ProviderEntry {
 }
 
 interface FamilyCard {
-  family: typeof MODEL_FAMILIES[0];
+  family: ModelFamily;
   entries: ProviderEntry[];
 }
 
-const familyCards: FamilyCard[] = [];
-const matchedKeys = new Set<string>();
+// Explicit families, then auto-generated vendor cards; unclassifiable IDs go to "Other".
+const classified = classifyModels(activeProviders);
 
-for (const family of MODEL_FAMILIES) {
-  const entries: ProviderEntry[] = [];
+const familyCards: FamilyCard[] = classified.families.map(({ family, entries }) => ({
+  family,
+  entries: entries
+    .map(({ provider, models }) => {
+      const bestModel = [...models].sort((a, b) => compareQuota(a.rpd, b.rpd))[0];
+      return {
+        provider,
+        bestRpd: bestModel.rpd ?? null,
+        bestRpm: bestModel.rpm ?? null,
+        bestModelId: bestModel.id,
+        modelCount: models.length,
+      };
+    })
+    .sort((a, b) => compareQuota(a.bestRpd, b.bestRpd) || a.provider.name.localeCompare(b.provider.name)),
+}));
 
-  for (const provider of activeProviders) {
-    const matching = (provider.models as Model[]).filter(
-      m => isListableModel(m) && family.match(m.id)
-    );
-    if (matching.length === 0) continue;
-
-    for (const m of matching) matchedKeys.add(`${provider.id}:${m.id}`);
-
-
-    const bestModel = [...matching].sort((a, b) => compareQuota(a.rpd, b.rpd))[0];
-
-    entries.push({
-      provider,
-      bestRpd: bestModel.rpd ?? null,
-      bestRpm: bestModel.rpm ?? null,
-      bestModelId: bestModel.id,
-      modelCount: matching.length,
-    });
-  }
-
-  if (entries.length === 0) continue;
-
-  entries.sort((a, b) => compareQuota(a.bestRpd, b.bestRpd) || a.provider.name.localeCompare(b.provider.name));
-
-  familyCards.push({ family, entries });
-}
-
-// "Other" bucket: unmatched models grouped by provider
-interface OtherEntry {
-  provider: Provider;
-  models: Model[];
-}
-const otherEntries: OtherEntry[] = [];
-for (const provider of activeProviders) {
-  const unmatched = (provider.models as Model[]).filter(
-    m => isListableModel(m) && !matchedKeys.has(`${provider.id}:${m.id}`)
-  );
-  if (unmatched.length > 0) otherEntries.push({ provider, models: unmatched });
-}
-
+// "Other" bucket: unclassifiable models grouped by provider
+const otherEntries = classified.other;
 
 ---
 
