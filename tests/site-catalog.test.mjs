@@ -125,5 +125,5 @@ test('canonical URLs use the trailing-slash directory form', () => {
   assert.equal(canonicalPath('/providers/groq/?q=1'), '/providers/groq/');
   assert.equal(canonicalPath('/robots.txt'), '/robots.txt');
   assert.equal(siteURL(new URL('https://example.com'), '/pricing'), 'https://example.com/pricing/');
-  assert.equal(siteURL(undefined), 'https://free-llm-apis.pages.dev/');
+  assert.equal(siteURL(undefined), 'https://free-llm-site.free-llm-status.workers.dev/');
 });

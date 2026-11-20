@@ -67,7 +67,7 @@ export default defineConfig({
   output: dynamic ? 'server' : 'static',
   adapter: cloudflare?.({ imageService: 'passthrough', prerenderEnvironment: 'node', ...testChecker }),
   session: false,
-  site: process.env.PUBLIC_SITE_URL || 'https://free-llm-apis.pages.dev',
+  site: process.env.PUBLIC_SITE_URL || 'https://free-llm-site.free-llm-status.workers.dev',
   // Both '/providers' and '/providers/' are served. Canonical URLs, JSON-LD and sitemaps use the
   // trailing-slash form produced by build.format 'directory' (see src/lib/site-url.ts).
   trailingSlash: 'ignore',
