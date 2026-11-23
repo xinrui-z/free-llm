@@ -1,0 +1,8 @@
+---
+// Reserved 8px slot left of a provider logo. Empty until a live snapshot arrives, then status-client.ts
+// puts a status dot in it (no layout shift). Inside an <a>, the dot is labelled via title/aria-label.
+// liveOnly: take no space at all until live data arrives (for inline text where an empty gap looks odd).
+interface Props { providerId: string; liveOnly?: boolean; class?: string }
+const { providerId, liveOnly = false, class: cls } = Astro.props;
+---
+<span class:list={['slot', cls]} data-status-dot={providerId} data-live-only={liveOnly ? '' : undefined}></span>

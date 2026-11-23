@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contextToNumber, dateRange, daysSince, formatPrice, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, shellQuote, yamlString } from '../site/src/lib/format.ts';
+import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, shellQuote, yamlString } from '../site/src/lib/format.ts';
 
 test('context window labels and numbers sort numerically; unparseable values sort last', () => {
   for (const [label, tokens] of [['128K', 128_000], ['1M', 1_000_000], ['1.5m', 1_500_000], ['131,072', 131_072], [131072, 131072], [' 32k ', 32_000]]) {
@@ -76,4 +76,26 @@ test('the live source label matches the one the catalog sync job writes', async 
   const { readFile } = await import('node:fs/promises');
   const sync = await readFile(new URL('../scripts/catalog/sync.mjs', import.meta.url), 'utf8');
   assert.ok(sync.includes(`label: '${LIVE_CATALOG_SOURCE_LABEL}'`));
+});
+
+test('display numbers round before picking a unit and never abbreviate counts', () => {
+  // Context windows: round first so 999,500 reads "1M", never "1000K".
+  assert.equal(formatTokens(999_500).text, '1M');
+  assert.equal(formatTokens(999_999).text, '1M');
+  assert.equal(formatTokens(999_499).text, '999K');
+  assert.equal(formatTokens(131_072).text, '128K');
+  assert.equal(formatTokens(1_048_576).text, '1M');
+  assert.equal(formatTokens(1_024_000).text, '1.02M');
+  assert.equal(formatTokens(131_072).title, '131,072 tokens');
+  assert.equal(formatTokens('128k').text, '128K');
+  for (const bad of [null, undefined, '', 'n/a', 0, -5]) assert.equal(formatTokens(bad), null, String(bad));
+  // Latency: 999.6 ms rounds to a full second and reads "1.0 s", not "1000 ms".
+  assert.equal(formatLatency(999.6), '1.0 s');
+  assert.equal(formatLatency(999.4), '999 ms');
+  assert.equal(formatLatency(1234), '1.2 s');
+  assert.equal(formatLatency(-1), null);
+  // Request counts stay exact: 1,000 not 1K.
+  assert.equal(formatCount(1000), '1,000');
+  assert.equal(formatCount(14_400), '14,400');
+  assert.equal(formatCount(null), null);
 });

@@ -1,12 +1,29 @@
 ---
+// Provider fact page. Active providers: header (access, key, base URL) → Free tier → Quick start →
+// Models → Health (live only) → Notes → Paid rates (collapsed) → Free alternatives.
+// Archived providers use a compact template: one archive notice, alternatives first, history collapsed.
+// Works in both catalog modes: static (prerendered from src/data/providers) and dynamic
+// (per-request from Astro.locals.catalog; Layout shows the stale/snapshot notice).
 import Layout from '../../layouts/Layout.astro';
-import { siteURL } from '../../lib/site-url';
-import StatusBadge from '../../components/StatusBadge.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
-import { formatPrice, shellQuote } from '../../lib/format';
+import CopyButton from '../../components/CopyButton.astro';
+import CopyField from '../../components/CopyField.astro';
+import Fold from '../../components/Fold.astro';
+import Icon from '../../components/Icon.astro';
+import LimitFacts from '../../components/LimitFacts.astro';
+import NotPublished from '../../components/NotPublished.astro';
+import ProviderLogo from '../../components/ProviderLogo.astro';
+import ProviderRow from '../../components/ProviderRow.astro';
+import StatusNotice from '../../components/StatusNotice.astro';
+import { siteURL } from '../../lib/site-url';
+import {
+  NO_CONTEXT_NOTE, accessLine, apiKeyEnvName, archiveDate, formatCount, formatDate, formatRate, formatTokens, limitsOf, shellQuote, shortHost,
+} from '../../lib/format';
 import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
+import { MODEL_FAMILIES } from '../../data/model-families';
+import changelog from '../../data/changelog.json';
 
-import fallbackProviders from '../../data/providers';
+import fallbackProviders, { type Provider, type ProviderModel } from '../../data/providers';
 import { getProviders } from '../../lib/providers';
 
 export function getStaticPaths() {
@@ -20,101 +37,159 @@ const providers = getProviders(Astro.locals);
 const provider = providers.find(p => p.id === Astro.params.id);
 if (!provider) return new Response(Astro.locals.catalog?.unavailable ? 'Live catalog unavailable. Please try again shortly.' : 'Provider not found', { status: Astro.locals.catalog?.unavailable ? 503 : 404 });
 
-// Code examples. Catalog values are quoted for each language so an unusual
-// URL or model id cannot break out of the snippet.
-const exampleModel = provider.top_models[0] || 'your-model-id';
+const p: Provider = provider;
+const archived = p.status === 'archived';
 // Upstream API order, with any manually pinned models (model_order) first.
-const models = sortModels(provider.models ?? [], provider.model_order);
-const exampleBody = JSON.stringify({ model: exampleModel, messages: [{ role: 'user', content: 'Hello! How are you?' }] }, null, 2);
-const curlExample = `export API_KEY="your_api_key_here"
-curl ${shellQuote(`${provider.base_url.replace(/\/$/, '')}/chat/completions`)} \\
-  -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer $API_KEY" \\
-  -d ${shellQuote(exampleBody).replace(/\n/g, '\n  ')}`;
+const models: ProviderModel[] = sortModels(p.models ?? [], p.model_order);
+const L = limitsOf(p);
+const sources = (p.sources ?? []).filter(s => s && s.url);
+const verified = formatDate(p.last_verified);
 
-const pythonExample = `from openai import OpenAI
+/* ---------- model families (alternatives, tags) ---------- */
+const familyOf = (id: string) => MODEL_FAMILIES.find(f => f.match(id));
+const familiesOf = (list: { id: string }[] = []) => new Set(list.map(m => familyOf(m.id)?.id).filter((x): x is string => !!x));
+const ownFamilies = familiesOf(models);
+
+// Archived providers are never recommended: alternatives are active providers only, ranked by the number
+// of model families they share with this provider, then published daily limit, then catalog order.
+const alternatives = providers
+  .map((o, order) => ({ o, order, shared: [...familiesOf(o.models)].filter(f => ownFamilies.has(f)).length }))
+  .filter(x => x.o.status === 'active' && x.o.id !== p.id)
+  .sort((a, b) => b.shared - a.shared || (limitsOf(b.o).rpd ?? -1) - (limitsOf(a.o).rpd ?? -1) || a.order - b.order)
+  .slice(0, 3);
+const sharedCount = alternatives.filter(x => x.shared > 0).length;
+// One caption, under the heading, on active and archived pages alike.
+const altCaption = !alternatives.length ? '' : sharedCount === alternatives.length ? 'Active providers serving the same model families.'
+  : sharedCount ? 'Active providers serving the same model families come first.' : 'Other active providers with a free tier.';
+
+// Tags as neutral chips. A tag that names a model family none of the listed models belongs to
+// (e.g. a stale "llama" tag) is dropped so the header never advertises models the page does not list.
+const TAG_TEXT: Record<string, string> = {
+  'openai-compatible': 'OpenAI-compatible', 'function-call': 'function calling', 'china-available': 'available in China',
+  thinking: 'reasoning', rag: 'RAG',
+};
+const tags = (p.tags ?? []).filter(t => {
+  const fams = MODEL_FAMILIES.filter(f => f.id === t || f.id.replace(/[0-9-].*$/, '') === t);
+  return !fams.length || models.some(m => fams.some(f => f.match(m.id)));
+}).map(t => TAG_TEXT[t] ?? t.replace(/-/g, ' '));
+
+/* ---------- API key variable ---------- */
+// Only a suggested variable name; any name works. Derived from the public id (lib/format.ts), never from
+// api_key_env (the checker's secret binding name), so static and live pages and the Tools page agree.
+const envVar = apiKeyEnvName(p.id);
+
+/* ---------- Quick start ---------- */
+// Templates hold a sentinel where the model ID goes; the same fill rule runs on the server and in the
+// client script below. Every catalog value is quoted for its language, so an unusual URL or model ID
+// cannot break out of the snippet.
+const SENTINEL = '__QUICK_START_MODEL__';
+const modelIds = models.map(m => m.id);
+const topModel = p.top_models?.find(id => modelIds.includes(id));
+const defaultModel = topModel ?? modelIds[0] ?? 'your-model-id';
+const base = p.base_url.replace(/\/+$/, '');
+const templates: Record<string, string> = {
+  curl: `export ${envVar}="your-api-key"
+
+curl ${shellQuote(`${base}/chat/completions`)} \\
+  -H "Authorization: Bearer $${envVar}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": ${SENTINEL},
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'`,
+  python: `# pip install openai
+import os
+from openai import OpenAI
 
 client = OpenAI(
-    base_url=${JSON.stringify(provider.base_url)},
-    api_key="your_api_key_here",  # or use env var
+    base_url=${JSON.stringify(p.base_url)},
+    api_key=os.environ[${JSON.stringify(envVar)}],
 )
 
-response = client.chat.completions.create(
-    model=${JSON.stringify(exampleModel)},
-    messages=[
-        {"role": "user", "content": "Hello! How are you?"}
-    ]
+resp = client.chat.completions.create(
+    model=${SENTINEL},
+    messages=[{"role": "user", "content": "Hello!"}],
 )
-
-print(response.choices[0].message.content)`;
-
-const nodeExample = `import OpenAI from 'openai';
+print(resp.choices[0].message.content)`,
+  node: `// npm install openai
+import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: ${JSON.stringify(provider.base_url)},
-  apiKey: process.env.API_KEY ?? 'your_api_key_here',
+  baseURL: ${JSON.stringify(p.base_url)},
+  apiKey: process.env.${envVar},
 });
 
-const response = await client.chat.completions.create({
-  model: ${JSON.stringify(exampleModel)},
-  messages: [
-    { role: 'user', content: 'Hello! How are you?' }
-  ],
+const resp = await client.chat.completions.create({
+  model: ${SENTINEL},
+  messages: [{ role: "user", content: "Hello!" }],
 });
-
-console.log(response.choices[0].message.content);`;
-
-const sdkTabs = [
-  { id: 'curl', label: 'curl', code: curlExample, language: 'bash' },
-  { id: 'python', label: 'Python', code: pythonExample, language: 'python' },
-  { id: 'node', label: 'Node.js', code: nodeExample, language: 'javascript' },
+console.log(resp.choices[0].message.content);`,
+};
+const fillSnippet = (template: string, lang: string, model: string) =>
+  template.split(SENTINEL).join(lang === 'curl' ? JSON.stringify(model).replace(/'/g, `'\\''`) : JSON.stringify(model));
+const langs = [
+  { id: 'curl', label: 'curl', language: 'bash' },
+  { id: 'python', label: 'Python', language: 'python' },
+  { id: 'node', label: 'Node.js', language: 'javascript' },
 ];
 
-// Related providers (same tags, exclude current)
-const relatedProviders = providers
-  .filter(p => p.status === 'active' && p.id !== provider.id && (p.tags ?? []).some(t => (provider.tags ?? []).includes(t)))
-  .slice(0, 3);
+/* ---------- Models table ---------- */
+const FIRST_MODELS = 8;
+const showModelLimits = models.some(m => limitsOf(m).published);
+const ctxOf = (m: { context_window?: unknown }) => formatTokens(m.context_window);
+const modalitiesOf = (m: ProviderModel) => (Array.isArray(m.modalities) && m.modalities.length ? m.modalities : ['text']);
 
-function formatLatency(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '—';
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
-}
+/* ---------- Notes ---------- */
+const notes: [string, string][] = [];
+if (L.published && p.quota_note) notes.push(['Provider terms', p.quota_note]);
+if (p.catalog_note) notes.push(['Catalog note', p.catalog_note]);
 
-function formatNum(n: number | null | undefined): string {
-  if (n === null || n === undefined) return '—';
-  return n.toLocaleString();
-}
+/* ---------- Paid rates (after the free tier) ---------- */
+const priced = models.filter(m => m.pricing && (formatRate(m.pricing.input_per_million) || formatRate(m.pricing.output_per_million)));
+const paidCatalog = p.paid_models?.length ?? 0;
+const showPaid = !archived && (priced.length > 0 || paidCatalog > 0 || !!p.pricing_note);
+const paidNote = priced.length ? `(${priced.length} ${priced.length === 1 ? 'model' : 'models'})`
+  : paidCatalog ? `(${paidCatalog} paid catalog ${paidCatalog === 1 ? 'model' : 'models'})` : undefined;
+const pricingHref = `/pricing?provider=${encodeURIComponent(p.id)}`;
 
+/* ---------- Archived ---------- */
+const archivedOn = archived ? archiveDate(p, changelog as { provider_id?: string; type?: string; date?: string }[]) : null;
+const archiveSource = sources[0];
+const showArchivedDesc = !!p.description && p.description !== p.archive_reason;
+
+/* ---------- SEO ---------- */
+const pageTitle = archived ? `${p.name}: archived free tier` : `${p.name} free API: limits, models and quick start`;
+const pageDescription = archived
+  ? `${p.name} no longer offers a recurring free API tier. ${p.archive_reason ?? ''}`.trim()
+  : p.description ?? `${p.name} free API limits, models and an OpenAI-compatible quick start.`;
 ---
 
 <Layout
-  title={`${provider.name} ${provider.status === 'archived' ? '— Archived Free Tier' : 'Free API — Status, Models & Rate Limits'}`}
-  description={provider.description ?? `${provider.name} API model catalog and documented limits.`}
+  title={`${pageTitle} · Free LLM APIs`}
+  description={pageDescription}
   jsonLd={[
     {
       "@context": "https://schema.org",
       "@type": "WebPage",
-      "name": `${provider.name} — ${provider.status === 'archived' ? 'Archived Free Tier' : 'Free API Status & Models'}`,
-      "description": provider.description ?? `${provider.name} free LLM API status and usage information.`,
-      "url": siteURL(Astro.site, `/providers/${provider.id}/`),
+      "name": pageTitle,
+      "description": pageDescription,
+      "url": siteURL(Astro.site, `/providers/${p.id}/`),
       "breadcrumb": {
         "@type": "BreadcrumbList",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
-          { "@type": "ListItem", "position": 2, "name": "Providers", "item": siteURL(Astro.site, '/providers/') },
-          { "@type": "ListItem", "position": 3, "name": provider.name, "item": siteURL(Astro.site, `/providers/${provider.id}/`) }
+          { "@type": "ListItem", "position": 1, "name": "Providers", "item": siteURL(Astro.site) },
+          { "@type": "ListItem", "position": 2, "name": p.name, "item": siteURL(Astro.site, `/providers/${p.id}/`) }
         ]
       }
     },
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": `${provider.name} API`,
-      "url": provider.website_url ?? provider.base_url,
+      "name": `${p.name} API`,
+      "url": p.website_url ?? p.base_url,
       "applicationCategory": "DeveloperApplication",
-      "description": provider.description ?? `${provider.name} free LLM API`,
-      "offers": provider.status === 'active' ? {
+      "description": p.description ?? `${p.name} free LLM API`,
+      "offers": !archived ? {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD"
@@ -122,340 +197,472 @@ function formatNum(n: number | null | undefined): string {
     }
   ]}
 >
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-    <!-- Back link -->
-    <div class="pt-6 pb-2">
-      <a href="/providers" class="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors duration-150 text-sm w-fit">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        Back to Providers
-      </a>
-    </div>
+  <a class="crumb" href="/"><Icon name="back" size={14} />All providers</a>
 
-    <p id="fallback-banner" class="hidden mb-5 p-4 rounded-xl border border-amber-500/30 text-amber-300 text-sm">The latest probe reported an issue. <a href="/providers?status=active" class="underline">Browse operational alternatives</a>.</p>
-    {provider.status === 'archived' && <div class="mb-5 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-sm text-amber-200"><strong>Archived from the free API directory.</strong> {provider.archive_reason}</div>}
-    <!-- Provider header -->
-    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 md:p-6 mb-5">
-      <div class="flex items-start justify-between gap-4 flex-wrap">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-base font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-            {provider.logo
-              ? <img src={provider.logo} alt={provider.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
-              : null}
-            <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0)}</span>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="text-2xl font-bold text-white">{provider.name}</h1>
-              <span data-live-status={provider.id} data-badge-size="lg">
-                {provider.status === 'archived' ? <span class="text-sm text-amber-300">archived</span> : <StatusBadge status="unknown" size="lg" />}
-              </span>
+  {archived ? (
+    <>
+      <header class="phd">
+        <div class="phd-top">
+          <div class="phd-id">
+            <ProviderLogo provider={p} size={40} />
+            <div class="min0">
+              <div class="phd-name"><h1 class="h1" id="page-title" tabindex="-1">{p.name}</h1><span class="tag">Archived</span></div>
+              {showArchivedDesc && <p class="phd-desc">{p.description}</p>}
+              {p.website_url && (
+                <p class="phd-acc"><a class="lnk muted" href={p.website_url} target="_blank" rel="noopener noreferrer">{shortHost(p.website_url)} ↗</a></p>
+              )}
             </div>
-            {provider.description && (
-              <p class="text-slate-400 text-sm mt-0.5">{provider.description}</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="arch-box" role="note">
+        <div class="ttl">
+          <span class="tag"><span class="dot dot-sm d-dead" aria-hidden="true"></span>Archived</span>
+          <span>{archivedOn ? <><span class="date">{archivedOn}</span> · </> : null}No longer offers a recurring free tier.</span>
+        </div>
+        {p.archive_reason && <p class="sec">{p.archive_reason}</p>}
+        {archiveSource && (
+          <p class="caption">
+            <a class="lnk" href={archiveSource.url} target="_blank" rel="noopener noreferrer">{archiveSource.label || 'Source'} ↗</a>
+            {formatDate(archiveSource.checked_at) && <span> (checked <span class="date">{formatDate(archiveSource.checked_at)}</span>)</span>}
+          </p>
+        )}
+        {alternatives.length > 0 && <div><a class="btn btn-p" href="#alternatives">See free alternatives</a></div>}
+      </div>
+
+      {alternatives.length > 0 && (
+        <section class="sect" id="alternatives" tabindex="-1" aria-labelledby="alt-h">
+          <div class="sect-head pp-alt-head"><h2 class="h2" id="alt-h">Free alternatives</h2><a class="lnk" href="/">All free providers →</a></div>
+          {altCaption && <p class="caption pp-alt-cap">{altCaption}</p>}
+          <div class="alts">{alternatives.map(x => <ProviderRow provider={x.o} />)}</div>
+        </section>
+      )}
+
+      <section class="sect" aria-label="Historical record">
+        <Fold>
+          <Fragment slot="summary">Historical record <span class="muted">· last known catalog</span></Fragment>
+          <dl class="dl">
+            <div><dt>Access</dt><dd>{p.auth === 'credit_card_required' ? 'Required a credit card' : 'Required sign-up'}</dd></div>
+            {verified && <div><dt>Last verified</dt><dd><span class="date">{verified}</span></dd></div>}
+            {sources.length > 0 && (
+              <div><dt>Sources</dt><dd class="pp-links">{sources.map(s => <a class="lnk" href={s.url} target="_blank" rel="noopener noreferrer">{s.label || shortHost(s.url)} ↗</a>)}</dd></div>
             )}
-            <p class="text-slate-500 text-xs font-mono mt-1">{provider.base_url}</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 flex-wrap">
-          {provider.website_url && (
-            <a
-              href={provider.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-100 transition-colors duration-150"
-            >
-              Website
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-            </a>
-          )}
-          {provider.signup_url && (
-            <a
-              href={provider.signup_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 rounded-lg text-sm transition-colors duration-150"
-            >
-              Get API Key
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-            </a>
-          )}
-        </div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-700/50">
-        <div>
-          <p class="text-xs text-slate-500 mb-0.5">Last Probe Latency</p>
-          <p class={`font-mono text-lg font-bold text-slate-200`} data-live-latency={provider.id}>
-            {formatLatency(provider.latency_ms)}
-          </p>
-        </div>
-        <div>
-          <p class="text-xs text-slate-500 mb-0.5">Healthy Observed Days</p>
-          <p class="font-mono text-lg font-bold text-green-400"><span data-live-uptime>—</span></p>
-        </div>
-        <div>
-          <p class="text-xs text-slate-500 mb-0.5">Rate Limits</p>
-          <p class="font-mono text-sm text-slate-300">
-            {formatNum(provider.rpm)} RPM / {formatNum(provider.rpd)} RPD
-          </p>
-        </div>
-        <div>
-          <p class="text-xs text-slate-500 mb-0.5">Sign-up Required</p>
-          <p class="font-mono text-sm text-slate-300">
-            {provider.auth === 'required' ? 'Yes' : 'No'}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <p id="last-checked" class="text-xs text-slate-400 mb-4"></p>
-    <p class="text-xs text-slate-400 mb-4">Provider status summarizes sampled models checked with the monitoring account. Your access and limits may differ.</p>
-
-    <!-- Uptime bar - 90 days (hidden until live data arrives) -->
-    <div id="uptime-section" class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 mb-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-slate-200">Daily Probe History (90 days)</h2>
-        <span class="text-sm font-mono text-green-400 font-bold"><span data-live-uptime>—</span> healthy days</span>
-      </div>
-      <div id="uptime-bar-container"></div>
-      <p id="history-coverage" class="mt-3 text-xs text-slate-400"></p>
-      <p class="mt-1 text-xs text-slate-400">Each day shows its worst observed probe result. Unmonitored days are excluded. This is not a time-based uptime SLA.</p>
-    </div>
-
-    <div class="mb-5 rounded-xl border border-slate-700/50 p-4 text-sm text-slate-400 space-y-2">
-      <p>Documentation checked: <time datetime={provider.last_verified}>{provider.last_verified}</time>. Model availability is subject to the provider's current catalog.</p>
-      {provider.quota_note && <p>{provider.quota_note}</p>}
-      {provider.catalog_note && <p>{provider.catalog_note}</p>}
-    </div>
-    <!-- Main content: info + models -->
-    <div class="grid md:grid-cols-2 gap-5 mb-5">
-      <!-- Basic info -->
-      <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-slate-200 mb-4">Info</h2>
-        <div class="space-y-3">
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Base URL</span>
-            <span class="font-mono text-slate-300 text-xs text-right max-w-[200px] truncate">{provider.base_url}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Sign-up Required</span>
-            <span class={provider.auth === 'required' ? 'text-slate-300' : 'text-green-400'}>
-              {provider.auth === 'required' ? 'Yes' : 'No'}
-            </span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Credit Card</span>
-            <span class={provider.auth === 'credit_card_required' ? 'text-yellow-400' : 'text-slate-300'}>
-              {provider.auth === 'credit_card_required' ? 'Required' : provider.auth === 'none' ? 'Not required' : 'Not verified'}
-            </span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Context Window</span>
-            <span class="font-mono text-slate-300">{provider.context_window ?? '—'}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-slate-500">Last Verified</span>
-            <span class="font-mono text-slate-400 text-xs">{provider.last_verified}</span>
-          </div>
-          <div class="flex flex-wrap gap-1 pt-1 border-t border-slate-700/50">
-            {(provider.tags ?? []).map((tag: string) => (
-              <span class="px-2 py-0.5 bg-slate-700/50 rounded text-xs text-slate-400 font-mono">{tag}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <!-- Model list -->
-      <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5">
-        <h2 class="text-sm font-semibold text-slate-200 mb-4">
-          Models
-          {provider.models && <span class="text-slate-500 font-normal ml-1">({provider.models.length})</span>}
-        </h2>
-        <p class="text-xs text-slate-400 mb-3" data-probe-coverage={provider.id} aria-live="polite">Model health is unknown until an actual check completes.</p>
-        {provider.models && provider.models.length > 0 ? (
-          <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {models.map((model: any) => (
-              <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg hover:bg-slate-700/30 transition-colors duration-150">
-                <div class="min-w-0 flex-1 mr-3">
-                  <p class="text-xs font-mono text-slate-300 truncate">{model.id}</p>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    Context: {model.context_window || 'Not published'}
-                    {model.rpm != null && <span> · {model.rpm} RPM</span>}
-                    {model.pricing && (
-                      <span class="text-slate-400"> · {formatPrice(model.pricing.input_per_million, model.pricing.currency)}/{formatPrice(model.pricing.output_per_million, model.pricing.currency)} per 1M{model.pricing.valid_until && ` (promotional until ${model.pricing.valid_until})`}</span>
-                    )}
-                  </p>
-                </div>
-                {model.status === 'deprecated' || provider.status === 'archived' ? (
-                  <span class="text-xs text-slate-400">{model.status === 'deprecated' ? 'Deprecated' : 'Archived'}</span>
-                ) : (
-                  <span data-model-status data-model-provider={provider.id} data-model-id={model.id}>
-                    <StatusBadge status="unknown" />
-                  </span>
-                )}
+            {p.catalog_note && <div><dt>Catalog note</dt><dd>{p.catalog_note}</dd></div>}
+            <div>
+              <dt>Last known models (<span class="num">{formatCount(models.length)}</span>) · context</dt>
+              <dd>
+                {models.length > 0 && !models.some(m => ctxOf(m)) && <p class="caption">The last known catalog listed no context windows.</p>}
+                {models.length ? (
+                  <div class="srows">
+                    {models.map(m => {
+                      const c = ctxOf(m);
+                      return (
+                        <div class="srow pp-hist">
+                          <span class="mono pp-hist-id">{m.id}</span>
+                          {c ? <span class="num pp-hist-ctx" title={c.title}>{c.text}</span> : <span class="muted pp-hist-ctx">—</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <p class="caption">No models were listed.</p>}
+              </dd>
+            </div>
+          </dl>
+        </Fold>
+      </section>
+    </>
+  ) : (
+    <>
+      <header class="phd">
+        <div class="phd-top">
+          <div class="phd-id">
+            <ProviderLogo provider={p} size={40} />
+            <div class="min0">
+              <div class="phd-name">
+                <h1 class="h1" id="page-title" tabindex="-1">{p.name}</h1>
+                <span data-live-status={p.id} data-live-only></span>
               </div>
+              {p.description && <p class="phd-desc">{p.description}</p>}
+              <p class="phd-acc">{accessLine(p)}</p>
+              {tags.length > 0 && <div class="phd-tags">{tags.map(t => <span class="tag">{t}</span>)}</div>}
+            </div>
+          </div>
+          {(p.signup_url || p.website_url) && (
+            <div class="phd-acts">
+              {p.signup_url && <a class="btn btn-p" href={p.signup_url} target="_blank" rel="noopener noreferrer">Get API key ↗</a>}
+              {p.website_url && <a class="btn btn-t" href={p.website_url} target="_blank" rel="noopener noreferrer">Website ↗</a>}
+            </div>
+          )}
+        </div>
+        <div class="phd-cf">
+          <CopyField label="Base URL" value={p.base_url} id="cf-base" toast="Base URL copied" />
+          <CopyField label="API key variable" value={envVar} id="cf-env" toast="Variable name copied" />
+        </div>
+      </header>
+
+      <StatusNotice providerId={p.id} class="pp-notice" />
+
+      <section class="sect" aria-labelledby="ft-h">
+        <div class="sect-head"><h2 class="h2" id="ft-h">Free tier</h2></div>
+        <LimitFacts provider={p} size="large" />
+        {!L.published && p.quota_note && <p class="note-p"><b>How limits work:</b> {p.quota_note}</p>}
+        {(verified || sources.length > 0) && (
+          <div class="srcs">
+            {verified && <span class="s">Verified <span class="date pp-strong">{verified}</span></span>}
+            {sources.map((s, i) => (
+              <span class="s">
+                {i === 0 && <>{sources.length === 1 ? 'Source:' : 'Sources:'} </>}
+                <a class="lnk" href={s.url} target="_blank" rel="noopener noreferrer">{s.label || shortHost(s.url)} ↗</a>
+              </span>
             ))}
           </div>
-        ) : (
-          <p class="text-sm text-slate-500">No model data available</p>
         )}
-        {(provider.paid_models?.length || provider.pricing_note) && (
-          <div class="mt-3 pt-3 border-t border-slate-700/50">
-            {provider.pricing_note ? (
-              <p class="text-xs text-slate-500">{provider.pricing_note}</p>
-            ) : (
-              <a href="/pricing" class="text-xs text-slate-400 hover:text-slate-200 transition-colors duration-150">
-                See {(provider.paid_models?.length ?? 0)} paid catalog models on the Pricing page →
-              </a>
-            )}
+      </section>
+
+      <section
+        class="sect"
+        id="quick-start"
+        tabindex="-1"
+        aria-labelledby="qs-h"
+        data-qs-templates={JSON.stringify(templates)}
+        data-qs-sentinel={SENTINEL}
+        data-qs-default={defaultModel}
+      >
+        <div class="sect-head"><h2 class="h2" id="qs-h">Quick start</h2><span class="caption">OpenAI-compatible chat completion</span></div>
+        <div class="qs-row">
+          {modelIds.length > 0 && (
+            <div class="qs-model">
+              <label for="qs-model">Model</label>
+              <select class="select" id="qs-model">
+                {modelIds.map(id => <option value={id} selected={id === defaultModel}>{id}</option>)}
+              </select>
+            </div>
+          )}
+          <div class="seg" role="group" aria-label="Code language">
+            {langs.map((l, i) => <button type="button" data-qs-lang={l.id} aria-pressed={i === 0 ? 'true' : 'false'}>{l.label}</button>)}
           </div>
-        )}
-      </div>
-    </div>
-
-    <!-- Code examples -->
-    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-5 mb-5">
-      <h2 class="text-sm font-semibold text-slate-200 mb-4">Quick Start</h2>
-
-      <!-- Tab selector (WAI-ARIA tabs pattern) -->
-      <div class="flex gap-1 mb-4 bg-slate-800/80 rounded-lg p-1 w-fit" id="sdk-tabs" role="tablist" aria-label="Code example language">
-        {sdkTabs.map((tab, i) => (
-          <button
-            type="button"
-            role="tab"
-            id={`sdk-tab-${tab.id}`}
-            aria-controls={`tab-${tab.id}`}
-            aria-selected={i === 0 ? 'true' : 'false'}
-            tabindex={i === 0 ? 0 : -1}
-            class={`sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 ${i === 0 ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-            data-tab={tab.id}
-          >
-            {tab.label}
-          </button>
+        </div>
+        {langs.map((l, i) => (
+          <div data-qs-panel={l.id} hidden={i !== 0}>
+            <CodeBlock code={fillSnippet(templates[l.id], l.id, defaultModel)} language={l.language} id={`qs-code-${l.id}`} />
+          </div>
         ))}
-      </div>
+      </section>
 
-      {sdkTabs.map((tab, i) => (
-        <div id={`tab-${tab.id}`} role="tabpanel" aria-labelledby={`sdk-tab-${tab.id}`} tabindex="0" class={`sdk-tab-content ${i === 0 ? '' : 'hidden'}`}>
-          <CodeBlock code={tab.code} language={tab.language} />
+      <section class="sect" aria-labelledby="m-h">
+        <div class="sect-head">
+          <h2 class="h2" id="m-h">Models <span class="muted pp-count">(<span class="num">{formatCount(models.length)}</span>)</span></h2>
+          {models.length > 0 && !showModelLimits && <span class="caption">The provider does not publish per-model request limits.</span>}
         </div>
-      ))}
-    </div>
+        {models.length === 0 ? (
+          <p class="caption">The catalog lists no models for this provider.</p>
+        ) : (
+          <div class="pm-models" data-collapsed={models.length > FIRST_MODELS ? '' : undefined}>
+            <div class="only-md tblwrap">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th scope="col">Model ID</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" class="r">Context</th>
+                    {showModelLimits && <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>}
+                    {showModelLimits && <th scope="col" class="r"><abbr title="Requests per day">RPD</abbr></th>}
+                    <th scope="col">Input</th>
+                    <th scope="col"><span class="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {models.map((m, i) => {
+                    const c = ctxOf(m);
+                    const ml = limitsOf(m);
+                    return (
+                      <tr data-pm-more={i >= FIRST_MODELS ? '' : undefined}>
+                        <td>
+                          <div class="idcell">
+                            {m.status !== 'deprecated' && <span class="slot" data-live-only data-model-status data-model-provider={p.id} data-model-id={m.id}></span>}
+                            <span class="mono">{m.id}</span>
+                            <CopyButton value={m.id} label={`model ID ${m.id}`} toast="Model ID copied" />
+                            {m.status === 'deprecated' && <span class="tag">Deprecated</span>}
+                          </div>
+                        </td>
+                        <td class="pm-name">{m.name && m.name !== m.id ? m.name : ''}</td>
+                        <td class="r">{c ? <span class="num" title={c.title}>{c.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
+                        {showModelLimits && <td class="r">{ml.rpm != null ? <span class="num">{formatCount(ml.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
+                        {showModelLimits && <td class="r">{ml.rpd != null ? <span class="num">{formatCount(ml.rpd)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
+                        <td><span class="pm-mods">{modalitiesOf(m).map(x => <span class="tag tag-o">{x}</span>)}</span></td>
+                        <td class="r"><button type="button" class="btn btn-sm" data-pm-use={m.id} aria-label={`Use ${m.id} in Quick start`}>Use</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div class="only-sm srows">
+              {models.map((m, i) => {
+                const c = ctxOf(m);
+                const ml = limitsOf(m);
+                const vision = modalitiesOf(m).includes('vision');
+                return (
+                  <div class="srow" data-pm-more={i >= FIRST_MODELS ? '' : undefined}>
+                    <div class="idline">
+                      {m.status !== 'deprecated' && <span class="slot" data-live-only data-model-status data-model-provider={p.id} data-model-id={m.id}></span>}
+                      <span class="mono">{m.id}</span>
+                      <CopyButton value={m.id} label={`model ID ${m.id}`} toast="Model ID copied" />
+                    </div>
+                    <div class="facts">
+                      {c ? <span><span class="num" title={c.title}>{c.text}</span> context</span> : <span class="muted">No context listed</span>}
+                      {ml.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(ml.rpm)}</span> RPM</span></>}
+                      {ml.rpd != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(ml.rpd)}</span> RPD</span></>}
+                      {vision && <><span class="sep" aria-hidden="true">·</span><span>vision</span></>}
+                      {m.status === 'deprecated' && <><span class="sep" aria-hidden="true">·</span><span>deprecated</span></>}
+                    </div>
+                    <div><button type="button" class="btn btn-t btn-sm pm-use-m" data-pm-use={m.id} aria-label={`Use ${m.id} in Quick start`}>Use in Quick start →</button></div>
+                  </div>
+                );
+              })}
+            </div>
+            {models.length > FIRST_MODELS && (
+              <div class="pm-toggle">
+                <button type="button" class="btn btn-sm" data-pm-toggle aria-expanded="false" data-label-more={`Show all ${models.length} models`}>Show all {models.length} models</button>
+              </div>
+            )}
+            <noscript><style is:inline>.pm-models [data-pm-more]{display:revert !important}.pm-toggle{display:none !important}</style></noscript>
+          </div>
+        )}
+      </section>
 
-    <!-- Related providers -->
-    {relatedProviders.length > 0 && (
-      <div class="mb-12">
-        <h2 class="text-sm font-semibold text-slate-200 mb-3">Related Providers</h2>
-        <div class="grid sm:grid-cols-3 gap-3">
-          {relatedProviders.map(rp => (
-            <a
-              href={`/providers/${rp.id}`}
-              class="flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl hover:border-slate-600 hover:bg-slate-800/70 transition-all duration-150"
-            >
-              <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-                {rp.logo
-                  ? <img src={rp.logo} alt={rp.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
-                  : null}
-                <span class={rp.logo ? 'hidden' : 'flex'}>{rp.name.charAt(0)}</span>
-              </div>
-              <div>
-                <p class="text-sm font-medium text-slate-200">{rp.name}</p>
-                <span data-live-status={rp.id} data-badge-size="sm">
-                  <StatusBadge status="unknown" />
-                </span>
-              </div>
-            </a>
-          ))}
+      <section class="sect" id="health" aria-labelledby="h-h" data-live-only data-provider-health={p.id} hidden>
+        <div class="sect-head"><h2 class="h2" id="h-h">Health</h2><span class="caption">Scheduled API probes from the monitoring account</span></div>
+        <div data-health-history hidden>
+          <div class="strip" role="img" id="health-strip" aria-label="Daily health over the last 90 days"></div>
+          <div class="strip-legend" aria-hidden="true"><span>90 days ago</span><span>today</span></div>
+          <p class="note-p">Healthy on <span class="num" data-live-uptime>—</span> of observed days<span> · last probe </span><span data-live-latency={p.id}></span></p>
+          <p class="caption pp-mt6" id="history-coverage"></p>
         </div>
-      </div>
-    )}
-  </div>
+        <p class="caption pp-mt6" data-probe-coverage={p.id} aria-live="polite"></p>
+        <p class="caption pp-mt6">Each day shows its worst probe result; gray days had no probes. This is not an uptime guarantee, and your own access and limits may differ.</p>
+      </section>
+
+      {notes.length > 0 && (
+        <section class="sect" aria-labelledby="n-h">
+          <div class="sect-head"><h2 class="h2" id="n-h">Notes</h2></div>
+          <dl class="dl">{notes.map(([t, d]) => <div><dt>{t}</dt><dd>{d}</dd></div>)}</dl>
+        </section>
+      )}
+
+      {showPaid && (
+        <section class="sect" aria-label="Paid rates after the free tier">
+          <Fold summary="Paid rates after the free tier" note={paidNote}>
+            {priced.length > 0 && (
+              <>
+                <p class="paid-h">Paid rate per 1M tokens from the provider's pricing page. These apply only after you go beyond the free tier.</p>
+                <div class="only-md tblwrap">
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th scope="col">Model ID</th>
+                        <th scope="col" class="r">Paid input /1M</th>
+                        <th scope="col" class="r">Paid output /1M</th>
+                        <th scope="col"><span class="sr-only">Source</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priced.map(m => {
+                        const pr = m.pricing!;
+                        const input = formatRate(pr.input_per_million, pr.currency);
+                        const output = formatRate(pr.output_per_million, pr.currency);
+                        const checked = formatDate(pr.checked_at);
+                        const promo = formatDate(pr.valid_until);
+                        return (
+                          <tr>
+                            <td>
+                              <span class="mono pp-paid-id">{m.id}</span>
+                              {promo && <span class="caption pp-promo">Promotional rate until <span class="date">{promo}</span></span>}
+                            </td>
+                            <td class="r">{input ? <span class="num paid">{input}</span> : <span class="dash" title="No published rate">—</span>}</td>
+                            <td class="r">{output ? <span class="num paid">{output}</span> : <span class="dash" title="No published rate">—</span>}</td>
+                            <td class="r">
+                              {pr.source_url && (
+                                <a class="lnk pp-src" href={pr.source_url} target="_blank" rel="noopener noreferrer" title={checked ? `Source checked ${checked}` : 'Price source'} aria-label={`Price source for ${m.id}`}><Icon name="ext" size={14} /></a>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div class="only-sm srows paid-rows">
+                  {priced.map(m => {
+                    const pr = m.pricing!;
+                    const input = formatRate(pr.input_per_million, pr.currency);
+                    const output = formatRate(pr.output_per_million, pr.currency);
+                    const promo = formatDate(pr.valid_until);
+                    return (
+                      <div class="srow">
+                        <span class="mono pp-paid-id">{m.id}</span>
+                        <div class="facts">
+                          <span>{input ? <span class="num">{input}</span> : '—'} in</span>
+                          <span class="sep" aria-hidden="true">·</span>
+                          <span>{output ? <span class="num">{output}</span> : '—'} out</span>
+                          {pr.source_url && <><span class="sep" aria-hidden="true">·</span><a class="lnk pp-src-m" href={pr.source_url} target="_blank" rel="noopener noreferrer">Source ↗</a></>}
+                        </div>
+                        {promo && <span class="caption">Promotional rate until <span class="date">{promo}</span></span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            {p.pricing_note && <p class="sec">{p.pricing_note}</p>}
+            {!priced.length && paidCatalog > 0 && (
+              <p class="sec">Free variants have no per-token rate. {p.name} lists {formatCount(paidCatalog)} paid {paidCatalog === 1 ? 'model' : 'models'} with per-token prices.</p>
+            )}
+            <div><a class="lnk" href={pricingHref}>{paidCatalog > 0 ? `See ${formatCount(paidCatalog)} paid catalog ${paidCatalog === 1 ? 'model' : 'models'} →` : 'Compare all paid rates →'}</a></div>
+          </Fold>
+        </section>
+      )}
+
+      {alternatives.length > 0 && (
+        <section class="sect" aria-labelledby="alt-h">
+          <div class="sect-head pp-alt-head"><h2 class="h2" id="alt-h">Free alternatives</h2></div>
+          {altCaption && <p class="caption pp-alt-cap">{altCaption}</p>}
+          <div class="alts">{alternatives.map(x => <ProviderRow provider={x.o} />)}</div>
+        </section>
+      )}
+    </>
+  )}
 </Layout>
+
+<style>
+  .pp-notice { margin-top: 20px; }
+  .pp-strong { color: var(--text-secondary); }
+  .pp-count { font-weight: 400; }
+  .pp-mt6 { margin-top: 6px; }
+  .pp-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .pp-hist { padding: 6px 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 12px; }
+  .pp-hist-id { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; min-width: 0; }
+  .pp-hist-ctx { font-size: 12px; color: var(--text-muted); }
+  .pp-paid-id { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+  .pp-promo { display: block; margin-top: 2px; }
+  /* 24x24 hit areas (WCAG 2.5.8) for the small source links. */
+  .pp-src { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; color: var(--text-muted); }
+  .pp-src-m { display: inline-flex; align-items: center; min-height: 24px; }
+  .pp-alt-head { margin-bottom: 4px; }
+  .pp-alt-cap { margin-bottom: 12px; }
+  #health :global(.num) { white-space: nowrap; }
+  .pm-name { font-size: 13px; color: var(--text-muted); }
+  .pm-mods { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+  .pm-toggle { margin-top: 10px; }
+  .pm-use-m { padding: 0; }
+  .pm-models[data-collapsed] [data-pm-more] { display: none; }
+</style>
 
 <script>
   import { onStatus } from '../../lib/status-client';
   import { summarizeHistory, type HealthStatus } from '../../lib/status';
-  const providerId = location.pathname.split('/').filter(Boolean).pop();
-  onStatus(data => {
-    const provider = data.providers.find(p => p.id === providerId);
-    document.getElementById('fallback-banner')?.classList.toggle('hidden', !provider || !['dead', 'degraded'].includes(provider.status));
-    const history = provider?.history_90d;
-    const section = document.getElementById('uptime-section');
-    const container = document.getElementById('uptime-bar-container');
-    section?.classList.toggle('hidden', !history?.length);
-    const summary = summarizeHistory(history ?? []);
-    document.querySelectorAll('[data-live-uptime]').forEach(el => { el.textContent = summary.percent === null ? '—' : `${summary.percent.toFixed(1)}%`; });
-    if (!history?.length || !container || !data.last_checked) return;
-    const padded: HealthStatus[] = [...Array<HealthStatus>(Math.max(0, 90 - history.length)).fill('unknown'), ...history];
-    const colors = { active: 'bg-green-500', degraded: 'bg-yellow-500', dead: 'bg-red-500', unknown: 'bg-slate-700' };
-    const bars = document.createElement('div');
-    bars.className = 'flex gap-px h-6 w-full';
-    padded.forEach((status, index) => {
-      const date = new Date(data.last_checked!);
-      date.setUTCDate(date.getUTCDate() - (89 - index));
-      const bar = document.createElement('div');
-      bar.className = `flex-1 min-w-0 rounded-sm ${colors[status]}`;
-      bar.title = `${date.toISOString().slice(0, 10)} UTC: ${status}`;
-      bar.setAttribute('aria-label', bar.title);
-      bars.append(bar);
-    });
-    container.replaceChildren(bars);
-    const coverage = document.getElementById('history-coverage');
-    if (coverage) coverage.textContent = `${summary.healthy} healthy / ${summary.observed} observed days · ${90 - summary.observed} days without observations`;
-  });
-</script>
+  import { setCodeBlock, showToast } from '../../components/ui';
 
-<script>
-  const tabBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.sdk-tab-btn'));
-  const tabContents = document.querySelectorAll<HTMLElement>('.sdk-tab-content');
+  /* ---------- Quick start: model switcher, language tabs, ?model= deep link ---------- */
+  const qs = document.getElementById('quick-start');
+  if (qs) {
+    let templates: Record<string, string> = {};
+    try { templates = JSON.parse(qs.dataset.qsTemplates ?? '{}'); } catch { /* keep the server-rendered code */ }
+    const sentinel = qs.dataset.qsSentinel ?? '';
+    const select = document.getElementById('qs-model') as HTMLSelectElement | null;
+    const ids = select ? Array.from(select.options, o => o.value) : [];
+    // Same rule as the server: JSON string literal, single quotes escaped for the shell-quoted curl body.
+    const fill = (template: string, lang: string, model: string) =>
+      template.split(sentinel).join(lang === 'curl' ? JSON.stringify(model).replace(/'/g, `'\\''`) : JSON.stringify(model));
 
-  function selectTab(btn: HTMLButtonElement, focus = false) {
-    const target = btn.getAttribute('data-tab');
-    tabBtns.forEach(b => {
-      const selected = b === btn;
-      b.setAttribute('aria-selected', String(selected));
-      b.tabIndex = selected ? 0 : -1;
-      b.className = `sdk-tab-btn px-3 py-1.5 text-xs rounded-md transition-all duration-150 ${selected ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`;
-    });
-    if (focus) btn.focus();
+    const setModel = (id: string) => {
+      if (!select || !ids.includes(id) || !sentinel) return false;
+      select.value = id;
+      for (const [lang, template] of Object.entries(templates)) setCodeBlock(`qs-code-${lang}`, fill(template, lang, id));
+      return true;
+    };
+    const syncUrl = (id: string) => {
+      try {
+        const url = new URL(location.href);
+        if (id === qs.dataset.qsDefault) url.searchParams.delete('model'); else url.searchParams.set('model', id);
+        history.replaceState(history.state, '', url);
+      } catch { /* ignore */ }
+    };
 
-    // Show/hide content with fade
-    tabContents.forEach(content => {
-      if (content.id === `tab-${target}`) {
-        content.classList.remove('hidden');
-        content.style.opacity = '0';
-        requestAnimationFrame(() => {
-          content.style.transition = 'opacity 150ms ease';
-          content.style.opacity = '1';
-        });
-      } else {
-        content.classList.add('hidden');
-      }
+    const requested = new URLSearchParams(location.search).get('model');
+    if (requested && !setModel(requested)) {
+      showToast(`${requested} is not listed for this provider. Showing ${select?.value ?? 'the default model'}.`, 'info', 4000);
+    }
+    select?.addEventListener('change', () => { setModel(select.value); syncUrl(select.value); });
+
+    const langButtons = Array.from(qs.querySelectorAll<HTMLButtonElement>('[data-qs-lang]'));
+    langButtons.forEach(button => button.addEventListener('click', () => {
+      const lang = button.dataset.qsLang;
+      langButtons.forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      qs.querySelectorAll<HTMLElement>('[data-qs-panel]').forEach(panel => { panel.hidden = panel.dataset.qsPanel !== lang; });
+    }));
+
+    document.querySelectorAll<HTMLButtonElement>('[data-pm-use]').forEach(button => button.addEventListener('click', () => {
+      const id = button.dataset.pmUse ?? '';
+      if (!setModel(id)) return;
+      syncUrl(id);
+      qs.scrollIntoView({ block: 'start' });
+      qs.focus({ preventScroll: true });
+      showToast(`Quick start now uses ${id}`);
+    }));
+  }
+
+  /* ---------- Models: show all / first 8 ---------- */
+  const modelsWrap = document.querySelector<HTMLElement>('.pm-models');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-pm-toggle]');
+  if (modelsWrap && toggle) {
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      modelsWrap.toggleAttribute('data-collapsed', !expanded);
+      toggle.textContent = expanded ? 'Show first 8' : toggle.dataset.labelMore ?? 'Show all models';
     });
   }
 
-  tabBtns.forEach((btn, i) => {
-    btn.addEventListener('click', () => selectTab(btn));
-    btn.addEventListener('keydown', event => {
-      const next = event.key === 'ArrowRight' ? (i + 1) % tabBtns.length
-        : event.key === 'ArrowLeft' ? (i - 1 + tabBtns.length) % tabBtns.length
-        : event.key === 'Home' ? 0 : event.key === 'End' ? tabBtns.length - 1 : -1;
-      if (next < 0) return;
-      event.preventDefault();
-      selectTab(tabBtns[next], true);
+  /* ---------- Health: rendered only from a live snapshot ---------- */
+  const health = document.getElementById('health');
+  if (health) {
+    const providerId = health.dataset.providerHealth;
+    onStatus((data, info) => {
+      const live = info.state === 'live';
+      const probe = live ? data.providers.find(x => x.id === providerId) : undefined;
+      const history: HealthStatus[] = probe?.history_90d ?? [];
+      const summary = summarizeHistory(history);
+      const hasHistory = live && summary.observed > 0;
+      health.hidden = !live || (!hasHistory && !probe?.coverage);
+      const historyBlock = health.querySelector<HTMLElement>('[data-health-history]');
+      if (historyBlock) historyBlock.hidden = !hasHistory;
+
+      document.querySelectorAll<HTMLElement>('[data-live-uptime]').forEach(node => {
+        node.textContent = hasHistory && summary.percent !== null ? `${summary.percent.toFixed(1)}%` : '—';
+      });
+      const coverage = document.getElementById('history-coverage');
+      if (coverage) coverage.textContent = hasHistory
+        ? `${summary.healthy} healthy / ${summary.observed} observed days · ${90 - summary.observed} days without observations`
+        : '';
+
+      const strip = document.getElementById('health-strip');
+      if (!strip) return;
+      if (!hasHistory) { strip.replaceChildren(); return; }
+      const days = history.slice(-90);
+      const padded: HealthStatus[] = [...Array<HealthStatus>(90 - days.length).fill('unknown'), ...days];
+      const anchor = data.last_checked ? new Date(data.last_checked) : new Date();
+      const words: Record<HealthStatus, string> = { active: 'healthy', degraded: 'degraded', dead: 'down', unknown: 'no data' };
+      strip.replaceChildren(...padded.map((status, index) => {
+        const bar = document.createElement('span');
+        if (status !== 'unknown') bar.className = `h-${status}`;
+        const day = new Date(anchor);
+        day.setUTCDate(day.getUTCDate() - (89 - index));
+        bar.title = `${day.toISOString().slice(0, 10)} UTC: ${words[status]}`;
+        return bar;
+      }));
+      strip.setAttribute('aria-label', `Daily health over the last 90 days: ${summary.healthy} healthy of ${summary.observed} observed days`);
     });
-  });
+  }
 </script>

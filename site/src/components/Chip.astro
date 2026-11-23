@@ -1,0 +1,24 @@
+---
+// Filter chip with an optional count. Selected = aria-pressed="true" (brand glow). A count of 0 that is not
+// selected renders disabled (aria-disabled, tabindex -1, not clickable). Update on the client with setChip() from ./ui.
+interface Props {
+  /** Value of data-chip; page scripts read it to know which filter was toggled. */
+  name: string;
+  label: string;
+  count?: number | null;
+  pressed?: boolean;
+  class?: string;
+  [attr: string]: unknown;
+}
+const { name, label, count = null, pressed = false, class: className, ...rest } = Astro.props;
+const disabled = count === 0 && !pressed;
+---
+<button
+  type="button"
+  class:list={['chip', className]}
+  data-chip={name}
+  aria-pressed={pressed ? 'true' : 'false'}
+  aria-disabled={disabled ? 'true' : undefined}
+  tabindex={disabled ? -1 : undefined}
+  {...rest}
+>{label}{count != null && <> <span class="num" data-chip-count>{count}</span></>}</button>

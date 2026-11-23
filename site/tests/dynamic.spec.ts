@@ -27,17 +27,29 @@ test('new providers and their models appear without rebuilding the server',async
   await request.post(`${catalogAPI}/test/state`,{data:{extra:true}});
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(200);
   await expect(page.getByRole('heading',{name:'Discovered Demo',exact:true})).toBeVisible();
-  await expect(page.locator('[data-model-id="fresh-model"]')).toHaveText('active');
-  await expect(page.locator('[data-model-id="unobserved-model"]')).toHaveText('unknown');
+  // Model status comes only from the live status snapshot; each model row has one live dot per layout.
+  const fresh=page.locator('.only-md [data-model-id="fresh-model"] .dot');
+  await expect(fresh).toHaveClass(/d-active/);
+  await expect(fresh).toHaveAttribute('title',/^Health: Operational/);
+  const unobserved=page.locator('.only-md [data-model-id="unobserved-model"] .dot');
+  await expect(unobserved).toHaveClass(/d-unknown/);
+  await expect(unobserved).toHaveAttribute('title','Not checked recently');
   await expect(page.locator('[data-probe-coverage]')).toContainText('1 of 2');
-  await expect(page.getByText('Context: Not published',{exact:true})).toHaveCount(2);
+  // Neither model publishes a context window: both say so instead of inventing one.
+  await expect(page.locator('.only-md tbody button.dash[data-tip="No context window in the official catalog."]')).toHaveCount(2);
   await page.screenshot({path:testInfo.outputPath('provider-desktop.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({path:testInfo.outputPath('provider-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:1280,height:900});
+  // The old /providers URL is a real 301 in dynamic mode and keeps the query string.
+  const redirect=await request.get('/providers?q=discovered',{maxRedirects:0});
+  expect(redirect.status()).toBe(301);
+  expect(redirect.headers()['location']).toMatch(/^(https?:\/\/[^/]+)?\/\?q=discovered$/);
   await page.goto('/providers?q=discovered');
-  await expect(page.locator('[data-provider-id="discovered-demo"]')).toBeVisible();
-  await page.goto('/models');await expect(page.getByText('fresh-model',{exact:true})).toBeVisible();
+  await expect(page.locator('#dir-q')).toHaveValue('discovered');
+  await expect(page.locator('[data-pt-row][data-provider-id="discovered-demo"]:visible')).toBeVisible();
+  await page.goto('/models?q=fresh-model');await expect(page.locator('.m-tbl').getByText('fresh-model',{exact:true})).toBeVisible();
   await page.goto('/configs');await expect(page.locator('body')).toContainText('discovered-demo');
 });
 test('unavailable or malformed live catalogs show a labeled snapshot and do not invent new routes',async({page,request})=>{
@@ -57,4 +69,26 @@ test('removed providers disappear on the next request and unknown routes return 
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(200);
   await request.post(`${catalogAPI}/test/state`,{data:{}});
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(404);
+});
+test('the provider page and Tools name the API key variable from the public id, the same rule as static mode',async({page,request})=>{
+  // Never the checker's secret binding name (api_key_env, e.g. GOOGLE_API_KEY): it is not in the public DTO.
+  await page.goto('/providers/google-ai-studio');
+  await expect(page.locator('#cf-env')).toHaveText('GOOGLE_AI_STUDIO_API_KEY');
+  await page.goto('/configs');
+  await expect(page.locator('#t-yaml')).toContainText('os.environ/GOOGLE_AI_STUDIO_API_KEY');
+  await expect(page.locator('#t-yaml')).not.toContainText('os.environ/GOOGLE_API_KEY');
+  // A provider that exists only in the live catalog gets its name from the same rule.
+  await request.post(`${catalogAPI}/test/state`,{data:{extra:true}});
+  await page.goto('/providers/discovered-demo');
+  await expect(page.locator('#cf-env')).toHaveText('DISCOVERED_DEMO_API_KEY');
+  await expect(page.locator('#quick-start')).toContainText('DISCOVERED_DEMO_API_KEY');
+  await page.goto('/configs');
+  await expect(page.locator('#t-yaml')).toContainText('os.environ/DISCOVERED_DEMO_API_KEY');
+  await expect(page.locator('#k-discovered-demo')).toHaveText('DISCOVERED_DEMO_API_KEY');
+  const feed=await request.get('/changelog.json');
+  expect(feed.status()).toBe(200);
+  expect(feed.headers()['content-type']).toContain('application/json');
+  const entries=await feed.json();
+  expect(Array.isArray(entries)&&entries.length>0).toBe(true);
+  expect(entries.map((e:{date:string})=>e.date)).toEqual(entries.map((e:{date:string})=>e.date).sort().reverse());
 });

@@ -1,0 +1,17 @@
+---
+// Collapsible via native <details class="fold"> (archived lists, paid rates, YAML, model overflow, historical record).
+// Rich summary: pass <Fragment slot="summary">…</Fragment> instead of `summary`.
+interface Props {
+  summary?: string;
+  /** Muted text after the summary, e.g. "— they no longer offer a recurring free tier". */
+  note?: string;
+  open?: boolean;
+  id?: string;
+  class?: string;
+}
+const { summary, note, open = false, id, class: className } = Astro.props;
+---
+<details class:list={['fold', className]} open={open} id={id}>
+  <summary><span>{Astro.slots.has('summary') ? <slot name="summary" /> : summary}{note && <span class="muted"> {note}</span>}</span></summary>
+  <div class="fold-body"><slot /></div>
+</details>

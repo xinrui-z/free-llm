@@ -1,393 +1,563 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import SearchInput from '../../components/SearchInput.astro';
+import Chip from '../../components/Chip.astro';
+import Fold from '../../components/Fold.astro';
+import ProviderLogo from '../../components/ProviderLogo.astro';
+import NotPublished from '../../components/NotPublished.astro';
+import Icon from '../../components/Icon.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-import { contextToNumber, dateRange, daysSince, formatPrice, isStale, latestDate, liveCatalogSource } from '../../lib/format';
-const providers = getProviders(Astro.locals);
+import { contextToNumber, dateRange, daysSince, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
+import type { Provider, ProviderModel } from '../../data/providers';
 
+const providers = getProviders(Astro.locals) as Provider[];
+
+type FreeTier = 'yes' | 'other' | 'no';
 interface PriceRow {
-  providerId: string;
-  providerName: string;
-  providerLogo?: string;
-  modelId: string;
-  modelName: string;
-  contextWindow?: string;
+  provider: Provider;
+  archived: boolean;
+  model: ProviderModel;
+  shortId: string;
   input: number;
-  output: number;
+  output: number | null;
   currency: string;
   source?: string;
   checkedAt?: string;
-  // Last day a promotional price applies (pricing.valid_until).
   validUntil?: string;
-  // Price comes from the provider's live API via the catalog sync job; its
-  // checkedAt is then the date the price last changed, not the last check.
+  free: FreeTier;
+  // Price comes from the provider's live API via the catalog sync job; its checkedAt is then the date
+  // the price last changed, not the date of the last check.
   autoSynced: boolean;
 }
 
+// One row per (provider, model) with a published per-token input price. Free-tier models that also have a
+// paid rate come first; paid_models are paid-only SKUs of providers whose free models use other IDs.
 const rows: PriceRow[] = [];
 for (const p of providers) {
+  const archived = p.status === 'archived';
   const live = liveCatalogSource(p);
-  const catalog = [...(p.models ?? []), ...(p.paid_models ?? [])];
-  for (const m of catalog) {
+  const seen = new Set<string>();
+  const add = (m: ProviderModel, isFreeModel: boolean) => {
     const pricing = m.pricing;
-    if (pricing && typeof pricing.input_per_million === 'number') {
-      rows.push({
-        providerId: p.id,
-        providerName: p.name,
-        providerLogo: p.logo,
-        modelId: m.id,
-        modelName: m.name,
-        contextWindow: m.context_window,
-        input: pricing.input_per_million,
-        output: pricing.output_per_million,
-        currency: String(pricing.currency || 'USD').toUpperCase(),
-        source: pricing.source_url,
-        checkedAt: pricing.checked_at,
-        validUntil: pricing.valid_until,
-        // A price recorded from another page stays manual even for a synced provider.
-        autoSynced: live !== null && (!live.url || !pricing.source_url || pricing.source_url === live.url),
-      });
-    }
-  }
+    if (!pricing || typeof pricing.input_per_million !== 'number' || !Number.isFinite(pricing.input_per_million) || seen.has(m.id)) return;
+    seen.add(m.id);
+    const output = typeof pricing.output_per_million === 'number' && Number.isFinite(pricing.output_per_million) ? pricing.output_per_million : null;
+    rows.push({
+      provider: p,
+      archived,
+      model: m,
+      shortId: m.id.split('/').pop() || m.id,
+      input: pricing.input_per_million,
+      output,
+      currency: String(pricing.currency || 'USD').trim().toUpperCase(),
+      source: pricing.source_url,
+      checkedAt: pricing.checked_at,
+      validUntil: pricing.valid_until,
+      free: archived ? 'no' : isFreeModel ? 'yes' : 'other',
+      // A price recorded from another page stays manual even for a synced provider.
+      autoSynced: live !== null && (!live.url || !pricing.source_url || pricing.source_url === live.url),
+    });
+  };
+  for (const m of p.models ?? []) add(m, true);
+  for (const m of p.paid_models ?? []) add(m, false);
 }
 
-// Prices in different currencies are not comparable, so rows are grouped by
-// currency (USD first) and sorted high to low only within each group.
+// Prices in different currencies are never ranked against each other: USD first, then by code.
 const currencies = [...new Set(rows.map(r => r.currency))].sort((a, b) => (a === 'USD' ? -1 : b === 'USD' ? 1 : a.localeCompare(b)));
-const currencyRank = new Map(currencies.map((c, i) => [c, i]));
-rows.sort((a, b) => currencyRank.get(a.currency)! - currencyRank.get(b.currency)! || b.input - a.input);
-const rankInCurrency = rows.map((row, i) => rows.slice(0, i).filter(r => r.currency === row.currency).length + 1);
-const providerCount = new Set(rows.map(r => r.providerId)).size;
-const currencyLabel = currencies.length > 1 ? `per 1M tokens, sorted within each currency (${currencies.join(', ')})` : `${currencies[0] ?? 'USD'} per 1M tokens`;
+const curRank = new Map(currencies.map((c, i) => [c, i]));
+// Default order (matches the client default "Input price, low to high").
+rows.sort((a, b) => curRank.get(a.currency)! - curRank.get(b.currency)! || a.input - b.input
+  || (a.output ?? Infinity) - (b.output ?? Infinity) || a.shortId.localeCompare(b.shortId));
 
-const subscriptionProviders = providers.filter(p => p.pricing_note);
+const pricedProviders = providers.filter(p => rows.some(r => r.provider.id === p.id))
+  .sort((a, b) => Number(a.status === 'archived') - Number(b.status === 'archived') || a.name.localeCompare(b.name));
+const activeRows = rows.filter(r => !r.archived).length;
+const archivedRows = rows.length - activeRows;
+const notShown = providers.filter(p => typeof p.pricing_note === 'string' && p.pricing_note.trim());
+const notShownActive = notShown.filter(p => p.status !== 'archived').length;
 
-// Freshness is evaluated against the build time (static mode) or the request
-// time (dynamic mode). Manually maintained prices checked more than
-// STALE_DAYS ago get a badge; auto-synced prices never do, because the sync
-// job only moves their date when the price itself changes.
+// Freshness is evaluated at build time (static mode) or request time (dynamic mode). Manually maintained
+// prices checked more than STALE_DAYS ago are marked "May be outdated"; auto-synced prices never are,
+// because the sync job only moves their date when the price itself changes.
 const STALE_DAYS = 30;
 const now = new Date();
 const isRowStale = (r: PriceRow) => !r.autoSynced && isStale(r.checkedAt, now, STALE_DAYS);
-// Rows carry different dates, so the page shows their range rather than one
-// "last updated" date that would imply the whole table was refreshed then.
-const priceDates = dateRange(rows.map(r => r.checkedAt));
-const pricesLastUpdated = latestDate(rows.map(r => r.checkedAt));
+// Rows carry different dates, so the header shows their range rather than one "last updated" date that
+// would imply the whole table was refreshed then. Archived providers' prices are historical: they count
+// only when no active provider has a price.
+const datedRows = activeRows > 0 ? rows.filter(r => !r.archived) : rows;
+const priceDates = dateRange(datedRows.map(r => r.checkedAt));
+const pricesLastUpdated = latestDate(datedRows.map(r => r.checkedAt));
+const staleActive = rows.filter(r => !r.archived && isRowStale(r)).length;
 
-// One summary per provider that has priced rows, in catalog order. A provider
-// is auto-synced when its catalog comes from the sync job (liveCatalogSource);
-// everything else is maintained by hand.
-const providerSummaries = providers
-  .map(p => {
-    const providerRows = rows.filter(r => r.providerId === p.id);
-    const live = liveCatalogSource(p);
-    const manualRows = providerRows.filter(r => !r.autoSynced);
-    const lastChecked = latestDate(manualRows.map(r => r.checkedAt));
-    return {
-      id: p.id,
-      name: p.name,
-      count: providerRows.length,
-      autoSynced: live !== null && manualRows.length === 0,
-      // Date the live catalog last changed (it is not re-stamped on quiet syncs).
-      catalogChanged: live?.checkedAt,
-      lastChecked,
-      stale: manualRows.some(isRowStale),
-    };
-  })
-  .filter(s => s.count > 0);
-const autoSyncedNames = providerSummaries.filter(s => s.autoSynced).map(s => s.name);
-const manualNames = providerSummaries.filter(s => !s.autoSynced).map(s => s.name);
-const staleRowCount = rows.filter(isRowStale).length;
+// One provenance summary per priced provider, in the provider select's order. A provider is auto-synced
+// when its catalog comes from the sync job (liveCatalogSource) and none of its prices were entered by hand.
+const sourceSummaries = pricedProviders.map(p => {
+  const own = rows.filter(r => r.provider.id === p.id);
+  const manual = own.filter(r => !r.autoSynced);
+  return {
+    p,
+    archived: p.status === 'archived',
+    count: own.length,
+    autoSynced: isAutoSyncedPricing(p) && manual.length === 0,
+    // Date the live catalog last changed (it is not re-stamped on quiet syncs).
+    changed: liveCatalogSource(p)?.checkedAt ?? null,
+    lastChecked: latestDate(manual.map(r => r.checkedAt)),
+    stale: manual.some(isRowStale),
+  };
+});
+// Active free providers with no per-token price and no pricing note (typically newly onboarded free tiers)
+// never appear in the table; say so instead of letting them look forgotten.
+const unpricedFree = providers.filter(p => p.status === 'active' && !rows.some(r => r.provider.id === p.id) && !(typeof p.pricing_note === 'string' && p.pricing_note.trim()))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
-// Active free providers with no published per-token price and no pricing note
-// (typically newly onboarded free tiers) never appear in the table.
-const pricedProviderIds = new Set(rows.map(r => r.providerId));
-const unpricedFreeProviders = providers.filter(p => p.status === 'active' && !pricedProviderIds.has(p.id) && !p.pricing_note);
-const listFormat = (names: string[]) => names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+const checkedLabel = (r: PriceRow) => r.autoSynced
+  ? (r.checkedAt ? `Price unchanged since ${r.checkedAt}` : 'Synced from live API')
+  : `Checked ${r.checkedAt ?? 'date unknown'}`;
+const staleTip = (r: PriceRow) => {
+  const age = daysSince(r.checkedAt, now);
+  return age === null ? 'No check date recorded. Verify on the provider\'s pricing page.' : `Last checked ${age} days ago. Verify on the provider's pricing page.`;
+};
+const autoTip = 'Synced from the provider\'s live API on each catalog sync; the date shows when this price last changed.';
+const search = (r: PriceRow) => `${r.model.id} ${r.model.name ?? ''} ${r.provider.name} ${r.provider.id}`.toLowerCase();
+const promoTip = (d: string) => `Promotional price until ${d}. The standard rate applies after that.`;
+const freeTitle = (r: PriceRow) => r.free === 'other' ? `${r.provider.name} has a free tier, but this model is paid only` : undefined;
+const sourceTitle = (r: PriceRow) => (r.checkedAt ? `Source checked ${r.checkedAt}` : 'Price source');
+const rowData = (r: PriceRow, i: number) => ({
+  'data-pr-row': '',
+  'data-provider': r.provider.id,
+  'data-archived': r.archived ? 'true' : 'false',
+  'data-stale': isRowStale(r) ? 'true' : 'false',
+  'data-search': search(r),
+  'data-input': String(r.input),
+  'data-output': r.output == null ? '' : String(r.output),
+  'data-context': String(contextToNumber(r.model.context_window)),
+  'data-model': r.shortId.toLowerCase(),
+  'data-cur': String(curRank.get(r.currency)),
+  'data-order': String(i),
+});
 
+const SORTS = [
+  ['input-asc', 'Input price, low to high'],
+  ['input-desc', 'Input price, high to low'],
+  ['output-asc', 'Output price, low to high'],
+  ['output-desc', 'Output price, high to low'],
+  ['context-desc', 'Context, largest first'],
+  ['context-asc', 'Context, smallest first'],
+  ['model-asc', 'Model ID, A to Z'],
+  ['model-desc', 'Model ID, Z to A'],
+] as const;
+const sortHeaders = [
+  { key: 'input', label: 'Input /1M', right: true },
+  { key: 'output', label: 'Output /1M', right: true },
+  { key: 'context', label: 'Context', right: true },
+];
 ---
 
 <Layout
-  title="LLM API Pricing Comparison — $/1M Tokens Across Providers"
-  description={`Compare paid per-token pricing for ${rows.length} LLM API models across ${new Set(rows.map(r => r.providerId)).size} providers — input/output cost per million tokens, sorted by price.`}
+  title="Paid LLM API Rates per 1M Tokens — After the Free Tier"
+  description={`Paid per-token rates for ${activeRows} models from providers in the free LLM API directory, cheapest first, with each provider's official source.`}
   jsonLd={{
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "name": "LLM API Pricing Comparison",
-    "description": "Compare paid per-token pricing across LLM API providers.",
+    "name": "Paid rates after the free tier",
+    "description": "Paid per-token rates of free LLM API providers, from official pricing pages.",
     "url": siteURL(Astro.site, '/pricing/'),
     ...(pricesLastUpdated ? { "dateModified": pricesLastUpdated } : {})
   }}
 >
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-    <!-- Hero section -->
-    <div class="pt-10 pb-6">
-      <h1 class="text-2xl font-bold text-white mb-2">Pricing</h1>
-      <p class="text-slate-300 text-sm mb-2">Paid reference prices for when free quotas run out.</p>
-      <p class="text-slate-500 text-sm font-mono">
-        Comparing <span class="text-slate-300 font-semibold">{rows.length}</span> paid models across <span class="text-slate-300 font-semibold">{providerCount}</span> {providerCount === 1 ? 'provider' : 'providers'} — {currencyLabel}
-      </p>
-      <p class="text-slate-500 text-xs mt-2" id="pricing-freshness">
-        {priceDates
-          ? (priceDates.oldest === priceDates.newest
-            ? <>Price dates: <span class="text-slate-300 font-mono">{priceDates.newest}</span></>
-            : <>Price dates range from <span class="text-slate-300 font-mono">{priceDates.oldest}</span> to <span class="text-slate-300 font-mono">{priceDates.newest}</span> (newest)</>)
-          : <>Price dates: <span class="text-slate-300 font-mono">unknown</span></>}
-        {autoSyncedNames.length > 0 && <> · Synced from live API: <span class="text-emerald-300">{listFormat(autoSyncedNames)}</span></>}
-        {manualNames.length > 0 && <> · Manually maintained: <span class="text-slate-300">{listFormat(manualNames)}</span></>}
-      </p>
-    </div>
+  <PageHeader
+    title="Paid rates after the free tier"
+    lead="Paid reference prices for when free quotas run out: what the same providers charge per 1M tokens."
+  >
+    <Fragment slot="meta">
+      <span id="pricing-freshness">{priceDates
+        ? (priceDates.oldest === priceDates.newest
+          ? <>Prices checked <span class="date">{priceDates.newest}</span></>
+          : <>Price dates from <span class="date">{priceDates.oldest}</span> to <span class="date">{priceDates.newest}</span> (newest)</>)
+        : <>Price dates unknown</>}</span>
+      {staleActive > 0 && <> · <span class="num">{staleActive}</span> may be outdated</>}
+      {' '}· Standard text rates from official pages; promotions and tiers vary.
+    </Fragment>
+    <Fold summary="How prices are compared" class="pr-how">
+      <p class="sec">Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
+      <p class="sec">Auto-synced prices are read from the provider's live API on each catalog sync, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
+      <p class="sec">Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
+    </Fold>
+  </PageHeader>
 
-    <!-- Per-provider freshness summary -->
-    {providerSummaries.length > 0 && (
-      <div class="flex flex-wrap gap-2 mb-5" aria-label="Price sources by provider">
-        {providerSummaries.map(s => (
+  {sourceSummaries.length > 0 && (
+    <section class="pr-sources" aria-labelledby="pr-src-h">
+      <h2 class="caption pr-src-h" id="pr-src-h">Price sources by provider</h2>
+      <div class="chips" id="pr-src-chips">
+        {sourceSummaries.map(s => (
           <button
             type="button"
-            class="provider-chip inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 bg-slate-800/40 border border-slate-700/60 hover:border-slate-500 aria-pressed:border-blue-500 aria-pressed:bg-blue-500/10 rounded-lg px-3 py-1.5 text-xs text-slate-400 text-left transition-colors duration-150"
-            data-provider={s.id}
+            class="chip pr-src-chip"
+            data-src-provider={s.p.id}
+            data-archived={s.archived ? 'true' : 'false'}
             aria-pressed="false"
-            title={`Show only ${s.name} prices (click again to show all)`}
+            hidden={s.archived}
+            title={`Show only ${s.p.name} prices (press again to show all)`}
           >
-            <span class="font-medium text-slate-200">{s.name}</span>
-            <span aria-hidden="true">·</span>
-            <span>{s.count} {s.count === 1 ? 'price' : 'prices'}</span>
-            <span aria-hidden="true">·</span>
+            <span class="pr-src-name">{s.p.name}</span>
+            <span class="muted"><span class="num">{s.count}</span> {s.count === 1 ? 'price' : 'prices'}</span>
             {s.autoSynced
-              ? <>
-                  <span class="text-emerald-300">synced from live API</span>
-                  {s.catalogChanged && <><span aria-hidden="true">·</span><span title="The sync job only records a date when the catalog changes">catalog last changed {s.catalogChanged}</span></>}
-                </>
-              : <>
-                  <span class="text-slate-300">manual</span>
-                  <span aria-hidden="true">·</span>
-                  <span class={s.stale ? 'text-amber-300' : ''}>last checked {s.lastChecked ?? 'unknown'}</span>
-                </>}
+              ? <span class="muted" title={autoTip}>· Synced from live API{s.changed && <> · changed <span class="date">{s.changed}</span></>}</span>
+              : <span class="muted">· Manual · checked <span class="date">{s.lastChecked ?? 'unknown'}</span></span>}
+            {s.stale && <span class="tag tag-o pr-stale">May be outdated</span>}
           </button>
         ))}
       </div>
-    )}
+    </section>
+  )}
 
-    <!-- Disclaimer -->
-    <div class="bg-slate-800/30 border border-slate-700/50 rounded-xl px-4 py-3 mb-5 text-xs text-slate-500 space-y-1.5">
-      <p>
-        Auto-synced prices are read from the provider's live API on each catalog sync, and their date shows when the price last changed; manually maintained prices are only updated when someone re-checks the provider's pricing page{staleRowCount > 0 ? <>, so <span class="text-amber-300">{staleRowCount} {staleRowCount === 1 ? 'price is' : 'prices are'}</span> marked "May be outdated" (checked more than {STALE_DAYS} days ago)</> : null}. Always verify on the provider's site before budgeting.
-      </p>
-      <p>
-        Includes paid services whose free tiers have ended. Text input prices and standard/base rates are shown; some providers offer batch or cached-input discounts not reflected here.
-      </p>
-      {unpricedFreeProviders.length > 0 && (
-        <p>
-          Free providers without published per-token prices — such as {listFormat(unpricedFreeProviders.slice(-3).map(p => p.name))} — are not listed here. See <a href="/providers" class="text-blue-300 underline underline-offset-2">all providers</a> for their free quotas.
-        </p>
-      )}
-    </div>
-
-    <!-- Search -->
-    <div class="flex items-center gap-3 mb-5">
-      <div class="relative flex-1 sm:max-w-xs">
-        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </div>
-        <input
-          type="search"
-          aria-label="Search prices by provider or model"
-          id="pricing-search"
-          placeholder="Search provider or model..."
-          class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
-          autocomplete="off"
-        />
-      </div>
-    </div>
-
-    <!-- Pricing table -->
-    <div class="overflow-x-auto border border-slate-800 rounded-xl mb-8">
-      <table class="w-full text-sm border-collapse" id="pricing-table">
-        <thead>
-          <tr class="border-b border-slate-800 bg-slate-900/60 text-left text-xs text-slate-500 uppercase tracking-wide select-none">
-            <th class="px-4 py-3 w-10 font-medium">#</th>
-            <th class="px-4 py-3 font-medium">Model</th>
-            <th class="px-4 py-3 font-medium">Provider</th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="input">
-              Input / 1M <span class="sort-arrow">↓</span>
-            </th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="output">
-              Output / 1M <span class="sort-arrow"></span>
-            </th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300 hidden md:table-cell" data-sort-key="context">
-              Context <span class="sort-arrow"></span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr
-              class="price-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
-              data-name={`${row.providerName} ${row.modelName} ${row.modelId}`.toLowerCase()}
-              data-href={`/providers/${row.providerId}`}
-              data-provider={row.providerId}
-              data-currency={row.currency}
-              data-currency-rank={currencyRank.get(row.currency)}
-              data-input={row.input}
-              data-output={row.output}
-              data-context={contextToNumber(row.contextWindow)}
-            >
-              <td class="px-4 py-3 text-slate-500 font-mono text-xs rank-cell">{rankInCurrency[i]}</td>
-              <td class="px-4 py-3 min-w-0">
-                <a href={`/providers/${row.providerId}`} class="font-semibold text-slate-100 text-sm truncate">{row.modelName}</a>
-                <div class="text-xs text-slate-500 font-mono truncate">{row.modelId}</div>
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mt-0.5">
-                  {(() => {
-                    const label = row.autoSynced
-                      ? (row.checkedAt ? `Price unchanged since ${row.checkedAt}` : 'Synced from live API')
-                      : `Checked ${row.checkedAt ?? 'date unknown'}`;
-                    return row.source
-                      ? <a href={row.source} target="_blank" rel="noopener noreferrer" class="text-blue-300 underline">{label}</a>
-                      : <span>{label}</span>;
-                  })()}
-                  {isRowStale(row) && (
-                    <span
-                      class="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-px text-[10px] font-medium text-amber-300"
-                      title={daysSince(row.checkedAt, now) === null ? 'No check date recorded' : `Last checked ${daysSince(row.checkedAt, now)} days ago`}
-                    >May be outdated</span>
-                  )}
-                </div>
-                {row.validUntil && <div class="text-xs text-amber-300">Promotional price until {row.validUntil}</div>}
-              </td>
-              <td class="px-4 py-3 min-w-0">
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="w-5 h-5 rounded bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-                    {row.providerLogo ? (
-                      <img
-                        src={row.providerLogo}
-                        alt={row.providerName}
-                        class="w-full h-full object-contain brightness-0 invert"
-                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
-                      />
-                    ) : null}
-                    <span class={row.providerLogo ? 'hidden' : 'flex'}>{row.providerName.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <span class="text-sm text-slate-300 truncate">{row.providerName}</span>
-                </div>
-              </td>
-              <td class="px-4 py-3 text-right font-mono text-slate-200">{formatPrice(row.input, row.currency)}</td>
-              <td class="px-4 py-3 text-right font-mono text-slate-400">{formatPrice(row.output, row.currency)}</td>
-              <td class="px-4 py-3 text-right font-mono text-slate-400 hidden md:table-cell">{row.contextWindow ?? '—'}</td>
-            </tr>
-          ))}
-          <tr id="no-results-row" class="hidden">
-            <td colspan="6" class="px-4 py-8 text-center text-slate-400 text-sm">No models match your search</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    {subscriptionProviders.length > 0 && (
-      <div class="pb-16">
-        <h2 class="text-sm font-semibold text-slate-200 mb-3">Not shown — no per-token rate</h2>
-        <div class="space-y-2">
-          {subscriptionProviders.map(p => (
-            <div class="flex items-start gap-3 bg-slate-800/30 border border-slate-700/50 rounded-lg px-4 py-3">
-              <span class="text-sm font-medium text-slate-300 flex-shrink-0">{p.name}</span>
-              <span class="text-xs text-slate-500">{p.pricing_note}</span>
-            </div>
-          ))}
-        </div>
+  <div class="toolbar" id="pr-toolbar">
+    <SearchInput id="pr-q" label="Search models" placeholder="Model ID or provider" param="q" />
+    <label class="sr-only" for="pr-provider">Provider</label>
+    <select class="select" id="pr-provider">
+      <option value="">All providers</option>
+      {pricedProviders.map(p => <option value={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'}>{p.name}{p.status === 'archived' ? ' (archived)' : ''}</option>)}
+    </select>
+    {archivedRows > 0 && (
+      <div class="chips" id="pr-chips">
+        <Chip name="archived" label="Include archived providers" count={archivedRows} />
       </div>
     )}
+    <label class="sr-only" for="pr-sort">Sort models</label>
+    <select class="select" id="pr-sort">
+      {SORTS.map(([value, label]) => <option value={value} selected={value === 'input-asc'}>{label}</option>)}
+    </select>
+    <span class="count" id="pr-count" aria-live="polite"><span class="num">{activeRows}</span> {activeRows === 1 ? 'model' : 'models'}</span>
   </div>
+
+  <div class="only-md tblwrap" id="pr-table-wrap" hidden={activeRows === 0}>
+    <table class="tbl" id="pricing-table">
+      <caption class="sr-only">Paid per-token rates. Use the column buttons to sort.</caption>
+      <thead>
+        <tr>
+          <th scope="col" data-sort-key="model" aria-sort="none">
+            <button type="button" class="pr-sort" data-sort="model">Model ID<span class="pr-arrow" aria-hidden="true"></span></button>
+          </th>
+          <th scope="col">Provider</th>
+          <th scope="col">Provider free tier</th>
+          {sortHeaders.map(h => (
+            <th scope="col" class="r" data-sort-key={h.key} aria-sort={h.key === 'input' ? 'ascending' : 'none'}>
+              <button type="button" class="pr-sort" data-sort={h.key}>{h.label}<span class="pr-arrow" aria-hidden="true">{h.key === 'input' ? '↑' : ''}</span></button>
+            </th>
+          ))}
+          <th scope="col">Price date</th>
+          <th scope="col"><span class="sr-only">Source</span></th>
+        </tr>
+      </thead>
+      <tbody id="pr-tbody">
+        {rows.map((r, i) => {
+          const input = formatRate(r.input, r.currency);
+          const output = formatRate(r.output, r.currency);
+          const ctx = formatTokens(r.model.context_window);
+          return (
+            <tr class:list={{ arch: r.archived }} {...rowData(r, i)} hidden={r.archived}>
+              <td>
+                <div class="pr-id">
+                  <span class="mono" title={r.model.id}>{r.shortId}</span>
+                  {r.validUntil && <button type="button" class="tag tag-o pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo</button>}
+                </div>
+              </td>
+              <td>
+                <div class="pcell pr-prov">
+                  <ProviderLogo provider={r.provider} size={16} />
+                  <span class="pr-pname">{r.provider.name}</span>
+                  {r.archived && <span class="tag">Archived</span>}
+                </div>
+              </td>
+              <td>
+                {r.free === 'no'
+                  ? <span class="muted">No</span>
+                  : <a class="lnk" href={`/providers/${r.provider.id}`} title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'} →</a>}
+              </td>
+              <td class="r">{input ? <span class="num">{input}</span> : <NotPublished variant="dash" note="No input rate on the official pricing page." />}</td>
+              <td class="r">{output ? <span class="num">{output}</span> : <NotPublished variant="dash" note="No output rate on the official pricing page." />}</td>
+              <td class="r">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
+              <td class="pr-date">
+                <div class="pr-date-cell">
+                  {r.checkedAt ? <span class="date" title={checkedLabel(r)}>{r.checkedAt}</span> : <span class="muted">Unknown</span>}
+                  {r.autoSynced
+                    ? <span class="tag tag-o" title={autoTip}>Auto-synced</span>
+                    : isRowStale(r) && <span class="tag tag-o pr-stale" title={staleTip(r)}>May be outdated</span>}
+                </div>
+              </td>
+              <td class="r pr-src">
+                {r.source && <a class="lnk" href={r.source} target="_blank" rel="noopener noreferrer" title={sourceTitle(r)} aria-label={`Price source for ${r.model.id}${r.checkedAt ? `, checked ${r.checkedAt}` : ''}`}><Icon name="ext" /></a>}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="only-sm srows" id="pr-list" hidden={activeRows === 0}>
+    {rows.map((r, i) => {
+      const input = formatRate(r.input, r.currency);
+      const output = formatRate(r.output, r.currency);
+      const ctx = formatTokens(r.model.context_window);
+      return (
+        <div class:list={['srow', { 'pr-arch': r.archived }]} {...rowData(r, i)} hidden={r.archived}>
+          <div class="idline">
+            <span class="mono" title={r.model.id}>{r.shortId}</span>
+            {r.validUntil && <button type="button" class="tag tag-o pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo</button>}
+          </div>
+          <div class="facts">
+            <span class="sec">{r.provider.name}</span>
+            {r.archived && <span class="tag">Archived</span>}
+            <span class="sep">·</span>
+            <span>{input ? <span class="num">{input}</span> : <NotPublished variant="dash" note="No input rate on the official pricing page." />} in</span>
+            <span class="sep">·</span>
+            <span>{output ? <span class="num">{output}</span> : <NotPublished variant="dash" note="No output rate on the official pricing page." />} out</span>
+            {ctx && <><span class="sep">·</span><span class="num" title={ctx.title}>{ctx.text}</span></>}
+          </div>
+          <div class="caption">
+            Free tier: {r.free === 'no'
+              ? <span>No</span>
+              : <a class="lnk" href={`/providers/${r.provider.id}`} title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'} →</a>}
+            {' · '}{r.source
+              ? <a class="lnk" href={r.source} target="_blank" rel="noopener noreferrer" title={sourceTitle(r)}>{checkedLabel(r)} ↗</a>
+              : <span>{checkedLabel(r)}</span>}
+            {isRowStale(r) && <> <span class="tag tag-o pr-stale" title={staleTip(r)}>May be outdated</span></>}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+
+  <div class="empty" id="pr-empty" hidden={activeRows > 0}>
+    <p id="pr-empty-text">{rows.length ? 'No priced model matches these filters.' : 'No provider in the catalog publishes a per-token paid rate.'}</p>
+    <button class="btn" type="button" id="pr-clear" hidden={rows.length === 0}>Clear filters</button>
+  </div>
+
+  {(notShown.length > 0 || unpricedFree.length > 0) && (
+    <section class="sect" id="pr-not-shown" aria-labelledby="pr-ns-h" hidden={notShownActive === 0 && unpricedFree.length === 0}>
+      <h2 class="h3" id="pr-ns-h">Not shown: no per-token rate</h2>
+      <div class="pr-ns-list">
+        {unpricedFree.length > 0 && (
+          <p class="sec" id="pr-unpriced">
+            Free providers without published per-token prices:{' '}
+            {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}`}>{p.name}</a></>)}.
+            {' '}Their free quotas are on each provider page.
+          </p>
+        )}
+        {notShown.map(p => (
+          <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
+            <a class="pr-ns-name" href={`/providers/${p.id}`}>{p.name}</a>
+            {p.status === 'archived' && <> <span class="tag">Archived</span></>}
+            {' '}— {p.pricing_note}
+          </p>
+        ))}
+      </div>
+    </section>
+  )}
 </Layout>
 
+<style>
+  .pr-how { margin-top: 16px; max-width: 48rem; }
+  .pr-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pr-id .mono { font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
+  .tbl tr.arch .pr-id .mono { color: var(--text-muted); }
+  .pr-prov { gap: 8px; }
+  .pr-pname { white-space: nowrap; color: var(--text-secondary); }
+  .tbl tr.arch .pr-pname { color: var(--text-muted); }
+  .pr-promo { cursor: help; flex-shrink: 0; }
+  .pr-src { width: 40px; }
+  .pr-date { white-space: nowrap; }
+  .pr-date-cell { display: flex; align-items: center; gap: 8px; }
+  .pr-date .date { font-size: 12px; color: var(--text-muted); }
+  .pr-stale { color: var(--status-degraded); border-color: var(--degraded-border); cursor: help; }
+  .pr-sources { margin-bottom: 16px; }
+  .pr-src-h { margin-bottom: 8px; }
+  .pr-src-chip { gap: 6px; font-size: 12px; }
+  .pr-src-chip .pr-src-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .pr-src-chip .num, .pr-src-chip .date { font-size: 12px; color: var(--text-muted); }
+  .pr-src-chip[aria-pressed="true"] .pr-src-name, .pr-src-chip[aria-pressed="true"] .muted, .pr-src-chip[aria-pressed="true"] .num, .pr-src-chip[aria-pressed="true"] .date { color: var(--brand); }
+  .pr-src a { display: inline-flex; padding: 4px; color: var(--text-muted); }
+  .pr-src a:hover { color: var(--brand); }
+  .tbl th[data-sort-key] { padding: 0; }
+  .tbl th.r .pr-sort { justify-content: flex-end; width: 100%; }
+  .pr-sort { display: inline-flex; align-items: center; gap: 4px; padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+  .pr-sort:hover, th[aria-sort="ascending"] .pr-sort, th[aria-sort="descending"] .pr-sort { color: var(--text-secondary); }
+  .pr-arrow:empty { display: none; }
+  .pr-arch .idline .mono, .pr-arch .facts .sec { color: var(--text-muted); }
+  .pr-ns-list { display: grid; gap: 8px; margin-top: 8px; max-width: 48rem; }
+  .pr-ns-name { font-weight: 500; color: var(--text-primary); }
+  .pr-ns-name:hover { color: var(--brand); }
+  @media (max-width: 767px) { #pr-toolbar .select { flex: 1 1 140px; } }
+  #pr-empty[hidden], #pr-not-shown[hidden], #pr-table-wrap[hidden], #pr-list[hidden] { display: none; }
+</style>
+
 <script>
-  document.querySelectorAll<HTMLElement>('.price-row').forEach(row => {
-    row.addEventListener('click', (event) => {
-      if ((event.target as HTMLElement).closest('a, button')) return;
-      const href = row.getAttribute('data-href');
-      if (href) window.location.href = href;
-    });
-  });
+  import { chipEnabled, setChip } from '../../components/ui';
 
-  const tbody = document.querySelector('#pricing-table tbody');
-  let currentSort: { key: string; dir: 'asc' | 'desc' } = { key: 'input', dir: 'desc' };
+  type Key = 'input' | 'output' | 'context' | 'model';
+  type Dir = 'asc' | 'desc';
+  const DEFAULT_DIR: Record<Key, Dir> = { input: 'asc', output: 'asc', context: 'desc', model: 'asc' };
 
-  function sortRows(key: string, preserveDirection = false) {
-    if (!tbody) return;
-    const dir: 'asc' | 'desc' = preserveDirection ? currentSort.dir : currentSort.key === key && currentSort.dir === 'desc' ? 'asc' : 'desc';
-    currentSort = { key, dir };
+  const tbody = document.getElementById('pr-tbody');
+  const list = document.getElementById('pr-list');
+  const tableWrap = document.getElementById('pr-table-wrap');
+  const providerSel = document.getElementById('pr-provider') as HTMLSelectElement;
+  const sortSel = document.getElementById('pr-sort') as HTMLSelectElement;
+  const archChip = document.querySelector<HTMLElement>('#pr-chips .chip[data-chip="archived"]');
+  const count = document.getElementById('pr-count')!;
+  const empty = document.getElementById('pr-empty')!;
+  const emptyText = document.getElementById('pr-empty-text')!;
+  const notShown = document.getElementById('pr-not-shown');
+  const searchInput = document.getElementById('pr-q') as HTMLInputElement | null;
+  const srcChips = Array.from(document.querySelectorAll<HTMLButtonElement>('#pr-src-chips [data-src-provider]'));
+  const tableRows = tbody ? Array.from(tbody.querySelectorAll<HTMLElement>('[data-pr-row]')) : [];
+  const listRows = list ? Array.from(list.querySelectorAll<HTMLElement>('[data-pr-row]')) : [];
 
-    const rows = Array.from(tbody.querySelectorAll<HTMLElement>('.price-row'));
-    // Never compare prices across currencies: keep currency groups together.
-    rows.sort((a, b) => {
-      const group = Number(a.dataset.currencyRank ?? 0) - Number(b.dataset.currencyRank ?? 0);
-      if (group) return group;
-      const av = parseFloat(a.getAttribute(`data-${key}`) ?? '0');
-      const bv = parseFloat(b.getAttribute(`data-${key}`) ?? '0');
-      return dir === 'asc' ? av - bv : bv - av;
-    });
+  const params = new URL(location.href).searchParams;
+  const state = {
+    q: (params.get('q') ?? '').trim().toLowerCase(),
+    provider: params.get('provider') ?? '',
+    archived: params.get('archived') === '1',
+    sort: params.get('sort') ?? 'input-asc',
+  };
+  if (!Array.from(providerSel.options).some(o => o.value === state.provider)) state.provider = '';
+  if (!Array.from(sortSel.options).some(o => o.value === state.sort)) state.sort = 'input-asc';
+  providerSel.value = state.provider;
+  sortSel.value = state.sort;
 
-    const ranks = new Map<string, number>();
-    rows.forEach(r => {
-      tbody.appendChild(r);
-      const rank = (ranks.get(r.dataset.currency ?? '') ?? 0) + 1;
-      ranks.set(r.dataset.currency ?? '', rank);
-      const rankCell = r.querySelector('.rank-cell');
-      if (rankCell) rankCell.textContent = String(rank);
-    });
+  const selectedArchived = () => providerSel.selectedOptions[0]?.dataset.archived === 'true';
+  const matchesBase = (el: HTMLElement) =>
+    (!state.provider || el.dataset.provider === state.provider) && (!state.q || (el.dataset.search ?? '').includes(state.q));
+  // Picking an archived provider in the select shows its rows even with the toggle off.
+  const showArchived = () => state.archived || selectedArchived();
+  const matches = (el: HTMLElement) => matchesBase(el) && (el.dataset.archived !== 'true' || showArchived());
 
-    document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
-      th.setAttribute('aria-sort', th.dataset.sortKey === key ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
-      const arrow = th.querySelector('.sort-arrow');
-      if (!arrow) return;
-      if (th.getAttribute('data-sort-key') === key) {
-        arrow.textContent = dir === 'asc' ? '↑' : '↓';
-        th.classList.add('text-slate-200');
-      } else {
-        arrow.textContent = '';
-        th.classList.remove('text-slate-200');
-      }
+  const num = (v: string | undefined) => (v == null || v === '' ? null : Number(v));
+  function compare(key: Key, dir: Dir) {
+    const sign = dir === 'asc' ? 1 : -1;
+    return (a: HTMLElement, b: HTMLElement) => {
+      if (key === 'model') return sign * (a.dataset.model ?? '').localeCompare(b.dataset.model ?? '') || Number(a.dataset.order) - Number(b.dataset.order);
+      // Never rank prices across currencies.
+      if (key !== 'context') { const cur = Number(a.dataset.cur) - Number(b.dataset.cur); if (cur) return cur; }
+      let av = num(a.dataset[key]); let bv = num(b.dataset[key]);
+      if (key === 'context') { if (av === -1) av = null; if (bv === -1) bv = null; }
+      // Missing values always go last, whatever the direction.
+      if (av == null || bv == null) return av == null && bv == null ? Number(a.dataset.order) - Number(b.dataset.order) : av == null ? 1 : -1;
+      return sign * (av - bv) || Number(a.dataset.order) - Number(b.dataset.order);
+    };
+  }
+
+  function syncHeaders(key: Key, dir: Dir) {
+    document.querySelectorAll<HTMLElement>('#pricing-table th[data-sort-key]').forEach(th => {
+      const active = th.dataset.sortKey === key;
+      th.setAttribute('aria-sort', active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      const arrow = th.querySelector('.pr-arrow');
+      if (arrow) arrow.textContent = active ? (dir === 'asc' ? '↑' : '↓') : '';
     });
   }
 
-  document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
-    th.tabIndex = 0;
-    th.setAttribute('aria-label', `Sort by ${th.dataset.sortKey}`);
-    th.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); th.click(); } });
-    th.addEventListener('click', () => {
-      const key = th.getAttribute('data-sort-key');
-      if (key) sortRows(key);
-    });
-  });
-
-  const searchInput = document.getElementById('pricing-search') as HTMLInputElement | null;
-  const noResultsRow = document.getElementById('no-results-row');
-
-  // Provider chips narrow the table to one provider (click again to clear);
-  // the filter combines with the text search.
-  let providerFilter = '';
-  const chips = document.querySelectorAll<HTMLElement>('.provider-chip');
-
-  function applyFilters() {
-    const q = searchInput?.value.trim().toLowerCase() ?? '';
-    let visibleCount = 0;
-    document.querySelectorAll<HTMLElement>('.price-row').forEach(row => {
-      const visible = (!providerFilter || row.dataset.provider === providerFilter)
-        && (!q || (row.getAttribute('data-name')?.includes(q) ?? false));
-      row.style.display = visible ? '' : 'none';
-      if (visible) visibleCount++;
-    });
-    noResultsRow?.classList.toggle('hidden', visibleCount > 0);
+  function writeUrl() {
+    const url = new URL(location.href);
+    const set = (k: string, v: string) => { if (v) url.searchParams.set(k, v); else url.searchParams.delete(k); };
+    set('provider', state.provider);
+    set('archived', state.archived ? '1' : '');
+    set('sort', state.sort === 'input-asc' ? '' : state.sort);
+    history.replaceState(history.state, '', url);
   }
 
-  chips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      providerFilter = providerFilter === chip.dataset.provider ? '' : chip.dataset.provider ?? '';
-      chips.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.provider === providerFilter)));
-      applyFilters();
+  function update() {
+    const [key, dir] = state.sort.split('-') as [Key, Dir];
+    const cmp = compare(key, dir);
+    let visible = 0;
+    for (const [container, rows] of [[tbody, tableRows], [list, listRows]] as const) {
+      if (!container) continue;
+      const sorted = [...rows].sort(cmp);
+      container.append(...sorted);
+      for (const el of sorted) el.hidden = !matches(el);
+    }
+    visible = tableRows.filter(el => !el.hidden).length;
+    syncHeaders(key, dir);
+
+    if (archChip) {
+      const archivedCount = tableRows.filter(el => el.dataset.archived === 'true' && matchesBase(el)).length;
+      setChip(archChip, { count: archivedCount, pressed: state.archived });
+    }
+    count.replaceChildren();
+    const n = document.createElement('span');
+    n.className = 'num';
+    n.textContent = String(visible);
+    count.append(n, visible === 1 ? ' model' : ' models');
+
+    const none = visible === 0 && tableRows.length > 0;
+    empty.hidden = !none;
+    if (tableWrap) tableWrap.hidden = visible === 0;
+    if (list) list.hidden = visible === 0;
+    if (none) emptyText.textContent = state.q ? `No priced model matches “${state.q}”.` : 'No priced model matches these filters.';
+
+    for (const chip of srcChips) {
+      chip.setAttribute('aria-pressed', String(chip.dataset.srcProvider === state.provider));
+      chip.hidden = chip.dataset.archived === 'true' && !showArchived();
+    }
+
+    if (notShown) {
+      // The unpriced-free-providers line is about the whole directory; hide it while one provider is picked.
+      const unpriced = document.getElementById('pr-unpriced');
+      if (unpriced) unpriced.hidden = !!state.provider;
+      let shown = unpriced && !state.provider ? 1 : 0;
+      notShown.querySelectorAll<HTMLElement>('[data-ns-provider]').forEach(p => {
+        const ok = (!state.provider || p.dataset.nsProvider === state.provider) && (p.dataset.archived !== 'true' || showArchived());
+        p.hidden = !ok;
+        if (ok) shown++;
+      });
+      notShown.hidden = shown === 0;
+    }
+  }
+
+  window.addEventListener('search-change', event => {
+    const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
+    if (detail?.id !== 'pr-q') return;
+    state.q = detail.value.toLowerCase();
+    update();
+  });
+  srcChips.forEach(chip => chip.addEventListener('click', () => {
+    const id = chip.dataset.srcProvider ?? '';
+    state.provider = state.provider === id ? '' : id;
+    providerSel.value = state.provider;
+    writeUrl();
+    update();
+  }));
+  providerSel.addEventListener('change', () => { state.provider = providerSel.value; writeUrl(); update(); });
+  sortSel.addEventListener('change', () => { state.sort = sortSel.value; writeUrl(); update(); });
+  archChip?.addEventListener('click', () => {
+    if (!chipEnabled(archChip)) return;
+    state.archived = !state.archived;
+    writeUrl();
+    update();
+  });
+  document.querySelectorAll<HTMLButtonElement>('#pricing-table .pr-sort').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sort as Key;
+      const [curKey, curDir] = state.sort.split('-') as [Key, Dir];
+      const dir: Dir = curKey === key ? (curDir === 'asc' ? 'desc' : 'asc') : DEFAULT_DIR[key];
+      state.sort = `${key}-${dir}`;
+      sortSel.value = state.sort;
+      writeUrl();
+      update();
     });
   });
+  document.getElementById('pr-clear')?.addEventListener('click', () => {
+    state.provider = '';
+    providerSel.value = '';
+    // SearchInput's own Clear button resets the box and ?q= and fires search-change.
+    if (searchInput?.value) document.querySelector<HTMLButtonElement>('[data-search-clear="pr-q"]')?.click();
+    state.q = '';
+    writeUrl();
+    update();
+  });
 
-  searchInput?.addEventListener('input', applyFilters);
+  update();
 </script>

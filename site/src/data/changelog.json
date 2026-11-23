@@ -4,7 +4,7 @@
     "date": "2026-11-16",
     "provider_id": "google-ai-studio",
     "provider_name": "Google AI Studio",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "Google AI Studio catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -22,7 +22,7 @@
     "date": "2026-11-16",
     "provider_id": "sambanova",
     "provider_name": "SambaNova Cloud",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "SambaNova Cloud catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -40,7 +40,7 @@
     "date": "2026-11-16",
     "provider_id": "openrouter",
     "provider_name": "OpenRouter",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "OpenRouter catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -49,7 +49,7 @@
     "date": "2026-11-16",
     "provider_id": "cohere",
     "provider_name": "Cohere",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "Cohere catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -67,7 +67,7 @@
     "date": "2026-11-16",
     "provider_id": "bigmodel",
     "provider_name": "BigModel",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "BigModel catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -76,7 +76,7 @@
     "date": "2026-11-16",
     "provider_id": "groq",
     "provider_name": "Groq",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "Groq catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },
@@ -103,7 +103,7 @@
     "date": "2026-11-16",
     "provider_id": "aihubmix",
     "provider_name": "AIHubMix",
-    "type": "model_added",
+    "type": "catalog_reviewed",
     "title": "AIHubMix catalog and free-tier documentation refreshed",
     "description": "Reviewed official documentation; updated tracked model IDs and limits, added source links, and removed unsupported quota claims. Documentation review does not replace live API probes."
   },

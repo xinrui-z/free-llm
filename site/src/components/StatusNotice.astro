@@ -1,0 +1,21 @@
+---
+// One per page, directly under PageHeader (never in Layout). Only on /, /providers/[id] (active) and /models.
+// SSR always renders the neutral "unavailable" line; status-client.ts rewrites it to live / stale / unavailable.
+// The notice is plain text. Only when its line is cut off with an ellipsis does ui.ts make it a button
+// (role, tabindex, aria-expanded) that expands to the full text on tap, click, Enter or Space.
+interface Props {
+  /** Provider page: report this provider's own probe instead of site-wide counts. */
+  providerId?: string;
+  /** /models: render nothing visible unless the snapshot is live. */
+  liveOnly?: boolean;
+  class?: string;
+}
+const { providerId, liveOnly = false, class: className } = Astro.props;
+---
+<div class:list={['sn-wrap', className]} data-live-only={liveOnly ? '' : undefined}>
+  <div class="sn" data-status-notice data-status-provider={providerId}>
+    <span data-sn-dot><span class="dot d-unknown" aria-hidden="true"></span></span>
+    <span class="sn-text" data-sn-text>Live health checks are unavailable. Showing documented limits from official sources.</span>
+    <span class="sn-right" data-sn-right></span>
+  </div>
+</div>

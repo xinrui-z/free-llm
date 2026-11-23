@@ -1,0 +1,26 @@
+---
+// 28px icon button that copies text (handled globally by ./ui.ts) and confirms with a toast.
+// Copies `value`, or the current textContent of the element with id `from` (use `from` when a script updates the text).
+import Icon from './Icon.astro';
+interface Props {
+  value?: string;
+  from?: string;
+  /** What is copied, for the accessible name: "Copy {label}". */
+  label: string;
+  /** Toast text on success (default "Copied"). */
+  toast?: string;
+  /** Visible text next to the icon (renders a small text button instead of an icon button). */
+  text?: string;
+  class?: string;
+}
+const { value, from, label, toast, text, class: className } = Astro.props;
+---
+<button
+  type="button"
+  class:list={[text ? 'btn btn-t btn-sm' : 'icon-btn', className]}
+  data-copy={from ? undefined : value ?? ''}
+  data-copy-from={from}
+  data-copy-toast={toast}
+  aria-label={`Copy ${label}`}
+  title="Copy"
+><Icon name="copy" size={text ? 13 : 14} />{text}</button>

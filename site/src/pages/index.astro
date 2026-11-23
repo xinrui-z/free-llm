@@ -1,311 +1,377 @@
 ---
+// "/" — the single provider directory (replaces the old home table and /providers).
+// Order: PageHeader, StatusNotice, Quickest first call, All free providers (toolbar + ProviderTable),
+// Archived providers (collapsed), Recent changes. Renders complete without JS or the status API;
+// the client script only filters/sorts the SSR rows and swaps in the changelog API's entries.
 import Layout from '../layouts/Layout.astro';
+import PageHeader from '../components/PageHeader.astro';
+import StatusNotice from '../components/StatusNotice.astro';
+import StatusSlot from '../components/StatusSlot.astro';
+import ProviderLogo from '../components/ProviderLogo.astro';
+import LimitFacts from '../components/LimitFacts.astro';
+import CopyField from '../components/CopyField.astro';
+import ProviderTable from '../components/ProviderTable.astro';
+import SearchInput from '../components/SearchInput.astro';
+import Chip from '../components/Chip.astro';
+import Fold from '../components/Fold.astro';
+import { compareByRpd, SORT_CAPTIONS } from '../components/provider-table';
+import { accessLine, archiveDate, formatCount, formatDate, hasVision, limitsOf } from '../lib/format';
 import { siteURL } from '../lib/site-url';
-import StatusSummaryBar from '../components/StatusSummaryBar.astro';
-import StatusBadge from '../components/StatusBadge.astro';
-import changelog from '../data/changelog.json';
-import { contextToNumber } from '../lib/format';
-
 import { getProviders } from '../lib/providers';
+import changelog from '../data/changelog.json';
+import { recentChanges } from './_recent-changes';
+
 const catalog = getProviders(Astro.locals);
-import { normalizeStatus, compareQuota } from '../lib/status';
-const providers = catalog.filter(p => p.status === 'active');
-const statusSummary = normalizeStatus(null, providers.map(p => p.id));
+// Catalog order is the order getProviders returns (data/_order.json, or the live catalog's order).
+const active = catalog.filter(p => p.status === 'active');
+const archived = catalog.filter(p => p.status === 'archived');
 
-// Default ordering uses documented daily caps. Unknown caps sort last.
-const rankedProviders = [...providers].sort((a, b) => compareQuota(a.rpd, b.rpd));
+// Quickest first call: active providers with any published request limit first (daily, then per minute),
+// then catalog order. Archived providers are never candidates.
+const picks = active
+  .map((p, order) => ({ p, order, L: limitsOf(p) }))
+  .sort((a, b) => Number(b.L.published) - Number(a.L.published)
+    || (a.L.published ? compareByRpd({ rpd: a.L.rpd, rpm: a.L.rpm, order: a.order }, { rpd: b.L.rpd, rpm: b.L.rpm, order: b.order }) : a.order - b.order))
+  .slice(0, 3)
+  .map(x => x.p);
 
-function formatLatency(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '—';
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
-}
+const verified = active.map(p => formatDate(p.last_verified)).filter((d): d is string => !!d).sort();
+const firstVerified = verified[0];
+const lastVerified = verified[verified.length - 1];
 
-function formatNum(n: number | null | undefined): string {
-  if (n === null || n === undefined) return '—';
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
-  return n.toString();
-}
+const total = active.length;
+const counts = {
+  pub: active.filter(p => limitsOf(p).rpd != null).length,
+  vision: active.filter(p => hasVision(p)).length,
+  oai: active.filter(p => (p.tags ?? []).includes('openai-compatible')).length,
+};
 
+const recent = recentChanges(changelog, catalog);
+const linkable = JSON.stringify(catalog.map(p => ({ id: p.id, name: p.name })));
+
+const title = 'Free LLM APIs — Providers, Rate Limits and Live Status';
+const description = `${total} LLM API providers with a recurring free tier: documented request limits, free models and base URLs, with live health checks.`;
+const home = siteURL(Astro.site);
 ---
 
 <Layout
-  title="Free LLM APIs — Real-time Status Dashboard"
-  description={`Real-time monitoring of ${providers.length} free LLM API providers. Track OpenRouter, Groq, AIHubMix, Cohere and more — instantly find free AI APIs that are actually working.`}
-  jsonLd={{
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "Free LLM APIs",
-    "url": siteURL(Astro.site),
-    "description": `Real-time status monitoring for ${providers.length}+ free LLM API providers including OpenRouter, Groq, AIHubMix, Cohere, Google AI Studio and more.`,
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Web",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    }
-  }}
+  title={title}
+  description={description}
+  jsonLd={[
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Free LLM APIs',
+      url: home,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: 'Free LLM APIs you can call today',
+      url: home,
+      description,
+      mainEntity: {
+        '@type': 'ItemList',
+        numberOfItems: total,
+        itemListElement: active.map((p, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: p.name,
+          url: siteURL(Astro.site, `/providers/${encodeURIComponent(p.id)}/`),
+        })),
+      },
+    },
+  ]}
 >
-  <StatusSummaryBar summary={statusSummary} />
+  <PageHeader
+    title="Free LLM APIs you can call today"
+    lead="Providers with a recurring free tier. Limits come from each provider's official documentation."
+  >
+    <Fragment slot="meta">
+      <span class="num">{formatCount(total)}</span> {total === 1 ? 'provider' : 'providers'}
+      {archived.length > 0 && <> · <a class="meta-a" href="#archived"><span class="num">{formatCount(archived.length)}</span> archived</a></>}
+      {firstVerified && (firstVerified === lastVerified
+        ? <> · limits verified <span class="date">{firstVerified}</span></>
+        : <> · limits verified <span class="date">{firstVerified}</span> to <span class="date">{lastVerified}</span></>)}
+    </Fragment>
+  </PageHeader>
 
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-    <!-- Hero section -->
-    <div class="pt-10 pb-6">
-      <h1 class="text-2xl font-bold text-white mb-2">Free LLM APIs</h1>
-      <p class="text-slate-500 text-sm font-mono">
-        Comparing <span class="text-slate-300 font-semibold">{providers.length}</span> free LLM APIs by documented limits and latest probe results
-      </p>
+  <StatusNotice />
+
+  {picks.length > 0 && (
+    <section class="sect" aria-labelledby="picks-h">
+      <div class="sect-head">
+        <h2 class="h2" id="picks-h">Quickest first call</h2>
+        <span class="caption">Chosen by rule: providers with a published request limit first (daily, then per minute), then catalog order.</span>
+      </div>
+      <div class="picks">
+        {picks.map(p => {
+          const key = p.signup_url || p.website_url;
+          return (
+            <article class="pick" aria-labelledby={`pick-${p.id}`} data-pick={p.id}>
+              <div class="pick-h">
+                <StatusSlot providerId={p.id} />
+                <ProviderLogo provider={p} size={24} />
+                <a id={`pick-${p.id}`} href={`/providers/${p.id}`}>{p.name}</a>
+              </div>
+              <LimitFacts provider={p} size="compact" />
+              <div class="access">{accessLine(p)} · <span class="num">{formatCount(p.models.length)}</span> free {p.models.length === 1 ? 'model' : 'models'}</div>
+              <CopyField label="Base URL" value={p.base_url} id={`pk-${p.id}`} toast="Base URL copied" />
+              <div class="pick-acts">
+                {key && <a class="btn btn-p" href={key} target="_blank" rel="noopener noreferrer">Get API key ↗</a>}
+                <a class="btn btn-t" href={`/providers/${p.id}#quick-start`}>Quick start →</a>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  <section class="sect" aria-labelledby="dir-h">
+    <div class="sect-head">
+      <h2 class="h2" id="dir-h">All free providers</h2>
+      <span class="caption" id="dir-caption">{SORT_CAPTIONS.rpd}</span>
     </div>
+    <div class="toolbar">
+      <SearchInput id="dir-q" label="Search providers" placeholder="Search provider or model ID" param="q" />
+      <div class="chips" id="dir-chips" role="group" aria-label="Filter providers">
+        <Chip name="pub" label="Published daily limit" count={counts.pub} hidden={counts.pub === total} />
+        <Chip name="vision" label="Vision" count={counts.vision} hidden={counts.vision === total} />
+        <Chip name="oai" label="OpenAI-compatible" count={counts.oai} hidden={counts.oai === total} />
+        <Chip name="st-up" label="Up" count={0} data-live-only="" />
+        <Chip name="st-issues" label="Issues" count={0} data-live-only="" />
+      </div>
+      <label class="sr-only" for="dir-sort">Sort providers</label>
+      <select class="select" id="dir-sort">
+        <option value="rpd">Sort: Published daily limit</option>
+        <option value="name">Sort: Name</option>
+        <option value="models">Sort: Most models</option>
+      </select>
+      <span class="count" id="dir-count" aria-live="polite"><span class="num">{total}</span> of <span class="num">{total}</span></span>
+    </div>
+    {total > 0
+      ? <ProviderTable providers={active} id="provider-table" />
+      : <div class="empty"><p>No provider currently offers a recurring free tier in this catalog.</p></div>}
+    <div class="empty" id="dir-empty" hidden>
+      <p id="dir-empty-text">No provider matches these filters.</p>
+      <button class="btn" type="button" id="dir-empty-clear">Clear filters</button>
+    </div>
+  </section>
 
-    <!-- Search + quick filter tabs -->
-    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-      <div class="relative flex-1 sm:max-w-xs">
-        <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-slate-500">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+  {archived.length > 0 && (
+    <section class="sect" aria-label="Archived providers">
+      <Fold id="archived" summary={`Archived providers (${archived.length})`} note="— they no longer offer a recurring free tier">
+        <div class="arch-list">
+          {archived.map(p => {
+            const date = archiveDate(p, changelog);
+            const why = p.archive_reason ?? '';
+            return (
+              <div class="arch-row">
+                <a href={`/providers/${p.id}`}>{p.name}</a>
+                <span class="text-xs">{date ? <>Archived <span class="date">{date}</span></> : 'Archived'}</span>
+                <span class="why" title={why || undefined}>{why}</span>
+              </div>
+            );
+          })}
         </div>
-        <input
-          type="text"
-          id="table-search"
-          aria-label="Search providers or models"
-          placeholder="Search provider or model..."
-          class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
-          autocomplete="off"
-        />
-      </div>
-      <div class="flex items-center gap-2" id="quick-filter-tabs">
-        <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400" data-filter="all">
-          All ({providers.length})
-        </button>
-        <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500" data-filter="active">
-          Operational ({statusSummary.active})
-        </button>
-        <button class="quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500" data-filter="issues">
-          Issues ({statusSummary.degraded + statusSummary.dead})
-        </button>
-      </div>
-    </div>
+      </Fold>
+    </section>
+  )}
 
-    <!-- Ranked table -->
-    <div class="overflow-x-auto border border-slate-800 rounded-xl mb-10">
-      <table class="w-full text-sm border-collapse" id="providers-table">
-        <thead>
-          <tr class="border-b border-slate-800 bg-slate-900/60 text-left text-xs text-slate-500 uppercase tracking-wide select-none">
-            <th class="px-4 py-3 w-10 font-medium">#</th>
-            <th class="px-4 py-3 font-medium">Provider</th>
-            <th class="px-4 py-3 font-medium">Status</th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="rpm">
-              RPM <span class="sort-arrow"></span>
-            </th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300" data-sort-key="rpd">
-              RPD <span class="sort-arrow"></span>
-            </th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300 hidden md:table-cell" data-sort-key="context">
-              Context <span class="sort-arrow"></span>
-            </th>
-            <th class="sort-header px-4 py-3 text-right font-medium cursor-pointer hover:text-slate-300 hidden md:table-cell" data-sort-key="latency">
-              Latency <span class="sort-arrow"></span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rankedProviders.map((provider, i) => (
-            <tr
-              class="provider-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40 transition-colors duration-150 cursor-pointer"
-              data-provider-id={provider.id}
-              data-status="unknown"
-              data-name={provider.name.toLowerCase()}
-              data-models={provider.models.map(m => m.id + ' ' + m.name).join(' ').toLowerCase()}
-              data-href={`/providers/${provider.id}`}
-              data-rpm={provider.rpm ?? ''}
-              data-rpd={provider.rpd ?? ''}
-              data-context={contextToNumber(provider.context_window)}
-              data-latency={provider.latency_ms ?? ''}
-            >
-              <td class="px-4 py-3 text-slate-500 font-mono text-xs">{i + 1}</td>
-              <td class="px-4 py-3 min-w-0">
-                <div class="flex items-center gap-2 min-w-0">
-                  <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-                    {provider.logo ? (
-                      <img
-                        src={provider.logo}
-                        alt={provider.name}
-                        class="w-full h-full object-contain brightness-0 invert"
-                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
-                      />
-                    ) : null}
-                    <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div class="min-w-0">
-                    <a href={`/providers/${provider.id}`} class="font-semibold text-slate-100 text-sm truncate">{provider.name}</a>
-                    {provider.top_models[0] && (
-                      <div class="text-xs text-slate-500 font-mono truncate">{provider.top_models[0]}</div>
-                    )}
-                  </div>
-                </div>
-              </td>
-              <td class="px-4 py-3">
-                <span data-live-status={provider.id}><StatusBadge status="unknown" /></span>
-              </td>
-              <td class="px-4 py-3 text-right font-mono text-slate-300">{formatNum(provider.rpm)}</td>
-              <td class="px-4 py-3 text-right font-mono text-slate-300">{formatNum(provider.rpd)}</td>
-              <td class="px-4 py-3 text-right font-mono text-slate-400 hidden md:table-cell">{provider.context_window ?? '—'}</td>
-              <td
-                class={`px-4 py-3 text-right font-mono hidden md:table-cell text-slate-300`}
-                data-live-latency={provider.id}
-              >
-                {formatLatency(provider.latency_ms)}
-              </td>
-            </tr>
-          ))}
-          <tr id="no-results-row" class="hidden">
-            <td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">No providers match your search</td>
-          </tr>
-        </tbody>
-      </table>
+  <section class="sect" aria-labelledby="rc-h">
+    <div class="sect-head">
+      <h2 class="h2" id="rc-h">Recent changes</h2>
+      <a class="lnk text-sm" href="/changelog">Full changelog →</a>
     </div>
-
-    <!-- Recent changes -->
-    <div class="pb-16 border-t border-slate-800/60 pt-8">
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-sm font-semibold text-slate-200">Recent Changes</h2>
-        <a
-          href="/changelog"
-          class="text-sm text-slate-400 hover:text-slate-200 transition-colors duration-150 flex items-center gap-1"
-        >
-          View all
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </a>
-      </div>
-
-      <div id="recent-changelog" class="space-y-1">
-        {[...changelog].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map(entry => <p class="text-sm text-slate-400 py-2">{entry.date} · {entry.title}</p>)}
-      </div>
+    <div id="recent-changes" data-providers={linkable}>
+      {recent.length === 0 && <p class="muted text-sm">No changes recorded yet.</p>}
+      {recent.map(day => (
+        <>
+          <div class="chg-date"><span class="date">{day.date}</span></div>
+          <div class="chg-list">
+            {day.items.map(item => (
+              <div class="chg" data-kind={item.type}>
+                <span class="tag">{item.archived && <span class="dot dot-sm d-dead" aria-hidden="true"></span>}{item.tag}</span>
+                <div class="chg-t">{item.parts.map(part => typeof part === 'string' ? part : part.href ? <a href={part.href}>{part.name}</a> : part.name)}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      ))}
     </div>
-  </div>
+  </section>
 </Layout>
 
+<style>
+  .access :global(.num) { color: inherit; font-size: 12px; }
+  .meta-a { color: inherit; }
+  .meta-a:hover { color: var(--brand); }
+</style>
+
 <script>
-  import { onStatus } from '../lib/status-client';
-  // ── Row navigation ──────────────────────────────────────────────────────
-  document.querySelectorAll<HTMLElement>('.provider-row').forEach(row => {
-    row.addEventListener('click', (event) => {
-      if ((event.target as HTMLElement).closest('a, button')) return;
-      const href = row.getAttribute('data-href');
-      if (href) window.location.href = href;
-    });
-  });
+  import { arrangeProviderTable, SORT_CAPTIONS, type ProviderSort } from '../components/provider-table';
+  import { chipEnabled, setChip } from '../components/ui';
+  import { getStatusInfo, onStatus } from '../lib/status-client';
+  import { loadChangelog } from '../lib/changelog-client';
+  import { recentChanges, type RecentDay } from './_recent-changes';
 
-  // ── Column sorting (client-side, "#" rank stays fixed like CMC) ─────────
-  const table = document.getElementById('providers-table') as HTMLTableElement | null;
-  const tbody = table?.querySelector('tbody');
-  let currentSort: { key: string; dir: 'asc' | 'desc' } | null = null;
+  type StatusFilter = '' | 'up' | 'issues';
+  interface Filters { q: string; pub: boolean; vision: boolean; oai: boolean; st: StatusFilter }
 
-  function sortRows(key: string, preserveDirection = false) {
-    if (!tbody) return;
-    const dir: 'asc' | 'desc' = preserveDirection && currentSort ? currentSort.dir : currentSort?.key === key && currentSort.dir === 'desc' ? 'asc' : 'desc';
-    currentSort = { key, dir };
+  const table = document.getElementById('provider-table');
+  const select = document.getElementById('dir-sort') as HTMLSelectElement | null;
+  const chips = document.getElementById('dir-chips');
+  const count = document.getElementById('dir-count');
+  const caption = document.getElementById('dir-caption');
+  const empty = document.getElementById('dir-empty');
+  const emptyText = document.getElementById('dir-empty-text');
+  const emptyClear = document.getElementById('dir-empty-clear');
 
-    const rows = Array.from(tbody.querySelectorAll<HTMLElement>('.provider-row'));
-    rows.sort((a, b) => {
-      const av = parseFloat(a.getAttribute(`data-${key}`) ?? '');
-      const bv = parseFloat(b.getAttribute(`data-${key}`) ?? '');
-      const aUnknown = isNaN(av);
-      const bUnknown = isNaN(bv);
-      if (aUnknown && bUnknown) return 0;
-      if (aUnknown) return 1; // unknown/unpublished always sorts last
-      if (bUnknown) return -1;
-      return dir === 'asc' ? av - bv : bv - av;
-    });
+  const f: Filters = { q: (new URL(location.href).searchParams.get('q') ?? '').trim(), pub: false, vision: false, oai: false, st: '' };
+  let sort: ProviderSort = 'rpd';
+  const isLive = () => getStatusInfo().state === 'live';
 
-    rows.forEach(r => tbody.appendChild(r));
+  // The desktop rows carry every data-* hook; the mobile cards are a copy of the same data.
+  const rows = () => Array.from(table?.querySelectorAll<HTMLElement>('[data-pt-body] > [data-pt-row]') ?? []);
 
-    document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
-      th.setAttribute('aria-sort', th.dataset.sortKey === key ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
-      const arrow = th.querySelector('.sort-arrow');
-      if (!arrow) return;
-      if (th.getAttribute('data-sort-key') === key) {
-        arrow.textContent = dir === 'asc' ? '↑' : '↓';
-        th.classList.add('text-slate-200');
-      } else {
-        arrow.textContent = '';
-        th.classList.remove('text-slate-200');
-      }
-    });
-  }
-
-  document.querySelectorAll<HTMLElement>('.sort-header').forEach(th => {
-    th.tabIndex = 0;
-    th.setAttribute('aria-label', `Sort by ${th.dataset.sortKey}`);
-    th.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); th.click(); } });
-    th.addEventListener('click', () => {
-      const key = th.getAttribute('data-sort-key');
-      if (key) sortRows(key);
-    });
-  });
-
-  // ── Search (client-side, no reload) ──────────────────────────────────────
-  const searchInput = document.getElementById('table-search') as HTMLInputElement | null;
-  let statusFilter = 'all';
-  const rows = () => Array.from(document.querySelectorAll<HTMLElement>('.provider-row'));
-  const noResultsRow = document.getElementById('no-results-row');
-
-  function applyFilters() {
-    const q = (searchInput?.value ?? '').trim().toLowerCase();
-
-    let visibleCount = 0;
-    rows().forEach(row => {
-      const matchesSearch = !q || row.getAttribute('data-name')?.includes(q) || row.getAttribute('data-models')?.includes(q);
-      const status = row.getAttribute('data-status');
-      const matchesStatus =
-        statusFilter === 'all' ? true :
-        statusFilter === 'active' ? status === 'active' :
-        status === 'degraded' || status === 'dead';
-
-      const visible = matchesSearch && matchesStatus;
-      row.style.display = visible ? '' : 'none';
-      if (visible) visibleCount++;
-    });
-
-    noResultsRow?.classList.toggle('hidden', visibleCount > 0);
-  }
-
-  searchInput?.addEventListener('input', applyFilters);
-
-  // ── Quick filter tabs ─────────────────────────────────────────────────────
-  const tabs = document.querySelectorAll<HTMLButtonElement>('.quick-tab');
-  tabs.forEach(tab => {
-    tab.setAttribute('aria-pressed', String(tab.dataset.filter === statusFilter));
-    tab.addEventListener('click', () => {
-      statusFilter = tab.dataset.filter ?? 'all';
-      tabs.forEach(t => {
-        t.setAttribute('aria-pressed', String(t === tab));
-        t.className = 'quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500';
-      });
-      tab.className = 'quick-tab px-3 py-1.5 text-xs rounded-full border transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400';
-      applyFilters();
-    });
-  });
-
-  onStatus(data => {
-    const labels = { all: `All (${data.total})`, active: `Operational (${data.active})`, issues: `Issues (${data.degraded + data.dead})` };
-    for (const [key, label] of Object.entries(labels)) {
-      const tab = document.querySelector(`[data-filter="${key}"]`);
-      if (tab) tab.textContent = label;
+  function matches(row: HTMLElement, x: Filters) {
+    const d = row.dataset;
+    if (x.q && !(d.search ?? '').includes(x.q.toLowerCase())) return false;
+    if (x.pub && !d.rpd) return false;
+    if (x.vision && d.vision !== 'true') return false;
+    if (x.oai && d.oai !== 'true') return false;
+    if (x.st && isLive()) {
+      const s = d.status ?? 'unknown';
+      if (x.st === 'up' && s !== 'active') return false;
+      if (x.st === 'issues' && s !== 'degraded' && s !== 'dead') return false;
     }
-    if (currentSort) sortRows(currentSort.key, true);
-    applyFilters();
-  });
-</script>
+    return true;
+  }
+  const countWith = (over: Partial<Filters>) => { const x = { ...f, ...over }; return rows().filter(r => matches(r, x)).length; };
 
-<script>
-  import { loadChangelog, renderRecentChanges } from '../lib/changelog-client';
-  const container = document.getElementById('recent-changelog');
-  if (container) loadChangelog(5).then(entries => renderRecentChanges(container, [...entries].sort((a, b) => b.date.localeCompare(a.date))));
+  const CHIPS: Record<string, { pressed: () => boolean; over: Partial<Filters>; toggle: () => void }> = {
+    pub: { pressed: () => f.pub, over: { pub: true }, toggle: () => { f.pub = !f.pub; } },
+    vision: { pressed: () => f.vision, over: { vision: true }, toggle: () => { f.vision = !f.vision; } },
+    oai: { pressed: () => f.oai, over: { oai: true }, toggle: () => { f.oai = !f.oai; } },
+    'st-up': { pressed: () => f.st === 'up', over: { st: 'up' }, toggle: () => { f.st = f.st === 'up' ? '' : 'up'; } },
+    'st-issues': { pressed: () => f.st === 'issues', over: { st: 'issues' }, toggle: () => { f.st = f.st === 'issues' ? '' : 'issues'; } },
+  };
+
+  function syncLatencyOption() {
+    if (!select) return;
+    const info = getStatusInfo();
+    const want = info.state === 'live' && info.hasLatency;
+    let option = select.querySelector<HTMLOptionElement>('option[value="latency"]');
+    if (want && !option) {
+      option = document.createElement('option');
+      option.value = 'latency';
+      option.textContent = 'Sort: Latency';
+      select.append(option);
+    } else if (!want && option) {
+      option.remove();
+      if (sort === 'latency') sort = 'rpd';
+    }
+    select.value = sort;
+  }
+
+  function setCount(visible: number, totalRows: number) {
+    if (!count) return;
+    const a = document.createElement('span'); a.className = 'num'; a.textContent = String(visible);
+    const b = document.createElement('span'); b.className = 'num'; b.textContent = String(totalRows);
+    count.replaceChildren(a, ' of ', b);
+  }
+
+  function update() {
+    if (!table) return;
+    if (!isLive()) f.st = '';
+    syncLatencyOption();
+    const all = rows();
+    const total = countWith({});
+    chips?.querySelectorAll<HTMLElement>('[data-chip]').forEach(chip => {
+      const def = CHIPS[chip.dataset.chip ?? ''];
+      if (def) setChip(chip, { count: countWith(def.over), pressed: def.pressed(), hideIfTotal: total });
+    });
+    const visible = arrangeProviderTable(table, { match: row => matches(row, f), sort });
+    setCount(visible, all.length);
+    if (caption) caption.textContent = SORT_CAPTIONS[sort];
+    table.hidden = visible === 0;
+    if (empty && emptyText && emptyClear) {
+      empty.hidden = visible !== 0;
+      emptyText.textContent = f.q ? `No provider matches “${f.q}”. Try a model family like qwen or gemma.` : 'No provider matches these filters.';
+      emptyClear.textContent = f.q ? 'Clear search' : 'Clear filters';
+    }
+  }
+
+  chips?.addEventListener('click', event => {
+    const chip = (event.target as HTMLElement).closest<HTMLElement>('[data-chip]');
+    if (!chip || !chipEnabled(chip)) return;
+    CHIPS[chip.dataset.chip ?? '']?.toggle();
+    update();
+  });
+  select?.addEventListener('change', () => { sort = (select.value as ProviderSort) || 'rpd'; update(); });
+  window.addEventListener('search-change', event => {
+    const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
+    if (detail?.id !== 'dir-q') return;
+    f.q = detail.value;
+    update();
+  });
+  emptyClear?.addEventListener('click', () => {
+    if (f.q) {
+      document.querySelector<HTMLButtonElement>('[data-search-clear="dir-q"]')?.click();
+      return;
+    }
+    f.pub = f.vision = f.oai = false;
+    f.st = '';
+    update();
+  });
+  onStatus(() => update());
+  update();
+
+  // /#archived (meta line link, old links) opens the collapsed list.
+  const openArchived = () => {
+    const fold = document.getElementById('archived') as HTMLDetailsElement | null;
+    if (fold && location.hash === '#archived') fold.open = true;
+  };
+  window.addEventListener('hashchange', openArchived);
+  openArchived();
+
+  // Recent changes: the changelog API when configured, else the bundled changelog. Text only.
+  function renderRecent(container: HTMLElement, days: RecentDay[]) {
+    const node = (tag: string, className: string, text?: string) => {
+      const n = document.createElement(tag);
+      n.className = className;
+      if (text !== undefined) n.textContent = text;
+      return n;
+    };
+    container.replaceChildren();
+    if (!days.length) { container.append(node('p', 'muted text-sm', 'No changes recorded yet.')); return; }
+    for (const day of days) {
+      const head = node('div', 'chg-date');
+      head.append(node('span', 'date', day.date));
+      const list = node('div', 'chg-list');
+      for (const item of day.items) {
+        const row = node('div', 'chg');
+        row.dataset.kind = item.type;
+        const tag = node('span', 'tag');
+        if (item.archived) { const dot = node('span', 'dot dot-sm d-dead'); dot.setAttribute('aria-hidden', 'true'); tag.append(dot); }
+        tag.append(item.tag);
+        const text = node('div', 'chg-t');
+        for (const part of item.parts) {
+          if (typeof part === 'string') text.append(part);
+          else if (part.href) { const a = node('a', '', part.name) as HTMLAnchorElement; a.href = part.href; text.append(a); }
+          else text.append(part.name);
+        }
+        row.append(tag, text);
+        list.append(row);
+      }
+      container.append(head, list);
+    }
+  }
+  const recent = document.getElementById('recent-changes');
+  if (recent) {
+    let providers: { id: string; name: string }[] = [];
+    try { providers = JSON.parse(recent.dataset.providers ?? '[]'); } catch { /* links fall back to plain names */ }
+    loadChangelog(200).then(entries => renderRecent(recent, recentChanges(entries, providers))).catch(() => { /* keep the server-rendered list */ });
+  }
 </script>

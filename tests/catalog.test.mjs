@@ -118,3 +118,11 @@ test('expired promotional prices fail validation unless reported as warnings', a
   assert.ok(expired.every(e => lenient.warnings.includes(e)));
   assert.ok(!lenient.errors.some(e => /pricing expired/.test(e)));
 });
+test('changelog accepts documentation reviews as their own type and still rejects unknown types', () => {
+  const review = { id: 'catalog-2026-11-16-groq', date: '2026-11-16', provider_id: 'groq', provider_name: 'Groq', type: 'catalog_reviewed', title: 'Groq catalog and free-tier documentation refreshed' };
+  assert.deepEqual(validateChangelog([review]), []);
+  assert.match(validateChangelog([{ ...review, type: 'catalog_refreshed' }]).join(), /invalid type/);
+  // The curated changelog types every routine review as catalog_reviewed, never as a model addition.
+  const curated = JSON.parse(readFileSync(new URL('../site/src/data/changelog.json', import.meta.url), 'utf8'));
+  assert.deepEqual(curated.filter(e => e.type === 'model_added' && /documentation (refreshed|reviewed)/i.test(e.title)).map(e => e.id), []);
+});

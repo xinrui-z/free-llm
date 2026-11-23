@@ -157,7 +157,7 @@ export function validateChangelog(entries, { providerIds, removedProviderIds = R
   if (!Array.isArray(entries)) return ['changelog must be an array'];
   const errors = [], ids = new Set();
   const known = providerIds ? new Set([...providerIds, ...removedProviderIds]) : null;
-  const types = ['model_added', 'model_removed', 'provider_added', 'provider_removed', 'status_change', 'rate_limit_change', 'outage', 'recovery', 'degraded'];
+  const types = ['model_added', 'model_removed', 'provider_added', 'provider_removed', 'status_change', 'rate_limit_change', 'outage', 'recovery', 'degraded', 'catalog_reviewed'];
   entries.forEach((e, i) => {
     if (!object(e)) { errors.push(`entry ${i} must be an object`); return; }
     if (typeof e.id !== 'string' || !e.id || ids.has(e.id)) errors.push(`entry ${i}: invalid or duplicate ID`);

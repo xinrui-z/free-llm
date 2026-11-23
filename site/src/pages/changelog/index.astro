@@ -1,29 +1,34 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Chip from '../../components/Chip.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-const providers = getProviders(Astro.locals);
-
+import { archiveDate } from '../../lib/format';
 import changelog from '../../data/changelog.json';
+import { buildView, type ChangeEntry, type ProviderIndex } from './_changelog-view';
 
-// Filter options come from the changelog itself (plus the current catalog),
-// so entries for removed or archived providers stay filterable.
-const providerNames = new Map<string, string>();
-for (const entry of changelog as { provider_id?: string; provider_name?: string }[]) {
-  if (entry.provider_id && !providerNames.has(entry.provider_id)) providerNames.set(entry.provider_id, entry.provider_name || entry.provider_id);
+const providers = getProviders(Astro.locals);
+const entries = changelog as ChangeEntry[];
+
+// Providers in the current catalog (static or live): names for links, and archive dates for the
+// "Provider archived" suffix on their older entries.
+const providerIndex: ProviderIndex = {};
+for (const p of providers) {
+  const archived = p.status === 'archived';
+  providerIndex[p.id] = { name: p.name, archived, archivedOn: archived ? archiveDate(p, entries) : null };
 }
-for (const p of providers) providerNames.set(p.id, p.name);
-const providerOptions = [...providerNames].sort((a, b) => a[1].localeCompare(b[1]));
+const view = buildView(entries, providerIndex);
 ---
 
 <Layout
-  title="Free LLM API Changelog — Outages, Recoveries & Updates"
-  description="Full history of free LLM API status changes: outages, recoveries, new models and rate limit updates across OpenRouter, Groq, AIHubMix, Cohere and more."
+  title="Free LLM API Changelog — Providers, Models and Archives"
+  description="Changes to the free LLM API directory: providers added or archived, new free models and documentation reviews, grouped by date."
   jsonLd={{
     "@context": "https://schema.org",
     "@type": "WebPage",
     "name": "Free LLM API Changelog",
-    "description": "Historical log of status changes, outages, recoveries, and model updates across free LLM API providers.",
+    "description": "Changes to the provider and model catalog of the free LLM API directory.",
     "url": siteURL(Astro.site, '/changelog/'),
     "breadcrumb": {
       "@type": "BreadcrumbList",
@@ -34,73 +39,166 @@ const providerOptions = [...providerNames].sort((a, b) => a[1].localeCompare(b[1
     }
   }}
 >
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-    <!-- Page header -->
-    <div class="pt-8 pb-6">
-      <div class="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-white mb-1">Changelog</h1>
-          <p class="text-slate-400 text-sm">Automatically tracks status changes across all free LLM APIs</p>
-        </div>
+  <PageHeader title="Changelog" lead="Changes to the provider and model catalog. Limits are re-verified by hand against official docs.">
+    <Fragment slot="meta"><span class="num" id="cl-total">{view.total}</span> <span id="cl-total-word">{view.total === 1 ? 'entry' : 'entries'}</span><span id="cl-last-wrap" hidden={!view.last}> · last change <span class="date" id="cl-last">{view.last}</span></span></Fragment>
+  </PageHeader>
+
+  <div id="changelog" data-providers={JSON.stringify(providerIndex)} data-signature={view.signature}>
+    <div class="toolbar" id="cl-toolbar" hidden={view.total === 0}>
+      <div class="chips" id="cl-chips" role="group" aria-label="Filter by change type">
+        <Chip name="all" label="All" count={view.total} pressed />
+        {view.chips.map(c => <Chip name={c.kind} label={c.label} count={c.count} />)}
       </div>
     </div>
 
-    <!-- Filter bar -->
-    <div class="flex flex-wrap items-center gap-2 mb-6">
-      <span class="text-sm text-slate-500">Filter:</span>
-      <select
-        id="provider-filter" aria-label="Filter by provider"
-        class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
-      >
-        <option value="">All Providers</option>
-        {providerOptions.map(([id, name]) => <option value={id}>{name}</option>)}
-      </select>
-      <select
-        id="type-filter" aria-label="Filter by change type"
-        class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-green-500 cursor-pointer"
-      >
-        <option value="">All Types</option>
-        <option value="outage">Outage</option>
-        <option value="recovery">Recovery</option>
-        <option value="degraded">Degraded</option>
-        <option value="status_change">Status Change</option>
-        <option value="provider_added">Provider Added</option>
-        <option value="model_added">Model Added</option>
-        <option value="model_removed">Model Removed</option>
-        <option value="provider_removed">Provider Removed</option>
-        <option value="rate_limit_change">Rate Limit Change</option>
-      </select>
-    </div>
-
-    <!-- Timeline (rendered client-side) -->
     <div id="changelog-list">
-      {[...changelog].sort((a, b) => b.date.localeCompare(a.date)).map(entry => <article class="border-l-2 border-slate-700 pl-5 py-3 mb-3"><p class="text-xs text-slate-400">{entry.date}</p><h2 class="text-sm text-slate-200">{entry.title}</h2><p class="text-sm text-slate-400">{entry.description}</p></article>)}
+      {view.days.map(day => (
+        <section class="cl-day" data-date={day.date} aria-labelledby={`cl-d-${day.date}`}>
+          <h2 class="chg-date cl-date" id={`cl-d-${day.date}`}><span class="date">{day.date}</span></h2>
+          <div class="chg-list">
+            {day.items.map(item => (
+              <div class:list={['chg', 'changelog-entry', { old: item.old }]} data-kind={item.kind}>
+                <span class="tag">{item.archivedTag && <span class="dot dot-sm d-dead" aria-hidden="true"></span>}{item.tag}</span>
+                <div class="min0">
+                  <div class="chg-t">{item.title.map(part => part.href ? <a href={part.href}>{part.text}</a> : part.text)}{item.suffix && <> <span class="chg-suffix">{item.suffix}</span></>}</div>
+                  {item.detail && <div class="chg-d">{item.detail}</div>}
+                  {item.models && (
+                    <div class="chg-d">{item.models.shown.join(', ')}{item.models.rest.length > 0 && <>{' '}<details class="inl"><summary>+{item.models.rest.length} more</summary><div class="mlist">{item.models.rest.map(m => <span class="tag tag-o">{m}</span>)}</div></details></>}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
-
-    <div id="changelog-footer" class="hidden pb-12 text-center text-sm text-slate-400"></div>
+    <p class="empty" id="cl-empty" hidden={view.total > 0}>No changes recorded yet.</p>
   </div>
+
+  <p class="caption cl-feed">Machine-readable feed: <a class="lnk mono" href="/changelog.json">/changelog.json</a></p>
 </Layout>
 
+<style>
+  .cl-feed { margin-top: 12px; padding-bottom: 8px; }
+  #cl-toolbar[hidden], #cl-empty[hidden], #cl-last-wrap[hidden] { display: none; }
+</style>
+
+<style is:global>
+  /* The first date group sits right under the chips. */
+  #changelog-list .cl-day:first-child .cl-date { padding-top: 4px; }
+  #changelog-list .cl-day[hidden] { display: none; }
+  /* "+16 more" stays on the model line until it is opened. */
+  #changelog-list .chg-d details.inl:not([open]) { display: inline; }
+</style>
+
 <script>
-  import { loadChangelog, renderChangelog, type ChangeEntry } from '../../lib/changelog-client';
-  const list = document.getElementById('changelog-list');
-  const provider = document.getElementById('provider-filter') as HTMLSelectElement;
-  const type = document.getElementById('type-filter') as HTMLSelectElement;
-  let entries: ChangeEntry[] = [];
-  function render() {
-    const filtered = entries.filter(e => (!provider.value || e.provider_id === provider.value) && (!type.value || e.type === type.value));
-    if (list) renderChangelog(list, filtered);
-    const footer = document.getElementById('changelog-footer');
-    if (footer) { footer.textContent = `${filtered.length} of ${entries.length} recent entries`; footer.classList.remove('hidden'); }
+  import { loadChangelog } from '../../lib/changelog-client';
+  import { chipEnabled, setChip } from '../../components/ui';
+  import { buildView, type ChangeEntry, type Item, type ProviderIndex, type View } from './_changelog-view';
+
+  const root = document.getElementById('changelog')!;
+  const list = document.getElementById('changelog-list')!;
+  const chips = document.getElementById('cl-chips')!;
+  let providers: ProviderIndex = {};
+  try { providers = JSON.parse(root.dataset.providers || '{}'); } catch { /* links fall back to plain text */ }
+
+  const params = new URL(location.href).searchParams;
+  let kind = params.get('type') || 'all';
+
+  function apply() {
+    const chipEls = Array.from(chips.querySelectorAll<HTMLElement>('.chip'));
+    if (!chipEls.some(c => c.dataset.chip === kind && chipEnabled(c))) kind = 'all';
+    for (const c of chipEls) setChip(c, { pressed: c.dataset.chip === kind });
+    list.querySelectorAll<HTMLElement>('.chg').forEach(el => { el.hidden = kind !== 'all' && el.dataset.kind !== kind; });
+    list.querySelectorAll<HTMLElement>('.cl-day').forEach(day => { day.hidden = !day.querySelector('.chg:not([hidden])'); });
   }
-  // Live entries may mention providers missing from the bundled list.
-  function addProviderOptions(data: ChangeEntry[]) {
-    const known = new Set(Array.from(provider.options, o => o.value));
-    const added = new Map<string, string>();
-    for (const e of data) if (e.provider_id && !known.has(e.provider_id) && !added.has(e.provider_id)) added.set(e.provider_id, e.provider_name || e.provider_id);
-    for (const [id, name] of added) provider.add(new Option(name, id));
+
+  chips.addEventListener('click', event => {
+    const chip = (event.target as Element).closest<HTMLElement>('.chip');
+    if (!chip || !chipEnabled(chip)) return;
+    kind = chip.dataset.chip === kind ? 'all' : chip.dataset.chip || 'all';
+    const url = new URL(location.href);
+    if (kind === 'all') url.searchParams.delete('type'); else url.searchParams.set('type', kind);
+    history.replaceState(history.state, '', url);
+    apply();
+  });
+
+  // Same structure as the server template above; every value is set as text.
+  const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  };
+  function chipEl(name: string, label: string, count: number) {
+    const b = el('button', 'chip');
+    b.type = 'button';
+    b.dataset.chip = name;
+    b.setAttribute('aria-pressed', 'false');
+    const n = el('span', 'num', String(count));
+    n.dataset.chipCount = '';
+    b.append(label, ' ', n);
+    return b;
   }
-  provider.addEventListener('change', render);
-  type.addEventListener('change', render);
-  loadChangelog().then(data => { entries = data; addProviderOptions(data); render(); });
+  function itemEl(item: Item) {
+    const row = el('div', `chg changelog-entry${item.old ? ' old' : ''}`);
+    row.dataset.kind = item.kind;
+    const tag = el('span', 'tag');
+    if (item.archivedTag) { const d = el('span', 'dot dot-sm d-dead'); d.setAttribute('aria-hidden', 'true'); tag.append(d); }
+    tag.append(item.tag);
+    const body = el('div', 'min0');
+    const title = el('div', 'chg-t');
+    for (const part of item.title) {
+      if (part.href) { const a = el('a', undefined, part.text); a.href = part.href; title.append(a); }
+      else title.append(part.text);
+    }
+    if (item.suffix) title.append(' ', el('span', 'chg-suffix', item.suffix));
+    body.append(title);
+    if (item.detail) body.append(el('div', 'chg-d', item.detail));
+    if (item.models) {
+      const d = el('div', 'chg-d', item.models.shown.join(', '));
+      if (item.models.rest.length) {
+        const more = el('details', 'inl');
+        more.append(el('summary', undefined, `+${item.models.rest.length} more`));
+        const ml = el('div', 'mlist');
+        for (const m of item.models.rest) ml.append(el('span', 'tag tag-o', m));
+        more.append(ml);
+        d.append(' ', more);
+      }
+      body.append(d);
+    }
+    row.append(tag, body);
+    return row;
+  }
+  function render(view: View) {
+    document.getElementById('cl-total')!.textContent = String(view.total);
+    document.getElementById('cl-total-word')!.textContent = view.total === 1 ? 'entry' : 'entries';
+    document.getElementById('cl-last')!.textContent = view.last ?? '';
+    document.getElementById('cl-last-wrap')!.hidden = !view.last;
+    document.getElementById('cl-toolbar')!.hidden = view.total === 0;
+    document.getElementById('cl-empty')!.hidden = view.total > 0;
+    chips.replaceChildren(chipEl('all', 'All', view.total), ...view.chips.map(c => chipEl(c.kind, c.label, c.count)));
+    list.replaceChildren(...view.days.map(day => {
+      const sec = el('section', 'cl-day');
+      sec.dataset.date = day.date;
+      sec.setAttribute('aria-labelledby', `cl-d-${day.date}`);
+      const h = el('h2', 'chg-date cl-date');
+      h.id = `cl-d-${day.date}`;
+      h.append(el('span', 'date', day.date));
+      const items = el('div', 'chg-list');
+      items.append(...day.items.map(itemEl));
+      sec.append(h, items);
+      return sec;
+    }));
+    root.dataset.signature = view.signature;
+  }
+
+  apply();
+  // Newer entries from the status API, when configured; otherwise the bundled changelog (same as the server render).
+  loadChangelog().then((data: ChangeEntry[]) => {
+    const view = buildView(data, providers);
+    if (view.signature === root.dataset.signature) return;
+    render(view);
+    apply();
+  }).catch(() => { /* keep the server-rendered changelog */ });
 </script>

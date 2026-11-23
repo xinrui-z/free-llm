@@ -1,0 +1,31 @@
+---
+// Provider card row (one link): status slot + logo + name + chevron / top model ID / LimitFacts inline /
+// provider note (first sentence, 2-line clamp) when a limit is missing. Used for the mobile directory,
+// "Free alternatives" (in a .alts grid) and anywhere a compact provider pointer is needed.
+// Extra attributes (data-*) are passed to the <a>.
+import Icon from './Icon.astro';
+import LimitFacts from './LimitFacts.astro';
+import ProviderLogo from './ProviderLogo.astro';
+import StatusSlot from './StatusSlot.astro';
+import { limitsOf } from '../lib/format';
+import type { Provider } from '../data/providers';
+interface Props {
+  provider: Provider;
+  class?: string;
+  [attr: string]: unknown;
+}
+const { provider: p, class: className, ...rest } = Astro.props;
+const L = limitsOf(p);
+const showNote = (L.rpd == null || L.rpm == null) && L.note;
+---
+<a class:list={['pcard', className]} href={`/providers/${p.id}`} {...rest}>
+  <span class="pcard-1">
+    <StatusSlot providerId={p.id} />
+    <ProviderLogo provider={p} size={20} />
+    <span class="nm">{p.name}</span>
+    <Icon name="chev" size={16} class="chev" />
+  </span>
+  {p.top_models?.[0] && <span class="sub">{p.top_models[0]}</span>}
+  <LimitFacts provider={p} size="inline" />
+  {showNote && <span class="qnote">{L.note}</span>}
+</a>

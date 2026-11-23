@@ -68,10 +68,11 @@ export default defineConfig({
   adapter: cloudflare?.({ imageService: 'passthrough', prerenderEnvironment: 'node', ...testChecker }),
   session: false,
   site: process.env.PUBLIC_SITE_URL || 'https://free-llm-site.free-llm-status.workers.dev',
-  // Both '/providers' and '/providers/' are served. Canonical URLs, JSON-LD and sitemaps use the
+  // Both '/x' and '/x/' are served. Canonical URLs, JSON-LD and sitemaps use the
   // trailing-slash form produced by build.format 'directory' (see src/lib/site-url.ts).
   trailingSlash: 'ignore',
-  integrations: [sitemap()],
+  // /providers/ only redirects to / (src/pages/providers/index.astro), so keep it out of the sitemap.
+  integrations: [sitemap({ filter: page => !/\/providers\/?$/.test(new URL(page).pathname) })],
   vite: {
     define: {
       'import.meta.env.CATALOG_DYNAMIC': JSON.stringify(dynamic),
