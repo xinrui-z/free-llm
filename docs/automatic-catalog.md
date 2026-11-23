@@ -9,7 +9,7 @@ Sources are configured in [`catalog/sources.json`](../catalog/sources.json). New
 | Source | Adapter | Where it runs | What is automated | What still needs evidence |
 | --- | --- | --- | --- | --- |
 | OpenRouter public model API | `openrouter` | Static (`catalog/sources.json`) and dynamic | Free text variants with `:free` IDs and explicit zero prices; metadata; prices of the existing curated paid selection | Account limits, regional access, provider policy, actual inference availability |
-| AIHubMix public `/v1/models` | `openai-discovery` (suffix `-free`) | Static and dynamic | Discovery of new `-free` IDs and reporting of missing existing models | Recurring free eligibility, capabilities and quotas; a suffix alone is insufficient |
+| AIHubMix public `/v1/models` | `openai-discovery` (suffix `-free`) | Static and dynamic | Discovery of new `-free` IDs, reporting of missing existing models, and keeping catalogued models in upstream order | Recurring free eligibility, capabilities and quotas; a suffix alone is insufficient |
 | ZenMux public model API | `zenmux` | Dynamic only, registered after its provider is approved | `-free` variants whose every pricing tier, including additional billing items, is explicitly zero | Same as OpenRouter |
 | ModelScope `/v1/models` | `openai-discovery` (`candidate_match: all`) | Dynamic only, registered after approval | Every unknown model ID becomes a candidate; missing models are reported | Everything: the list has no prices or allowances |
 | models.dev registry | Provider discovery | Dynamic only (checker cron, daily) | New provider candidates with zero-price hints; `reactivation` candidates for archived providers | Official recurring free policy, API origin and protocol |
@@ -23,7 +23,7 @@ The AIHubMix endpoint was checked without credentials on 2026-11-17. It returns 
 `--write` only rewrites files whose content materially changes, so a quiet run leaves no diff:
 
 - State is written only when removal evidence, pending candidates, the source URL or the source policy changes. A new `checked_at` or `source_hash` alone does not rewrite it.
-- `catalog_checked_at` and the live source's `checked_at` in `sources` advance only when the catalog content changes (or the live source has never been recorded).
+- `catalog_checked_at` and the live source's `checked_at` in `sources` advance only when the catalog content changes (or the live source has never been recorded). Discovery sources never stamp either (see [Model order](#model-order)).
 - A tracked paid price's `checked_at` advances only when the price itself changes. A manually set `valid_until` survives an unchanged price and is dropped when the price changes.
 
 ## Local use
@@ -55,6 +55,7 @@ Offline replay (`--from FILE`) is a preview-only diff against the current catalo
 Reports and public source snapshots are written to the gitignored `.catalog-reports/` directory. `--report-dir DIR` selects another location. `report.json` includes model additions/removals, changed field values, pending removals, candidate IDs, source URL and response SHA-256, plus:
 
 - `catalog_changed` / `state_changed` per provider, and `written` (files actually saved) for an applied run;
+- `reordered`: models present before and after the run changed relative order (additions and removals alone do not set it);
 - `missing_upstream`: catalogued models absent from the source. Each one prints a warning (a `::warning::` annotation in GitHub Actions) and an `Attention:` summary line, without changing the exit status. Priced sources keep the model until removal is confirmed; discovery sources never remove models, so review and remove them manually;
 - `quarantined`: new `:free`/`-free` entries with malformed prices or metadata, set aside with a warning while the rest of the source syncs. Malformed data for an already catalogued model still blocks the source;
 - `conflict`: set when the catalog or state changed during the run; nothing is written.
@@ -63,13 +64,22 @@ Reports and public source snapshots are written to the gitignored `.catalog-repo
 
 - Machine updates preserve provider descriptions, policy review dates, quotas, curated recommendations and explicit model deprecations. New models get unknown limits rather than copying account-wide quotas into each model.
 - `last_verified` remains the policy review date. `catalog_checked_at` and the model API's source date record catalog observation; tracked prices have their own `checked_at`.
-- Existing model order and surviving recommendations remain stable. If a recommended model is removed, an eligible remaining model fills the slot deterministically.
+- Models are listed in upstream API order (see [Model order](#model-order)). Surviving recommendations remain stable. If a recommended model is removed, an eligible remaining model fills the slot deterministically, in display order (pinned models first).
 - Missing/blank/boolean prices never count as zero. A `:free` suffix must also have explicit zero billing values and text output. Unknown billing structures block publication for review.
 - A missing model is retained until two successful complete observations at least six hours apart. Repeated requests within that interval cannot confirm a removal. Reappearance clears the pending removal. Changing the source policy resets its confirmation history.
 - An explicitly positive price revokes free eligibility immediately, subject to the same bulk-change protection. A model that is no longer free is removed from the free list; it is not automatically selected for the curated paid comparison.
 - Empty catalogs, duplicate IDs, malformed tracked metadata, advertised pagination, and mismatched total counts are rejected. More than 25 additions or more than 25% missing entries in either tracked selection require manual review. A response can still be incomplete without advertising it; repeat observations and bulk thresholds reduce that risk but cannot prove upstream completeness.
 - A blocked source leaves all selected catalog/state files unchanged. No partial publication occurs because one source fetched successfully. Reports retain the reason and raw public response.
 - Fetches have timeouts and a 10 MiB response cap, reject redirects, retry transient errors twice, and never attach credentials. HTTP 429/503 retries honor `Retry-After` up to 60 seconds; a longer requested delay fails immediately and waits for the next scheduled run. An empty response body is a permanent error. Files are replaced individually using temporary files and rename. Concurrent edits detected during collection abort the write.
+
+### Model order
+
+A provider page lists models in the order the upstream model API returns them, with any manually pinned models first:
+
+- Priced sources (`openrouter`, `zenmux`) write `models` and `paid_models` in upstream order on every sync, new additions included (they are no longer appended alphabetically). Models awaiting removal confirmation stay at the end in their previous relative order.
+- Discovery sources (`openai-discovery`) still never add or remove models, but when the catalogued models that are listed upstream are out of upstream order, the run rewrites `models` in that order (models missing upstream go to the end in their previous order). Only the order changes: `sources`, `catalog_checked_at`, `top_models`, prices and labels are left as reviewed, because a reorder is presentation and discovery is not price or eligibility evidence. Such a run reports `catalog_changed: true` and `reordered: true`, so `--write` saves the provider file (and the private checker publishes a release).
+- An unchanged upstream order produces no diff: a repeated run is quiet.
+- `model_order` (optional) is the manual override: these IDs are shown first, in this order, and every other model follows in `models` order. Sync never reorders it; it only drops IDs that are no longer in `models` and removes the field once it is empty. Validation accepts IDs that are not in `models` (the site ignores them), so a stale pin can never block a provider. See [maintenance](maintenance.md#model-display-order).
 
 For a legitimate large change, inspect the official source and generated report, manually update the reviewed baseline, then run sync again. Do not treat an empty API response as evidence that a provider has permanently closed. Archived providers require an explicit manual reactivation.
 

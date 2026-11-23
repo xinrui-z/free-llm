@@ -45,10 +45,14 @@ test('sync preserves policy dates, curated ranks, limits and explicit deprecatio
   assert.equal(result.provider.quota_note, f.provider.quota_note);
   assert.deepEqual(result.provider.sources[0], f.provider.sources[0]);
   assert.deepEqual(result.provider.top_models, f.provider.top_models);
-  assert.equal(result.provider.models[0].rpm, 5);
-  assert.equal(result.provider.models[0].editor_note, 'Keep this');
-  assert.equal(result.provider.models[4].status, 'deprecated');
-  assert.equal(result.provider.models.at(-1).rpm, null);
+  const byId = id => result.provider.models.find(m => m.id === id);
+  assert.equal(byId('test/a:free').rpm, 5);
+  assert.equal(byId('test/a:free').editor_note, 'Keep this');
+  assert.equal(byId('test/e:free').status, 'deprecated');
+  assert.equal(byId('test/new:free').rpm, null);
+  // The catalog follows the (reversed) upstream listing, the addition included.
+  assert.deepEqual(result.provider.models.map(m => m.id), f.raw.data.map(m => m.id));
+  assert.equal(result.report.reordered, true);
   assert.equal(result.provider.catalog_checked_at, '2026-11-17');
   assert.deepEqual(result.report.models.added, ['test/new:free']);
   assert.equal(f.provider.models.length, 5);
@@ -156,6 +160,93 @@ test('OpenAI-style discovery reports candidates without claiming free eligibilit
   assert.deepEqual(first.state.candidates.map(c => c.id), ['trial-free']);
   const next = planSync({ provider, raw, source: discovery, state: first.state, observedAt: '2026-11-18T00:00:00.000Z' });
   assert.equal(next.state.candidates[0].first_seen_at, now);
+});
+
+test('catalog sync follows upstream order; models awaiting removal stay at the end in previous order', () => {
+  const f = fixture();
+  const ids = list => list.map(m => m.id);
+  // Upstream: d, new2, b, new1, e (a and c missing).
+  f.raw.data = [f.raw.data[3], rawModel('test/new2:free'), f.raw.data[1], rawModel('test/new1:free'), f.raw.data[4]];
+  const first = planSync({ ...f, source: { ...source, max_removal_fraction: 0.5 } });
+  assert.deepEqual(ids(first.provider.models), ['test/d:free', 'test/new2:free', 'test/b:free', 'test/new1:free', 'test/e:free', 'test/a:free', 'test/c:free']);
+  assert.deepEqual(first.report.pending_removals, ['models/test/a:free', 'models/test/c:free']);
+  assert.equal(first.report.reordered, true);
+  // An identical rerun is quiet: order alone never churns while upstream order is unchanged.
+  const again = planSync({ ...f, source: { ...source, max_removal_fraction: 0.5 }, provider: first.provider, state: first.state });
+  assert.equal(again.report.catalog_changed, false);
+  assert.equal(again.report.reordered, false);
+  assert.deepEqual(again.provider, first.provider);
+});
+
+test('tracked paid models follow upstream order', () => {
+  const f = fixture();
+  f.provider.paid_models = [{ id: 'paid/a', name: 'A', status: 'active' }, { id: 'paid/b', name: 'B', status: 'active' }];
+  const pricing = { prompt: '0.000001', completion: '0.000002' };
+  f.raw.data.push(rawModel('paid/b', pricing), rawModel('paid/a', pricing));
+  const result = planSync(f);
+  assert.deepEqual(result.provider.paid_models.map(m => m.id), ['paid/b', 'paid/a']);
+  assert.deepEqual(result.provider.models.map(m => m.id), f.provider.models.map(m => m.id));
+  assert.equal(result.report.reordered, true);
+});
+
+test('sync keeps valid model_order pins and prunes pins for removed models', () => {
+  const f = fixture();
+  f.provider.model_order = ['test/e:free', 'test/a:free'];
+  const kept = planSync(f);
+  assert.deepEqual(kept.provider.model_order, ['test/e:free', 'test/a:free']);
+  assert.equal(kept.report.reordered, false);
+  // a is revoked immediately by a positive price: its pin is pruned, e stays pinned.
+  f.raw.data[0].pricing = { prompt: '0.000001', completion: '0' };
+  const revoked = planSync(f);
+  assert.deepEqual(revoked.provider.model_order, ['test/e:free']);
+  // The vacated recommendation slot is filled in display order, so the pinned model is preferred.
+  assert.deepEqual(revoked.provider.top_models, ['test/c:free', 'test/e:free']);
+  // A pin list emptied by pruning is omitted rather than left as [].
+  f.provider.model_order = ['test/a:free', 'never-listed'];
+  assert.equal(Object.hasOwn(planSync(f).provider, 'model_order'), false);
+});
+
+test('discovery reorders catalogued models to upstream order without adding, removing or restamping', () => {
+  const f = fixture();
+  const models = ['m1', 'm2', 'm3', 'm4'].map(id => ({ id, name: id, status: 'active' }));
+  const provider = { ...f.provider, id: 'aihubmix', models, top_models: ['m1'], model_order: ['m4', 'gone'], catalog_checked_at: '2026-11-01' };
+  // m2 is missing upstream; trial-free is a new candidate and must not be added.
+  const raw = { data: [{ id: 'm3' }, { id: 'trial-free' }, { id: 'm1' }, { id: 'm4' }] };
+  const first = planSync({ provider, raw, source: discovery, observedAt: now });
+  assert.deepEqual(first.provider.models.map(m => m.id), ['m3', 'm1', 'm4', 'm2']);
+  assert.deepEqual(first.provider.model_order, ['m4']);
+  assert.equal(first.report.catalog_changed, true);
+  assert.equal(first.report.reordered, true);
+  assert.deepEqual(first.report.missing_upstream, ['m2']);
+  assert.deepEqual(first.state.candidates.map(c => c.id), ['trial-free']);
+  // Discovery is not price evidence: sources, observation date and recommendations stay as reviewed.
+  for (const key of ['sources', 'catalog_checked_at', 'top_models', 'last_verified', 'context_window']) assert.deepEqual(first.provider[key], provider[key], key);
+  assert.deepEqual(provider.models.map(m => m.id), ['m1', 'm2', 'm3', 'm4']);
+  const again = planSync({ provider: first.provider, raw, source: discovery, state: first.state, observedAt: '2026-11-17T06:00:00.000Z' });
+  assert.equal(again.provider, first.provider);
+  assert.equal(again.report.catalog_changed, false);
+  assert.equal(again.report.reordered, false);
+  // Pruning a stale pin alone is a catalog change, but not a reorder.
+  const pruned = planSync({ provider: { ...first.provider, model_order: ['m4', 'gone'] }, raw, source: discovery, observedAt: now });
+  assert.equal(pruned.report.catalog_changed, true);
+  assert.equal(pruned.report.reordered, false);
+  assert.deepEqual(pruned.provider.model_order, ['m4']);
+});
+
+test('the static writer saves a discovery reorder once and is quiet afterwards', async t => {
+  const { root } = workspace(t, [discovery]);
+  const path = resolve(root, 'site/src/data/providers/aihubmix.json');
+  const raw = { data: ['e', 'd', 'c', 'b', 'a'].map(id => ({ id: `test/${id}:free` })) };
+  const first = await syncCatalog({ root, write: true, observedAt: now, fetchImpl: serve(raw) });
+  assert.ok(first.written.includes('site/src/data/providers/aihubmix.json'));
+  assert.equal(first.providers[0].reordered, true);
+  const saved = JSON.parse(readFileSync(path, 'utf8'));
+  assert.deepEqual(saved.models.map(m => m.id), raw.data.map(m => m.id));
+  assert.equal(Object.hasOwn(saved, 'catalog_checked_at'), false);
+  const text = readFileSync(path, 'utf8');
+  const again = await syncCatalog({ root, write: true, observedAt: '2026-11-17T06:00:00.000Z', fetchImpl: serve(raw) });
+  assert.deepEqual(again.written, []);
+  assert.equal(readFileSync(path, 'utf8'), text);
 });
 
 test('source manifest rejects duplicate providers, unsafe URLs and unknown adapters', () => {

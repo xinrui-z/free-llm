@@ -4,6 +4,7 @@ import { siteURL } from '../../lib/site-url';
 import StatusBadge from '../../components/StatusBadge.astro';
 import CodeBlock from '../../components/CodeBlock.astro';
 import { formatPrice, shellQuote } from '../../lib/format';
+import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 
 import fallbackProviders from '../../data/providers';
 import { getProviders } from '../../lib/providers';
@@ -22,6 +23,8 @@ if (!provider) return new Response(Astro.locals.catalog?.unavailable ? 'Live cat
 // Code examples. Catalog values are quoted for each language so an unusual
 // URL or model id cannot break out of the snippet.
 const exampleModel = provider.top_models[0] || 'your-model-id';
+// Upstream API order, with any manually pinned models (model_order) first.
+const models = sortModels(provider.models ?? [], provider.model_order);
 const exampleBody = JSON.stringify({ model: exampleModel, messages: [{ role: 'user', content: 'Hello! How are you?' }] }, null, 2);
 const curlExample = `export API_KEY="your_api_key_here"
 curl ${shellQuote(`${provider.base_url.replace(/\/$/, '')}/chat/completions`)} \\
@@ -284,7 +287,7 @@ function formatNum(n: number | null | undefined): string {
         <p class="text-xs text-slate-400 mb-3" data-probe-coverage={provider.id} aria-live="polite">Model health is unknown until an actual check completes.</p>
         {provider.models && provider.models.length > 0 ? (
           <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {provider.models.map((model: any) => (
+            {models.map((model: any) => (
               <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg hover:bg-slate-700/30 transition-colors duration-150">
                 <div class="min-w-0 flex-1 mr-3">
                   <p class="text-xs font-mono text-slate-300 truncate">{model.id}</p>

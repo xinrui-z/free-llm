@@ -4,6 +4,7 @@ import { getProviders } from '../../lib/providers';
 const providers = getProviders(Astro.locals);
 import { compareQuota, formatQuota } from '../../lib/status';
 import { CATEGORY_COLORS, TAG_LABELS, TAG_ICONS, classifyModels, type ModelFamily } from '../../data/model-families';
+import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 
 type Provider = typeof providers[0];
 
@@ -41,8 +42,9 @@ const familyCards: FamilyCard[] = classified.families.map(({ family, entries }) 
     .sort((a, b) => compareQuota(a.bestRpd, b.bestRpd) || a.provider.name.localeCompare(b.provider.name)),
 }));
 
-// "Other" bucket: unclassifiable models grouped by provider
-const otherEntries = classified.other;
+// "Other" bucket: unclassifiable models grouped by provider. Each provider's leftovers
+// follow its own display order (upstream order, pinned models first).
+const otherEntries = classified.other.map(({ provider, models }) => ({ provider, models: sortModels(models, provider.model_order) }));
 
 ---
 

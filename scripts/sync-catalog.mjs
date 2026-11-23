@@ -113,8 +113,8 @@ export async function main(args = process.argv.slice(2), options = {}) {
   };
   for (const p of report.providers) {
     if (p.status === 'blocked') console.error(`${p.provider_id}: BLOCKED — ${p.error}`);
-    else if (p.mode === 'discovery') console.log(`${p.provider_id}: ${p.candidates.length} candidates need policy verification; ${p.missing.length} known models missing`);
-    else console.log(`${p.provider_id}: free +${p.models.added.length}/-${p.models.removed.length}/~${p.models.updated.length}; paid +${p.paid_models.added.length}/-${p.paid_models.removed.length}/~${p.paid_models.updated.length}; ${p.pending_removals.length} pending removals`);
+    else if (p.mode === 'discovery') console.log(`${p.provider_id}: ${p.candidates.length} candidates need policy verification; ${p.missing.length} known models missing${p.reordered ? '; models reordered to match upstream' : ''}`);
+    else console.log(`${p.provider_id}: free +${p.models.added.length}/-${p.models.removed.length}/~${p.models.updated.length}; paid +${p.paid_models.added.length}/-${p.paid_models.removed.length}/~${p.paid_models.updated.length}; ${p.pending_removals.length} pending removals${p.reordered ? '; reordered' : ''}`);
     if (p.missing_upstream?.length) annotate(`${p.missing_upstream.length} catalogued model(s) missing upstream (${p.mode === 'discovery' ? 'not removed automatically; review and remove manually if confirmed' : 'retained until removal is confirmed'}): ${p.missing_upstream.join(', ')}`, p.provider_id);
     if (p.quarantined?.length) annotate(`${p.quarantined.length} new upstream entr${p.quarantined.length === 1 ? 'y' : 'ies'} quarantined for review: ${p.quarantined.map(q => q.id).join(', ')}`, p.provider_id);
   }

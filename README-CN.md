@@ -88,7 +88,8 @@
   "context_window": "128K",         // 可选字符串：最大上下文长度
   "tags": ["openai-compatible"],
   "top_models": ["model-id-1"],     // 1–5 个不重复的 ID，必须是 models 中未弃用的模型
-  "models": [                       // 非空，ID 不重复
+  "model_order": ["model-id-1"],    // 可选：在服务商页面置顶显示的模型，其余按 models 顺序
+  "models": [                       // 非空，ID 不重复；数组顺序即显示顺序（自动同步时为接口返回顺序）
     {
       "id": "model-id-1",           // API 请求中使用的模型 ID
       "name": "Model Name",

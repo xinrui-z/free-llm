@@ -102,10 +102,10 @@ export const adapters = {
         models.push({ ...parsed.normalized, rpm: null, rpd: null });
       }
       if (!models.length) throw new Error('No eligible free text models; refusing to erase the catalog');
-      const paid = [];
-      for (const old of provider.paid_models ?? []) {
-        const m = all.find(m => m.id === old.id);
-        if (!m) continue;
+      // Tracked paid models are listed in upstream order, like the free selection.
+      const tracked = new Set((provider.paid_models ?? []).map(m => m.id)), paid = [];
+      for (const m of all) {
+        if (!tracked.has(m.id)) continue;
         paid.push({
           ...normalizeModel(m),
           pricing: {
@@ -126,6 +126,8 @@ export const adapters = {
       const seen = new Set(all.map(m => m.id));
       return {
         kind: 'discovery', source_url: source.url,
+        // Upstream listing order; planSync uses it only to order the already-catalogued models.
+        order: all.map(m => m.id),
         candidates: all.filter(m => (source.candidate_match === 'all' || m.id.endsWith(source.candidate_suffix)) && !known.has(m.id)).map(m => ({
           id: m.id, reason: 'Recurring free eligibility requires official evidence',
           source_url: source.url, policy_url: source.policy_url,

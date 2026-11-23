@@ -88,7 +88,8 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
   "context_window": "128K",         // optional string: largest context window
   "tags": ["openai-compatible"],
   "top_models": ["model-id-1"],     // 1–5 unique IDs of active (non-deprecated) entries in models
-  "models": [                       // nonempty; IDs unique
+  "model_order": ["model-id-1"],    // optional: models shown first on the provider page; the rest follow models order
+  "models": [                       // nonempty; IDs unique; array order is display order (synced: upstream API order)
     {
       "id": "model-id-1",           // model ID used in API requests
       "name": "Model Name",
