@@ -284,3 +284,33 @@ export function liveCatalogSource(provider: SyncedProviderLike): { url?: string;
 export function isAutoSyncedPricing(provider: SyncedProviderLike): boolean {
   return liveCatalogSource(provider) !== null;
 }
+
+// Tokens whose brand casing title case would get wrong.
+const NAME_TOKENS: Record<string, string> = {
+  glm: 'GLM', minimax: 'MiniMax', mimo: 'MiMo', deepseek: 'DeepSeek', gpt: 'GPT', oss: 'OSS', lfm: 'LFM',
+  ernie: 'ERNIE', qwen: 'Qwen', it: 'IT', vl: 'VL', ai: 'AI', api: 'API', llm: 'LLM',
+};
+const LOWER_WORDS = new Set(['for', 'of', 'and', 'with']);
+
+/**
+ * Readable name derived from a model ID, for catalog entries whose name is just the ID
+ * (auto-discovered models carry no display name): "coding-glm-5.4-free" → "Coding GLM 5.4 Free",
+ * "lfm-2.5-2.6b-free" → "LFM 2.5 2.6B Free", "kimi-for-coding-free" → "Kimi for Coding Free".
+ */
+export function nameFromId(id: string): string {
+  const base = String(id ?? '').trim().replace(/^.*\//, '');
+  return base.split(/[-_:\s]+/).filter(Boolean).map((word, i) => {
+    const lower = word.toLowerCase();
+    if (NAME_TOKENS[lower]) return NAME_TOKENS[lower];
+    if (word !== lower) return word; // already cased upstream ("DeepSeek", "V3.1")
+    if (/^[a-z]?\d/.test(word)) return word.toUpperCase(); // versions and sizes: m2.7, a1, 2.6b
+    if (i > 0 && LOWER_WORDS.has(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ');
+}
+
+/** Display name of a model: its catalog name, or one derived from the ID when the name is missing or just repeats the ID. */
+export function modelDisplayName(m: { id: string; name?: string | null }): string {
+  const name = typeof m.name === 'string' ? m.name.trim() : '';
+  return name && name !== m.id ? name : nameFromId(m.id);
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, shellQuote, yamlString } from '../site/src/lib/format.ts';
+import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, modelDisplayName, nameFromId, shellQuote, yamlString } from '../site/src/lib/format.ts';
 
 test('context window labels and numbers sort numerically; unparseable values sort last', () => {
   for (const [label, tokens] of [['128K', 128_000], ['1M', 1_000_000], ['1.5m', 1_500_000], ['131,072', 131_072], [131072, 131072], [' 32k ', 32_000]]) {
@@ -105,4 +105,20 @@ test('per-million rates keep the digits that distinguish them', () => {
     assert.equal(formatRate(n), text, String(n));
   }
   for (const bad of [null, undefined, -1, NaN]) assert.equal(formatRate(bad), null, String(bad));
+});
+
+test('model names fall back to a readable form of the ID when the catalog name is just the ID', () => {
+  for (const [id, name] of [
+    ['coding-glm-5.4-free', 'Coding GLM 5.4 Free'],
+    ['coding-minimax-m2.7-free', 'Coding MiniMax M2.7 Free'],
+    ['k2.6-code-preview-free', 'K2.6 Code Preview Free'],
+    ['kimi-for-coding-free', 'Kimi for Coding Free'],
+    ['lfm-2.5-2.6b-free', 'LFM 2.5 2.6B Free'],
+    ['gemma-4-26b-a4b-it-free', 'Gemma 4 26B A4B IT Free'],
+    ['DeepSeek-V3.1', 'DeepSeek V3.1'],
+    ['acme/foo-1:free', 'Foo 1 Free'],
+  ]) assert.equal(nameFromId(id), name, id);
+  assert.equal(modelDisplayName({ id: 'agents-a1-free', name: 'agents-a1-free' }), 'Agents A1 Free');
+  assert.equal(modelDisplayName({ id: 'intern-s2-free' }), 'Intern S2 Free');
+  assert.equal(modelDisplayName({ id: 'coding-glm-5.1-free', name: 'Coding GLM 5.1 Free' }), 'Coding GLM 5.1 Free');
 });
