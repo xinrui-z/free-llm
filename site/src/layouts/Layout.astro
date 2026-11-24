@@ -17,7 +17,7 @@ interface Props {
 const {
   title = 'Free LLM APIs — Real-time Status',
   description = 'Real-time monitoring of free LLM API availability. Track OpenRouter, AIHubMix, BigModel and more — find free LLM APIs that are actually working.',
-  ogImage = '/logo.png',
+  ogImage = '/og-image.png',
   jsonLd
 } = Astro.props;
 
@@ -38,6 +38,7 @@ const catalogNotice = !catalog?.unavailable ? null
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="generator" content={Astro.generator} />
 
     <title>{title}</title>
@@ -50,6 +51,11 @@ const catalogNotice = !catalog?.unavailable ? null
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImageURL} />
+    {ogImage === '/og-image.png' && <>
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+    </>}
+    <meta property="og:image:alt" content="Free LLM APIs" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
