@@ -40,7 +40,7 @@ const LEGACY_FILE_REL = 'site/src/data/providers.json';
 
 // ── Diff logic (pure) ─────────────────────────────────────────────────────
 const limitText = value => value == null ? 'unpublished' : String(value);
-const modelSummary = m => [m.name ?? m.id, m.context_window ? `(${m.context_window})` : '', m.rpm ? `${m.rpm} RPM` : '', m.rpd ? `${m.rpd} RPD` : ''].filter(Boolean).join(' ');
+const modelSummary = m => [m.name ?? m.id, m.context_window ? `(${m.context_window})` : '', m.rpm ? `${m.rpm} RPM` : '', m.tpm ? `${m.tpm} TPM` : ''].filter(Boolean).join(' ');
 const modelsKey = ids => Array.isArray(ids) ? [...ids].sort().join('\n') : null;
 
 /** Same change already recorded: same provider, type and date, and the same models when both sides name them. */
@@ -51,7 +51,7 @@ export function isDuplicateEntry(entry, existing) {
 
 function rateLimitChanges(oldP, newP) {
   const changes = [];
-  for (const key of ['rpm', 'rpd']) {
+  for (const key of ['rpm', 'tpm']) {
     if ((oldP[key] ?? null) !== (newP[key] ?? null)) changes.push(`${key.toUpperCase()} ${limitText(oldP[key])} → ${limitText(newP[key])}`);
   }
   const oldModels = new Map((oldP.models ?? []).map(m => [m.id, m]));
@@ -59,7 +59,7 @@ function rateLimitChanges(oldP, newP) {
   for (const m of newP.models ?? []) {
     const before = oldModels.get(m.id);
     if (!before) continue;
-    const parts = ['rpm', 'rpd'].filter(key => (before[key] ?? null) !== (m[key] ?? null))
+    const parts = ['rpm', 'tpm'].filter(key => (before[key] ?? null) !== (m[key] ?? null))
       .map(key => `${key.toUpperCase()} ${limitText(before[key])} → ${limitText(m[key])}`);
     if (parts.length) { modelIds.push(m.id); changes.push(`${m.name ?? m.id}: ${parts.join(', ')}`); }
   }
@@ -113,7 +113,7 @@ export function diffProviders(oldProviders, newProviders, { now = new Date(), re
     if (added.length === 1) {
       const [m] = added;
       push(newP, { type: 'model_added', model_ids: [m.id], title: `${newP.name} added model ${m.name ?? m.id}`,
-        description: `${newP.name} added free model ${m.name ?? m.id}${m.context_window ? ` (${m.context_window})` : ''}${m.rpm ? `, ${m.rpm} RPM` : ''}${m.rpd ? `, ${m.rpd} RPD` : ''}.` });
+        description: `${newP.name} added free model ${m.name ?? m.id}${m.context_window ? ` (${m.context_window})` : ''}${m.rpm ? `, ${m.rpm} RPM` : ''}${m.tpm ? `, ${m.tpm} TPM` : ''}.` });
     } else if (added.length > 1) {
       push(newP, { type: 'model_added', model_ids: added.map(m => m.id), title: `${newP.name} added ${added.length} free models`,
         description: `${newP.name} added ${added.length} free models: ${added.map(modelSummary).join(', ')}.` });

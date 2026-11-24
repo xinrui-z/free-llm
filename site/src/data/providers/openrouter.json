@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "context_window": "1048576",
   "auth": "required",
   "tags": [
@@ -35,7 +35,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -46,7 +46,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -58,7 +58,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -69,7 +69,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -81,7 +81,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -92,7 +92,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -104,7 +104,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -116,7 +116,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -127,7 +127,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -138,7 +138,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -149,7 +149,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -161,7 +161,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -173,7 +173,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -185,7 +185,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     }
   ],
@@ -202,7 +202,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 3,
@@ -221,7 +221,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 30,
@@ -240,7 +240,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 20,
@@ -259,7 +259,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 2,
@@ -278,7 +278,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 5,
@@ -297,7 +297,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 1.25,
@@ -316,7 +316,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 2,
@@ -335,7 +335,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 2,
@@ -354,7 +354,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.192,
@@ -373,7 +373,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.6,
@@ -392,7 +392,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 1.2,
@@ -410,7 +410,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.4,
@@ -429,7 +429,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.5,
@@ -448,7 +448,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 1.5,
@@ -466,7 +466,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 2.5,
@@ -485,7 +485,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.35,
@@ -503,7 +503,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.71,

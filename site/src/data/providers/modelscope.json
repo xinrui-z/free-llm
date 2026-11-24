@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -31,7 +31,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -42,7 +42,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -52,7 +52,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     }
   ],

@@ -265,7 +265,7 @@
     "provider_name": "GitHub Models",
     "type": "provider_added",
     "title": "Added GitHub Models provider",
-    "description": "Added GitHub Models. Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM/150 RPD; High tier: 10 RPM/50 RPD. No credit card required."
+    "description": "Added GitHub Models. Free model inference via GitHub PAT — access GPT-4o, Llama, Phi, DeepSeek and more. Low tier: 15 RPM; High tier: 10 RPM. No credit card required."
   },
   {
     "id": "cl-auto-1743206403",

@@ -14,7 +14,7 @@ import ProviderTable from '../components/ProviderTable.astro';
 import SearchInput from '../components/SearchInput.astro';
 import Chip from '../components/Chip.astro';
 import Fold from '../components/Fold.astro';
-import { compareByRpd, SORT_CAPTIONS } from '../components/provider-table';
+import { compareByTpm, SORT_CAPTIONS } from '../components/provider-table';
 import { accessLine, archiveDate, formatCount, formatDate, hasVision, limitsOf } from '../lib/format';
 import { siteURL } from '../lib/site-url';
 import { getProviders } from '../lib/providers';
@@ -26,12 +26,12 @@ const catalog = getProviders(Astro.locals);
 const active = catalog.filter(p => p.status === 'active');
 const archived = catalog.filter(p => p.status === 'archived');
 
-// Quickest first call: active providers with any published request limit first (daily, then per minute),
+// Quickest first call: active providers with any published request limit first (tokens per minute, then requests per minute),
 // then catalog order. Archived providers are never candidates.
 const picks = active
   .map((p, order) => ({ p, order, L: limitsOf(p) }))
   .sort((a, b) => Number(b.L.published) - Number(a.L.published)
-    || (a.L.published ? compareByRpd({ rpd: a.L.rpd, rpm: a.L.rpm, order: a.order }, { rpd: b.L.rpd, rpm: b.L.rpm, order: b.order }) : a.order - b.order))
+    || (a.L.published ? compareByTpm({ tpm: a.L.tpm, rpm: a.L.rpm, order: a.order }, { tpm: b.L.tpm, rpm: b.L.rpm, order: b.order }) : a.order - b.order))
   .slice(0, 3)
   .map(x => x.p);
 
@@ -41,7 +41,7 @@ const lastVerified = verified[verified.length - 1];
 
 const total = active.length;
 const counts = {
-  pub: active.filter(p => limitsOf(p).rpd != null).length,
+  pub: active.filter(p => limitsOf(p).published).length,
   vision: active.filter(p => hasVision(p)).length,
   oai: active.filter(p => (p.tags ?? []).includes('openai-compatible')).length,
 };
@@ -102,7 +102,7 @@ const home = siteURL(Astro.site);
     <section class="sect" aria-labelledby="picks-h">
       <div class="sect-head">
         <h2 class="h2" id="picks-h">Quickest first call</h2>
-        <span class="caption">Chosen by rule: providers with a published request limit first (daily, then per minute), then catalog order.</span>
+        <span class="caption">Chosen by rule: providers with a published request limit first (tokens per minute, then requests per minute), then catalog order.</span>
       </div>
       <div class="picks">
         {picks.map(p => {
@@ -131,12 +131,12 @@ const home = siteURL(Astro.site);
   <section class="sect" aria-labelledby="dir-h">
     <div class="sect-head">
       <h2 class="h2" id="dir-h">All free providers</h2>
-      <span class="caption" id="dir-caption">{SORT_CAPTIONS.rpd}</span>
+      <span class="caption" id="dir-caption">{SORT_CAPTIONS.tpm}</span>
     </div>
     <div class="toolbar">
       <SearchInput id="dir-q" label="Search providers" placeholder="Search provider or model ID" param="q" />
       <div class="chips" id="dir-chips" role="group" aria-label="Filter providers">
-        <Chip name="pub" label="Published daily limit" count={counts.pub} hidden={counts.pub === total} />
+        <Chip name="pub" label="Published rate limit" count={counts.pub} hidden={counts.pub === total} />
         <Chip name="vision" label="Vision" count={counts.vision} hidden={counts.vision === total} />
         <Chip name="oai" label="OpenAI-compatible" count={counts.oai} hidden={counts.oai === total} />
         <Chip name="st-up" label="Up" count={0} data-live-only="" />
@@ -144,7 +144,7 @@ const home = siteURL(Astro.site);
       </div>
       <label class="sr-only" for="dir-sort">Sort providers</label>
       <select class="select" id="dir-sort">
-        <option value="rpd">Sort: Published daily limit</option>
+        <option value="tpm">Sort: Published rate limit</option>
         <option value="name">Sort: Name</option>
         <option value="models">Sort: Most models</option>
       </select>
@@ -229,7 +229,7 @@ const home = siteURL(Astro.site);
   const emptyClear = document.getElementById('dir-empty-clear');
 
   const f: Filters = { q: (new URL(location.href).searchParams.get('q') ?? '').trim(), pub: false, vision: false, oai: false, st: '' };
-  let sort: ProviderSort = 'rpd';
+  let sort: ProviderSort = 'tpm';
   const isLive = () => getStatusInfo().state === 'live';
 
   // The desktop rows carry every data-* hook; the mobile cards are a copy of the same data.
@@ -238,7 +238,7 @@ const home = siteURL(Astro.site);
   function matches(row: HTMLElement, x: Filters) {
     const d = row.dataset;
     if (x.q && !(d.search ?? '').includes(x.q.toLowerCase())) return false;
-    if (x.pub && !d.rpd) return false;
+    if (x.pub && d.pub !== 'true') return false;
     if (x.vision && d.vision !== 'true') return false;
     if (x.oai && d.oai !== 'true') return false;
     if (x.st && isLive()) {
@@ -270,7 +270,7 @@ const home = siteURL(Astro.site);
       select.append(option);
     } else if (!want && option) {
       option.remove();
-      if (sort === 'latency') sort = 'rpd';
+      if (sort === 'latency') sort = 'tpm';
     }
     select.value = sort;
   }
@@ -309,7 +309,7 @@ const home = siteURL(Astro.site);
     CHIPS[chip.dataset.chip ?? '']?.toggle();
     update();
   });
-  select?.addEventListener('change', () => { sort = (select.value as ProviderSort) || 'rpd'; update(); });
+  select?.addEventListener('change', () => { sort = (select.value as ProviderSort) || 'tpm'; update(); });
   window.addEventListener('search-change', event => {
     const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
     if (detail?.id !== 'dir-q') return;

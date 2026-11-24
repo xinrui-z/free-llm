@@ -1,7 +1,7 @@
 {
   "id": "cerebras",
   "name": "Cerebras",
-  "description": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
+  "description": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier. Listed TPM is the uncached-token limit; total TPM including cached tokens is higher.",
   "base_url": "https://api.cerebras.ai/v1",
   "signup_url": "https://cloud.cerebras.ai",
   "website_url": "https://cerebras.ai",
@@ -9,7 +9,7 @@
   "status": "archived",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "auth": "credit_card_required",
   "tags": [
     "fast-inference",
@@ -29,7 +29,7 @@
         "text"
       ],
       "rpm": 5,
-      "rpd": null,
+      "tpm": 30000,
       "status": "active"
     },
     {
@@ -40,7 +40,7 @@
         "vision"
       ],
       "rpm": 300,
-      "rpd": null,
+      "tpm": 150000,
       "status": "active"
     }
   ],
@@ -48,7 +48,7 @@
   "geo_restrictions": [],
   "api_key_env": "CEREBRAS_API_KEY",
   "archive_reason": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
-  "quota_note": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier.",
+  "quota_note": "Cerebras now offers a $5, 30-day trial after adding a verified payment method. There is no recurring free API tier. Listed TPM is the uncached-token limit; total TPM including cached tokens is higher.",
   "sources": [
     {
       "label": "Current service and free-tier policy",

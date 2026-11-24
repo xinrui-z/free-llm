@@ -9,7 +9,7 @@
   "status": "archived",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "context_window": "1M",
   "auth": "required",
   "tags": [
@@ -34,7 +34,7 @@
         "vision"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -46,7 +46,7 @@
         "vision"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -58,7 +58,7 @@
         "vision"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -70,7 +70,7 @@
         "vision"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -82,7 +82,7 @@
         "vision"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -94,7 +94,7 @@
         "vision"
       ],
       "rpm": 1,
-      "rpd": 10,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -106,7 +106,7 @@
         "vision"
       ],
       "rpm": 1,
-      "rpd": 10,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -118,7 +118,7 @@
         "vision"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -130,7 +130,7 @@
         "vision"
       ],
       "rpm": 4,
-      "rpd": 100,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -142,7 +142,7 @@
         "vision"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -154,7 +154,7 @@
         "vision"
       ],
       "rpm": 1,
-      "rpd": 10,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -165,7 +165,7 @@
         "text"
       ],
       "rpm": 3,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -177,7 +177,7 @@
         "vision"
       ],
       "rpm": 1,
-      "rpd": 8,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -189,7 +189,7 @@
         "vision"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -201,7 +201,7 @@
         "vision"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -212,7 +212,7 @@
         "text"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -224,7 +224,7 @@
         "vision"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -235,7 +235,7 @@
         "text"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -246,7 +246,7 @@
         "text"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -257,7 +257,7 @@
         "text"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -268,7 +268,7 @@
         "text"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -279,7 +279,7 @@
         "text"
       ],
       "rpm": 3,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -291,7 +291,7 @@
         "vision"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -303,7 +303,7 @@
         "vision"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -314,7 +314,7 @@
         "text"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -325,7 +325,7 @@
         "text"
       ],
       "rpm": 2,
-      "rpd": 25,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -336,7 +336,7 @@
         "text"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -349,7 +349,7 @@
         "audio"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -360,7 +360,7 @@
         "text"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -371,7 +371,7 @@
         "text"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -382,7 +382,7 @@
         "text"
       ],
       "rpm": 15,
-      "rpd": 150,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -393,7 +393,7 @@
         "text"
       ],
       "rpm": 10,
-      "rpd": 50,
+      "tpm": null,
       "status": "active"
     }
   ],

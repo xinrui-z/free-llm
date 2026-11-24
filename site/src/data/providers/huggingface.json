@@ -9,7 +9,7 @@
   "status": "archived",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "context_window": "128K",
   "auth": "required",
   "pricing_note": "No unified per-token rate — paid usage passes through whichever partner (Groq, SambaNova, Together, Cerebras, etc.) serves the request at that partner's own price, with no HF markup.",
@@ -35,7 +35,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -46,7 +46,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -57,7 +57,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -68,7 +68,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -79,7 +79,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -90,7 +90,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     }
   ],

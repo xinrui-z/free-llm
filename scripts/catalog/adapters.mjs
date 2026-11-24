@@ -74,7 +74,7 @@ export const adapters = {
         });
         if (!parsed) continue;
         if (!parsed.free || !m.output_modalities.includes('text')) { ineligible.push(m.id); continue; }
-        models.push({ ...parsed.normalized, rpm: null, rpd: null });
+        models.push({ ...parsed.normalized, rpm: null, tpm: null });
       }
       if (!models.length) throw new Error('No eligible ZenMux free text models; review catalog');
       return { kind: 'catalog', models, paid_models: [], ineligible, quarantined, source_url: ZENMUX_URL };
@@ -99,7 +99,7 @@ export const adapters = {
           ineligible.push(m.id);
           continue;
         }
-        models.push({ ...parsed.normalized, rpm: null, rpd: null });
+        models.push({ ...parsed.normalized, rpm: null, tpm: null });
       }
       if (!models.length) throw new Error('No eligible free text models; refusing to erase the catalog');
       // Tracked paid models are listed in upstream order, like the free selection.

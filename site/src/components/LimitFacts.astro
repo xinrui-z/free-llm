@@ -1,13 +1,13 @@
 ---
 // One fact-sheet unit for request limits + context (+ model count), in three sizes:
-//   inline  — ".facts" line for rows/cards: "30 RPM · 1,000 RPD · 3 models · 128K context" (safe inside <a>)
-//   compact — 3-cell grid for pick cards: Requests/min · Requests/day · Max context
-//   large   — 4-cell grid for the provider page: Requests/min · Requests/day · Max context · Free models
+//   inline  — ".facts" line for rows/cards: "30 RPM · 8,000 TPM · 3 models · 128K context" (safe inside <a>)
+//   compact — 3-cell grid for pick cards: Requests/min · Tokens/min · Max context
+//   large   — 4-cell grid for the provider page: Requests/min · Tokens/min · Max context · Free models
 // Missing values follow the Not published convention; nothing is ever filled in.
 import NotPublished from './NotPublished.astro';
 import { formatCount, formatTokens, limitsOf, maxContext, NO_CONTEXT_NOTE } from '../lib/format';
 interface Props {
-  provider: { rpm?: number | null; rpd?: number | null; quota_note?: string | null; context_window?: unknown; models?: { context_window?: unknown }[] };
+  provider: { rpm?: number | null; tpm?: number | null; quota_note?: string | null; context_window?: unknown; models?: { context_window?: unknown }[] };
   size?: 'inline' | 'compact' | 'large';
   class?: string;
 }
@@ -15,7 +15,7 @@ const { provider, size = 'inline', class: className } = Astro.props;
 const L = limitsOf(provider);
 const ctx = formatTokens(maxContext(provider));
 const models = provider.models?.length ?? 0;
-const rpm = formatCount(L.rpm), rpd = formatCount(L.rpd);
+const rpm = formatCount(L.rpm), tpm = formatCount(L.tpm);
 ---
 {size === 'inline' ? (
   <div class:list={['facts', className]}>
@@ -23,7 +23,7 @@ const rpm = formatCount(L.rpm), rpd = formatCount(L.rpd);
       <>
         {rpm ? <span><span class="num">{rpm}</span> RPM</span> : <span class="muted">RPM not published</span>}
         <span class="sep" aria-hidden="true">·</span>
-        {rpd ? <span><span class="num">{rpd}</span> RPD</span> : <span class="muted">RPD not published</span>}
+        {tpm ? <span><span class="num">{tpm}</span> TPM</span> : <span class="muted">TPM not published</span>}
       </>
     ) : <span class="muted">Limits not published</span>}
     <span class="sep" aria-hidden="true">·</span>
@@ -35,7 +35,7 @@ const rpm = formatCount(L.rpm), rpd = formatCount(L.rpd);
     {L.published ? (
       <>
         <div><span class="lf-l">Requests/min</span><span class="lf-v">{rpm ? <span class="num">{rpm}</span> : <NotPublished note={L.note} />}</span></div>
-        <div><span class="lf-l">Requests/day</span><span class="lf-v">{rpd ? <span class="num">{rpd}</span> : <NotPublished note={L.note} />}</span></div>
+        <div><span class="lf-l">Tokens/min</span><span class="lf-v">{tpm ? <span class="num">{tpm}</span> : <NotPublished note={L.note} />}</span></div>
       </>
     ) : (
       <div class="span2"><span class="lf-l">Request limits</span><span class="lf-v"><NotPublished note={L.note} label={size === 'large' ? 'Not published by the provider' : 'Not published · see provider terms'} /></span></div>

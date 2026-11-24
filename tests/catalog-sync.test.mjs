@@ -23,7 +23,7 @@ const rawModel = (id, pricing = { prompt: '0', completion: '0' }) => ({
   architecture: { input_modalities: ['text'], output_modalities: ['text'] },
 });
 function fixture() {
-  const models = ['a', 'b', 'c', 'd', 'e'].map(id => ({ id: `test/${id}:free`, name: id, status: 'active', rpm: null, rpd: null }));
+  const models = ['a', 'b', 'c', 'd', 'e'].map(id => ({ id: `test/${id}:free`, name: id, status: 'active', rpm: null, tpm: null }));
   const provider = {
     id: 'openrouter', name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1', status: 'active', auth: 'required',
     models, top_models: [models[2].id, models[0].id], last_verified: '2026-11-01',

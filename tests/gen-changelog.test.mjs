@@ -6,8 +6,8 @@ import { diffProviders, isDuplicateEntry } from '../scripts/gen-changelog.mjs';
 import { validateChangelog } from '../scripts/lib/catalog-validation.mjs';
 
 const now = '2026-11-19T08:00:00.000Z';
-const model = (id, extra = {}) => ({ id, name: id.toUpperCase(), status: 'active', rpm: 10, rpd: 100, ...extra });
-const provider = (id, extra = {}) => ({ id, name: `P ${id}`, status: 'active', rpm: 30, rpd: 1000, models: [model('a'), model('b')], ...extra });
+const model = (id, extra = {}) => ({ id, name: id.toUpperCase(), status: 'active', rpm: 10, tpm: 100, ...extra });
+const provider = (id, extra = {}) => ({ id, name: `P ${id}`, status: 'active', rpm: 30, tpm: 1000, models: [model('a'), model('b')], ...extra });
 const diff = (before, after, options = {}) => diffProviders(before, after, { now, revision: 'abc', ...options });
 
 test('provider additions respect catalog status and every entry is a valid changelog entry', () => {
@@ -35,13 +35,13 @@ test('status changes emit status_change with the old and new status', () => {
 
 test('model and rate limit changes are reported once per provider', () => {
   const before = provider('x');
-  const after = provider('x', { rpd: null, models: [model('a', { rpm: 20 }), model('c')] });
+  const after = provider('x', { tpm: null, models: [model('a', { rpm: 20 }), model('c')] });
   const entries = diff([before], [after]);
   assert.deepEqual(entries.map(e => e.type), ['model_added', 'model_removed', 'rate_limit_change']);
   assert.deepEqual(entries[0].model_ids, ['c']);
   assert.deepEqual(entries[1].model_ids, ['b']);
   assert.deepEqual(entries[2].model_ids, ['a']);
-  assert.match(entries[2].description, /RPD 1000 → unpublished/);
+  assert.match(entries[2].description, /TPM 1000 → unpublished/);
   assert.match(entries[2].description, /A: RPM 10 → 20/);
   assert.deepEqual(validateChangelog(entries), []);
   assert.deepEqual(diff([before], [structuredClone(before)]), []);

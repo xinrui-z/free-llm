@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "auth": "required",
   "tags": [
     "china-available",
@@ -31,7 +31,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "200K"
     },
@@ -42,7 +42,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     },
@@ -53,7 +53,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     },
@@ -65,7 +65,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -76,7 +76,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "4K"
     },
@@ -88,7 +88,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "64K"
     }

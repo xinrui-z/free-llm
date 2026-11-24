@@ -61,24 +61,24 @@ test('model page reads live status and labels unpublished quotas honestly', asyn
   await expect(page.locator('body')).not.toContainText('∞');
   await expect(page.locator('.m-tbl, .m-list')).not.toContainText([/unlimited/i, /unlimited/i]);
 });
-test('numbers are formatted the same way everywhere: 1,000 requests, 128K context', async ({page}) => {
+test('numbers are formatted the same way everywhere: 8,000 TPM, 128K context', async ({page}) => {
   await page.route('https://status.test/**', route => route.abort());
   const groq = page.locator('[data-pt-row][data-provider-id="groq"]:visible');
   await page.goto('/');
-  await expect(groq).toContainText('1,000');
+  await expect(groq).toContainText('8,000');
   await expect(groq).toContainText('128K');
-  await expect(page.locator('main')).not.toContainText(/\b1K\b/);
+  await expect(page.locator('main')).not.toContainText(/\b8K\b/);
   await expect(page.locator('main')).not.toContainText('131072');
   await page.goto('/providers/groq');
   const tier = page.locator('.lf-lg');
-  await expect(tier).toContainText('1,000');
+  await expect(tier).toContainText('8,000');
   await expect(tier).toContainText('128K');
   await expect(tier.locator('[title="131,072 tokens"]')).toHaveCount(1);
-  await expect(page.locator('main')).not.toContainText(/\b1K\b/);
+  await expect(page.locator('main')).not.toContainText(/\b8K\b/);
   await expect(page.locator('main')).not.toContainText('131072');
   await page.goto('/models?q=gpt-oss-20b');
   const listing = page.locator('.m-tbl tr:visible', { hasText: 'openai/gpt-oss-20b' });
-  await expect(listing).toContainText('1,000');
+  await expect(listing).toContainText('8,000');
   await expect(listing).toContainText('128K');
 });
 test('models are grouped by family or vendor, with no Other group for the bundled catalog', async ({page}) => {
@@ -166,7 +166,7 @@ test('quickest first call picks only active providers, published limits first', 
   for (const id of picks) expect(archivedIds).not.toContain(id);
   for (const id of picks) expect(active.map(p => p.id)).toContain(id);
   // Providers that publish a request limit come before those that publish none.
-  const published = (id: string) => { const p = catalog.find(x => x.id === id); return p.rpm != null || p.rpd != null; };
+  const published = (id: string) => { const p = catalog.find(x => x.id === id); return p.rpm != null || p.tpm != null; };
   const flags = picks.map(published);
   expect(flags).toEqual([...flags].sort((a, b) => Number(b) - Number(a)));
   expect(picks[0]).toBe('groq');
