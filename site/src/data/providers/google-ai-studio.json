@@ -37,7 +37,7 @@
         "input_per_million": 1.5,
         "output_per_million": 7.5,
         "currency": "USD",
-        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "source_url": "https://aistudio.google.com/docs/pricing",
         "checked_at": "2026-11-16"
       }
     },
@@ -55,7 +55,7 @@
         "input_per_million": 0.75,
         "output_per_million": 3.75,
         "currency": "USD",
-        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "source_url": "https://aistudio.google.com/docs/pricing",
         "checked_at": "2026-11-16",
         "valid_until": "2026-12-31"
       }
@@ -74,7 +74,7 @@
         "input_per_million": 0.75,
         "output_per_million": 3.75,
         "currency": "USD",
-        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "source_url": "https://aistudio.google.com/docs/pricing",
         "checked_at": "2026-11-16",
         "valid_until": "2026-12-31"
       }
@@ -93,7 +93,7 @@
         "input_per_million": 0.3,
         "output_per_million": 2.5,
         "currency": "USD",
-        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "source_url": "https://aistudio.google.com/docs/pricing",
         "checked_at": "2026-11-16"
       }
     },
@@ -111,7 +111,7 @@
         "input_per_million": 0.25,
         "output_per_million": 1.5,
         "currency": "USD",
-        "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "source_url": "https://aistudio.google.com/docs/pricing",
         "checked_at": "2026-11-16"
       }
     }
@@ -123,7 +123,7 @@
   "sources": [
     {
       "label": "Free tier availability and standard token prices",
-      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "url": "https://aistudio.google.com/docs/pricing",
       "checked_at": "2026-11-16"
     }
   ]

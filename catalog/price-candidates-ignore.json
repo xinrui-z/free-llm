@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "note": "Models priced on official pricing pages that were reviewed and deliberately left out of the catalog. scripts/check-prices.mjs lists every other uncatalogued priced model as a candidate. Remove an entry to have it proposed again.",
+  "providers": {
+    "groq": {
+      "meta-llama/llama-prompt-guard-2-22m": "Prompt-injection classifier, not a chat model",
+      "meta-llama/llama-prompt-guard-2-86m": "Prompt-injection classifier, not a chat model",
+      "openai/gpt-oss-safeguard-20b": "Safety policy classifier variant of gpt-oss-20b"
+    },
+    "mistral": {
+      "voxtral-small-2507": "Audio model; the catalog lists text models"
+    },
+    "google-ai-studio": {
+      "gemini-2.5-flash": "Superseded by the catalogued Gemini 3.x and 4 models",
+      "gemini-2.5-flash-lite": "Superseded by the catalogued Gemini 3.x and 4 models",
+      "gemini-2.5-pro": "Superseded by the catalogued Gemini 3.x and 4 models",
+      "gemini-3-flash-preview": "Preview superseded by the catalogued Gemini 3.x Flash models",
+      "gemini-3.1-pro-preview": "Preview model"
+    }
+  }
+}

@@ -55,7 +55,14 @@
       "rpm": 20,
       "tpm": null,
       "status": "active",
-      "context_window": "128K"
+      "context_window": "128K",
+      "pricing": {
+        "input_per_million": 0.22,
+        "output_per_million": 0.59,
+        "currency": "USD",
+        "source_url": "https://cloud.sambanova.ai/plans/pricing",
+        "checked_at": "2026-11-24"
+      }
     },
     {
       "id": "DeepSeek-V3.2",
@@ -78,7 +85,14 @@
       "rpm": 20,
       "tpm": null,
       "status": "active",
-      "context_window": "128K"
+      "context_window": "128K",
+      "pricing": {
+        "input_per_million": 0.38,
+        "output_per_million": 1.15,
+        "currency": "USD",
+        "source_url": "https://cloud.sambanova.ai/plans/pricing",
+        "checked_at": "2026-11-24"
+      }
     }
   ],
   "last_verified": "2026-11-16",
@@ -95,6 +109,11 @@
       "label": "Free tier limits",
       "url": "https://docs.sambanova.ai/docs/en/models/rate-limits",
       "checked_at": "2026-11-16"
+    },
+    {
+      "label": "Paid per-token prices",
+      "url": "https://cloud.sambanova.ai/plans/pricing",
+      "checked_at": "2026-11-24"
     }
   ]
 }

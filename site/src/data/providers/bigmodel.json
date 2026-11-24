@@ -97,6 +97,7 @@
   "geo_restrictions": [],
   "api_key_env": "BIGMODEL_API_KEY",
   "quota_note": "Zero token price does not imply unlimited requests. Concurrency and account-specific limits apply; no fixed RPM/RPD is asserted here.",
+  "pricing_note": "Free-only models: the official price table lists input and output as free for every catalogued GLM Flash model, and no paid per-token rate is published for them.",
   "sources": [
     {
       "label": "Official free model prices and context limits",

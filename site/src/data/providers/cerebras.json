@@ -30,7 +30,14 @@
       ],
       "rpm": 5,
       "tpm": 30000,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.35,
+        "output_per_million": 0.75,
+        "currency": "USD",
+        "source_url": "https://www.cerebras.ai/pricing",
+        "checked_at": "2026-11-24"
+      }
     },
     {
       "id": "qwen-3.8-27b",
@@ -41,7 +48,14 @@
       ],
       "rpm": 300,
       "tpm": 150000,
-      "status": "active"
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.99,
+        "output_per_million": 1.49,
+        "currency": "USD",
+        "source_url": "https://www.cerebras.ai/pricing",
+        "checked_at": "2026-11-24"
+      }
     }
   ],
   "last_verified": "2026-11-16",
@@ -54,6 +68,11 @@
       "label": "Current service and free-tier policy",
       "url": "https://inference-docs.cerebras.ai/support/rate-limits",
       "checked_at": "2026-11-16"
+    },
+    {
+      "label": "Developer tier per-token prices",
+      "url": "https://www.cerebras.ai/pricing",
+      "checked_at": "2026-11-24"
     }
   ],
   "catalog_note": "Current trial models. Trial token and time limits apply; these are not recurring free allowances."

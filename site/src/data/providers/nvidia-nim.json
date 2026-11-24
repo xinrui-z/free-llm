@@ -130,6 +130,7 @@
   "api_key_env": "NVIDIA_NIM_API_KEY",
   "context_window": "1M",
   "quota_note": "Free hosted API access is for NVIDIA Developer Program members for the duration of program membership, limited to prototyping, research, development and testing. Rate limits vary per model and are not published; your own limit is shown in your build.nvidia.com account. NVIDIA's API Trial Terms of Service (v. 2025-09-19, section 1.4) reserve the right to limit access by time, request count or credits. Production use requires an NVIDIA AI Enterprise license.",
+  "pricing_note": "Hosted endpoints are a free trial for NVIDIA Developer Program members with no per-token paid rate; production use requires an NVIDIA AI Enterprise license priced per GPU.",
   "sources": [
     {
       "label": "NIM product FAQ (free Developer Program access, production licensing)",

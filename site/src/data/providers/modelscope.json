@@ -60,6 +60,7 @@
   "geo_restrictions": [],
   "api_key_env": "MODELSCOPE_API_KEY",
   "quota_note": "Requires a ModelScope account linked to a real-name-verified Alibaba Cloud account; using credits also requires a verified profile email. Logging in each day grants 200 short-term credits, plus 50 more once an Alibaba Cloud account is linked; short-term credits expire after 24 hours. API-Inference calls cost about 0.5, 1 or 2 credits for lightweight, mainstream or flagship models, and calls are allowed while the credit balance lasts. Credits are shared with AIGC and training services, so this is not a fixed requests-per-day allowance. Concurrency is adjusted dynamically, aiming to keep single-concurrency use working. The service is free and non-commercial, intended for development and evaluation, and should not be used for workloads needing high concurrency or an SLA.",
+  "pricing_note": "Free-only: API-Inference is a non-commercial free service that deducts ModelScope credits per call, not per token; no paid per-token rate is published.",
   "catalog_note": "This selection includes three current models whose IDs appear in the public /v1/models list as of 2026-11-19. Older models may be withdrawn from API-Inference as new ones launch. Authenticated inference has not been checked.",
   "sources": [
     {
