@@ -397,6 +397,25 @@
         "source_url": "https://ollama.com/pricing",
         "checked_at": "2026-11-16"
       }
+    },
+    {
+      "id": "hy4",
+      "name": "hy4",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "tpm": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.834,
+        "output_per_million": 2.501,
+        "currency": "USD",
+        "source_url": "https://ollama.com/pricing",
+        "checked_at": "2026-11-24"
+      }
     }
   ],
   "last_verified": "2026-11-16",
