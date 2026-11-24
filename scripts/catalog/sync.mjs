@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { validateProvider, validDate } from '../lib/catalog-validation.mjs';
+import { validateProvider, validDate, sortModels } from '../lib/catalog-validation.mjs';
 import { adapters } from './adapters.mjs';
 
 export const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -59,6 +59,25 @@ const settleState = (previous, next) => isDeepStrictEqual(materialState(previous
 const withoutDate = pricing => pricing && { ...pricing, checked_at: null };
 const PRICE_KEYS = ['input_per_million', 'output_per_million', 'currency'];
 
+// Models listed upstream follow the upstream listing order. Catalogued models absent upstream (awaiting removal
+// confirmation, or never removed by discovery) keep their previous relative order at the end.
+function upstreamOrder(models, upstreamIds) {
+  const index = new Map(upstreamIds.map((id, i) => [id, i]));
+  return [...models.filter(m => index.has(m.id)).sort((a, b) => index.get(a.id) - index.get(b.id)), ...models.filter(m => !index.has(m.id))];
+}
+// Whether models present on both sides changed relative order; additions and removals are reported separately.
+function reordered(before = [], after = []) {
+  const ids = list => list.map(m => m.id), afterIds = new Set(ids(after)), beforeIds = new Set(ids(before));
+  return !isDeepStrictEqual(ids(before).filter(id => afterIds.has(id)), ids(after).filter(id => beforeIds.has(id)));
+}
+// Pins for models that are no longer listed are dropped, and an empty pin list is omitted.
+function pruneModelOrder(provider) {
+  if (provider.model_order === undefined) return;
+  const ids = new Set(provider.models.map(m => m.id)), order = provider.model_order.filter(id => ids.has(id));
+  if (order.length) provider.model_order = order;
+  else delete provider.model_order;
+}
+
 export function planSync({ provider, raw, source, state, observedAt = new Date().toISOString() }) {
   const date = observedAt.slice(0, 10), now = Date.parse(observedAt);
   if (!validDate(date) || !Number.isFinite(now)) throw new Error('Invalid observation time');
@@ -75,8 +94,18 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
   if (normalized.kind === 'discovery') {
     nextState.candidates = normalized.candidates.map(c => ({ ...c, first_seen_at: state?.candidates.find(old => old.id === c.id)?.first_seen_at ?? observedAt }));
     const settled = settleState(previousState, nextState);
-    // Discovery never removes models; missing_upstream is surfaced for manual review instead.
-    return { provider, state: settled, report: { ...report, catalog_changed: false, state_changed: settled !== previousState,
+    // Discovery never adds or removes models (missing_upstream is surfaced for manual review instead); it only
+    // keeps the catalogued models in upstream order. Sources, catalog_checked_at and every other field stay as
+    // reviewed: a reorder is presentation, and discovery has not verified the listing's free eligibility.
+    const ordered = { ...provider, models: upstreamOrder(provider.models, normalized.order) };
+    pruneModelOrder(ordered);
+    const next = isDeepStrictEqual(provider, ordered) ? provider : ordered;
+    if (next !== provider) {
+      const nextErrors = validateProvider(next);
+      if (nextErrors.length) throw new Error(nextErrors.join('; '));
+    }
+    return { provider: next, state: settled, report: { ...report, catalog_changed: next !== provider, state_changed: settled !== previousState,
+      reordered: reordered(provider.models, next.models),
       candidates: nextState.candidates, missing: normalized.missing, missing_upstream: normalized.missing } };
   }
 
@@ -88,7 +117,7 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
     // Check the raw diff before confirmations so a truncated response cannot accumulate removals.
     if (old.length && absent.length / old.length > source.max_removal_fraction) throw new Error(`${key}: unusually large removal (${absent.length}/${old.length}); review source and update the curated baseline`);
     if (additions.length > source.max_additions) throw new Error(`${key}: unusually large addition (${additions.length}); review source`);
-    const result = [];
+    const listed = new Map(), retained = [];
     for (const previous of old) {
       const found = byId.get(previous.id);
       if (found) {
@@ -104,7 +133,7 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
         }
         if (Object.hasOwn(previous, 'rpm')) merged.rpm = previous.rpm;
         if (Object.hasOwn(previous, 'rpd')) merged.rpd = previous.rpd;
-        result.push(merged);
+        listed.set(previous.id, merged);
       } else if (key === 'models' && normalized.ineligible.includes(previous.id)) {
         // Positive billing evidence revokes free eligibility immediately.
         continue;
@@ -116,19 +145,23 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
         if (elapsed) { observation.count++; observation.last_counted_at = observedAt; }
         if (observation.count < source.removal_confirmations) {
           nextState.missing[stateKey] = observation;
-          result.push(previous);
+          retained.push(previous);
         }
       }
     }
-    return [...result, ...additions.sort((a, b) => a.id.localeCompare(b.id))];
+    // Everything listed upstream, additions included, follows the upstream order; models awaiting removal
+    // confirmation keep their previous relative order at the end.
+    return [...incoming.map(m => listed.get(m.id) ?? m), ...retained];
   }
   next.models = reconcile('models', normalized.models);
   const paid = reconcile('paid_models', normalized.paid_models);
   if (paid.length) next.paid_models = paid;
   else delete next.paid_models;
+  pruneModelOrder(next);
   const active = next.models.filter(m => m.status === 'active');
   next.top_models = provider.top_models.filter(id => active.some(m => m.id === id));
-  for (const m of active) {
+  // Vacated recommendation slots are filled in display order, so pinned models are preferred.
+  for (const m of sortModels(active, next.model_order)) {
     if (next.top_models.length >= Math.min(provider.top_models.length, 5)) break;
     if (!next.top_models.includes(m.id)) next.top_models.push(m.id);
   }
@@ -151,6 +184,7 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
   const missingUpstream = [...new Set(Object.keys(nextState.missing).map(key => key.slice(key.indexOf('/') + 1)))].sort();
   return { provider: next, state: settled, report: {
     ...report, catalog_changed: !isDeepStrictEqual(provider, next), state_changed: settled !== previousState,
+    reordered: reordered(provider.models, next.models) || reordered(provider.paid_models, next.paid_models),
     models: diffModels(provider.models, next.models), paid_models: diffModels(provider.paid_models, next.paid_models),
     pending_removals: Object.keys(nextState.missing),
     missing_upstream: missingUpstream,

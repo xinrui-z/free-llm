@@ -1,0 +1,21 @@
+---
+// Label + full mono value (never truncated; wraps anywhere on mobile) + copy icon button + toast.
+import CopyButton from './CopyButton.astro';
+interface Props {
+  label: string;
+  value: string;
+  /** Id of the value element; set it if a script will replace the value (update its textContent). */
+  id?: string;
+  toast?: string;
+  class?: string;
+}
+const { label, value, toast, class: className } = Astro.props;
+const id = Astro.props.id ?? `cf-${Math.random().toString(36).slice(2, 9)}`;
+---
+<div class:list={['cf', className]}>
+  <span class="cf-l" id={`${id}-l`}>{label}</span>
+  <div class="cf-b">
+    <span class="cf-v" id={id}>{value}</span>
+    <CopyButton from={id} label={label} toast={toast} />
+  </div>
+</div>

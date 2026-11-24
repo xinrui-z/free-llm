@@ -1,0 +1,19 @@
+---
+// Page header: H1 24/32 + one-sentence answer + 12px meta line. Same on every page; placed first in <main>.
+// Meta numbers: wrap them in <span class="num">, dates in <span class="date">.
+interface Props {
+  title: string;
+  /** One sentence answering "what is this page for". */
+  lead?: string;
+  /** Plain-text meta line. For numbers/dates use the "meta" slot instead. */
+  meta?: string;
+}
+const { title, lead, meta } = Astro.props;
+const hasMetaSlot = Astro.slots.has('meta');
+---
+<header class="ph">
+  <h1 class="h1" id="page-title" tabindex="-1">{title}</h1>
+  {lead && <p class="lead">{lead}</p>}
+  {(hasMetaSlot || meta) && <p class="meta">{hasMetaSlot ? <slot name="meta" /> : meta}</p>}
+  <slot />
+</header>

@@ -1,0 +1,61 @@
+---
+// Search box: h-36 surface input with a leading icon and a Clear button. Fires
+// window CustomEvent('search-change', { detail: { id, value } }) 200 ms after typing, on Clear and on
+// back/forward. With `param`, the value is read from and written to that URL query parameter (replaceState).
+interface Props {
+  id: string;
+  /** Accessible label (visually hidden). */
+  label: string;
+  placeholder?: string;
+  /** URL query parameter to sync, e.g. "q". */
+  param?: string;
+  class?: string;
+}
+const { id, label, placeholder = 'Search', param, class: className } = Astro.props;
+---
+<label class:list={['search', className]} for={id}>
+  <span class="sr-only">{label}</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  <input id={id} type="search" placeholder={placeholder} autocomplete="off" spellcheck="false" data-search-input data-search-param={param} />
+  <button type="button" class="search-clear" data-search-clear={id} aria-label="Clear search" hidden>Clear</button>
+</label>
+<script>
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[data-search-input]'));
+  for (const input of inputs) {
+    if (input.dataset.searchBound) continue;
+    input.dataset.searchBound = '1';
+    const param = input.dataset.searchParam;
+    const clear = document.querySelector<HTMLButtonElement>(`[data-search-clear="${CSS.escape(input.id)}"]`);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const notify = () => {
+      if (clear) clear.hidden = !input.value;
+      window.dispatchEvent(new CustomEvent('search-change', { detail: { id: input.id, value: input.value.trim() } }));
+    };
+    const update = () => {
+      if (param) {
+        const url = new URL(location.href);
+        if (input.value.trim()) url.searchParams.set(param, input.value); else url.searchParams.delete(param);
+        history.replaceState(history.state, '', url);
+      }
+      notify();
+    };
+    const restore = () => {
+      clearTimeout(timer);
+      if (param) input.value = new URL(location.href).searchParams.get(param) ?? '';
+      notify();
+    };
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      if (clear) clear.hidden = !input.value;
+      timer = setTimeout(update, 200);
+    });
+    clear?.addEventListener('click', () => {
+      clearTimeout(timer);
+      input.value = '';
+      update();
+      input.focus();
+    });
+    window.addEventListener('popstate', restore);
+    restore();
+  }
+</script>

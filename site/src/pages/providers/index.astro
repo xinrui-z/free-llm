@@ -1,254 +1,31 @@
 ---
-import Layout from '../../layouts/Layout.astro';
+// /providers was merged into the directory on "/". Old links (including /providers?q=… deep links) keep working:
+//   dynamic mode (on-demand render): a real 301 to "/" with the query string preserved;
+//   static mode: a tiny page that redirects with JS (query and hash preserved), falls back to a meta refresh
+//   to "/" without JS, and points its canonical URL at "/" so search engines index the directory instead.
 import { siteURL } from '../../lib/site-url';
-import FilterBar from '../../components/FilterBar.astro';
-import StatusBadge from '../../components/StatusBadge.astro';
 
-import { getProviders } from '../../lib/providers';
-const providers = getProviders(Astro.locals);
-
-const sortedFiltered = providers.filter(p => p.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
-
-function formatLatency(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '—';
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
+if (import.meta.env.CATALOG_DYNAMIC) {
+  return Astro.redirect(`/${Astro.url.search}`, 301);
 }
-
-function formatNum(n: number | null | undefined): string {
-  if (n === null || n === undefined) return '—';
-  return n.toLocaleString();
-}
+const canonical = siteURL(Astro.site);
 ---
-
-<Layout
-  title="Browse Free LLM API Providers — Status, Latency & Rate Limits"
-  description={`Browse all ${sortedFiltered.length} free LLM API providers. Filter by operational status, response latency, RPM/RPD limits. Find the best free OpenAI-compatible API for your project.`}
-  jsonLd={{
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "Browse Free LLM API Providers",
-    "description": `Directory of ${sortedFiltered.length} free LLM API providers with real-time status, latency, and rate limit information.`,
-    "url": siteURL(Astro.site, '/providers/'),
-    "breadcrumb": {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
-        { "@type": "ListItem", "position": 2, "name": "Providers", "item": siteURL(Astro.site, '/providers/') }
-      ]
-    }
-  }}
->
-  <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-    <!-- Page header -->
-    <div class="pt-8 pb-4">
-      <h1 class="text-2xl font-bold text-white mb-1">All Providers</h1>
-      <p class="text-slate-400 text-sm">
-        {sortedFiltered.length} free API providers
-        <span id="last-checked" class="hidden text-slate-400 ml-1"></span>
-      </p>
-    </div>
-
-    <!-- Filter bar (search only) -->
-    <div class="mb-4">
-      <FilterBar />
-    </div>
-
-    <!-- Controls: status filter (client-side) + sort -->
-    <div class="flex items-center justify-between mb-4 text-sm flex-wrap gap-2">
-      <div class="flex items-center gap-2 flex-wrap">
-        {[
-          { value: 'all', label: 'All' },
-          { value: 'active', label: 'Operational' },
-          { value: 'degraded', label: 'Degraded' },
-          { value: 'dead', label: 'Down' },
-          { value: 'unknown', label: 'Unknown' },
-        ].map(opt => (
-          <button
-            class={`status-filter-btn px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${opt.value === 'all' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
-            data-status-filter={opt.value}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-      <div class="flex items-center gap-1.5">
-        <button
-          data-sort-btn="default"
-          class="sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-green-500/10 border-green-500/30 text-green-400"
-        >Default</button>
-        <button
-          id="sort-latency-btn"
-          data-sort-btn="latency_asc"
-          class="sort-btn px-3 py-1.5 text-xs rounded-full border cursor-pointer transition-all duration-150 bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
-        >Latency ↑</button>
-      </div>
-    </div>
-
-    <!-- Provider list -->
-    {sortedFiltered.length === 0 ? (
-      <div class="flex flex-col items-center justify-center py-20 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-slate-600 mb-4">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <p class="text-slate-400 font-medium mb-2">No providers found</p>
-        <p class="text-slate-400 text-sm mb-4">Try adjusting your filters or browse all providers</p>
-        <a
-          href="/providers"
-          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors duration-150"
-        >
-          Clear filters
-        </a>
-      </div>
-    ) : (
-      <div class="border border-slate-700/50 rounded-xl overflow-hidden mb-8">
-        <!-- Table header -->
-        <div class="hidden md:grid grid-cols-[2fr_1fr_80px_70px_80px_60px_90px] gap-4 px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/50 text-xs text-slate-500 font-mono">
-          <span>Provider</span>
-          <span>Status</span>
-          <span class="text-right">Latency</span>
-          <span class="text-right">RPM</span>
-          <span class="text-right">RPD</span>
-          <span class="text-right">Context</span>
-          <span class="text-right">Models</span>
-        </div>
-
-        <!-- Provider rows -->
-        <div class="divide-y divide-slate-800/50">
-          {sortedFiltered.map(provider => (
-            <a
-              href={`/providers/${provider.id}`}
-              data-provider-id={provider.id}
-              data-status="unknown"
-              data-search={[provider.name, provider.id, ...(provider.tags ?? []), ...provider.models.flatMap(m => [m.id, m.name])].join(' ').toLowerCase()}
-              data-latency={provider.latency_ms ?? ''}
-              class="flex flex-col md:grid md:grid-cols-[2fr_1fr_80px_70px_80px_60px_90px] md:gap-4 px-4 py-3 hover:bg-slate-800/50 transition-colors duration-150 cursor-pointer group"
-            >
-              <!-- Provider name -->
-              <div class="flex items-center gap-2 mb-2 md:mb-0">
-                <div class="w-6 h-6 rounded bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 overflow-hidden">
-                  {provider.logo
-                    ? <img src={provider.logo} alt={provider.name} class="w-full h-full object-contain brightness-0 invert" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
-                    : null}
-                  <span class={provider.logo ? 'hidden' : 'flex'}>{provider.name.charAt(0)}</span>
-                </div>
-                <div>
-                  <span class="text-slate-200 font-medium text-sm group-hover:text-white transition-colors">{provider.name}</span>
-                  <div class="md:hidden flex items-center gap-2 mt-0.5">
-                    <span data-live-status={provider.id} data-badge-size="sm">
-                      <StatusBadge status="unknown" />
-                    </span>
-                    <span class="font-mono text-xs text-slate-500" data-live-latency={provider.id}>{formatLatency(provider.latency_ms)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Status (desktop) -->
-              <div class="hidden md:flex items-center">
-                <span data-live-status={provider.id} data-badge-size="sm">
-                  <StatusBadge status="unknown" />
-                </span>
-              </div>
-
-              <!-- Latency (desktop) -->
-              <div class="hidden md:flex items-center justify-end">
-                <span class={`font-mono text-xs text-slate-400`} data-live-latency={provider.id}>
-                  {formatLatency(provider.latency_ms)}
-                </span>
-              </div>
-
-              <!-- RPM -->
-              <div class="hidden md:flex items-center justify-end">
-                <span class="font-mono text-xs text-slate-400">{formatNum(provider.rpm)}</span>
-              </div>
-
-              <!-- RPD -->
-              <div class="hidden md:flex items-center justify-end">
-                <span class="font-mono text-xs text-slate-400">{formatNum(provider.rpd)}</span>
-              </div>
-
-              <!-- Context window -->
-              <div class="hidden md:flex items-center justify-end">
-                <span class="font-mono text-xs text-slate-400">{provider.context_window ?? '—'}</span>
-              </div>
-
-              <!-- Models count -->
-              <div class="hidden md:flex items-center justify-end">
-                <span class="font-mono text-xs text-slate-400">{provider.models?.length ?? '—'}</span>
-              </div>
-
-            </a>
-          ))}
-        </div>
-      </div>
-    )}
-    <section class="mt-8 mb-6">
-      <h2 class="text-lg font-semibold text-slate-200 mb-3">Archived free tiers</h2>
-      <p class="text-sm text-slate-400 mb-3">These services retired or no longer offer a recurring free API tier.</p>
-      <ul class="space-y-3">{providers.filter(p => p.status === 'archived').map(p => <li class="text-sm text-slate-400"><a href={`/providers/${p.id}`} class="text-slate-200 underline">{p.name}</a> — {p.archive_reason}</li>)}</ul>
-    </section>
-    <p id="provider-results" class="text-sm text-slate-400 mb-4" aria-live="polite"></p>
-    <p id="provider-empty" class="hidden py-8 text-center text-slate-400">No providers match your search and status filter.</p>
-  </div>
-</Layout>
-
-<script>
-  import { onStatus } from '../../lib/status-client';
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-provider-id]'));
-  const container = document.querySelector('.divide-y');
-  let activeFilter = new URL(location.href).searchParams.get('status') ?? 'all';
-  let activeSort = 'default';
-  function applyFilters() {
-    const query = (new URL(location.href).searchParams.get('q') ?? '').trim().toLowerCase();
-    let count = 0;
-    rows.forEach(row => {
-      const visible = (activeFilter === 'all' || row.dataset.status === activeFilter) && (!query || row.dataset.search?.includes(query));
-      row.style.display = visible ? '' : 'none';
-      if (visible) count++;
-    });
-    document.getElementById('provider-empty')?.classList.toggle('hidden', count > 0);
-    const result = document.getElementById('provider-results');
-    if (result) result.textContent = `${count} of ${rows.length} providers`;
-    document.querySelectorAll<HTMLButtonElement>('[data-status-filter]').forEach(button => {
-      const active = button.dataset.statusFilter === activeFilter;
-      button.setAttribute('aria-pressed', String(active));
-      button.className = `status-filter-btn px-3 py-1.5 text-xs rounded-full border transition-colors ${active ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`;
-    });
-  }
-  function applySort() {
-    rows.sort((a, b) => {
-      if (activeSort !== 'default') {
-        const av = a.dataset.latency ? Number(a.dataset.latency) : null;
-        const bv = b.dataset.latency ? Number(b.dataset.latency) : null;
-        if (av === null) return bv === null ? 0 : 1;
-        if (bv === null) return -1;
-        return activeSort === 'latency_asc' ? av - bv : bv - av;
-      }
-      return (a.dataset.search ?? '').localeCompare(b.dataset.search ?? '');
-    });
-    rows.forEach(row => container?.append(row));
-  }
-  document.querySelectorAll<HTMLButtonElement>('[data-status-filter]').forEach(button => button.addEventListener('click', () => {
-    activeFilter = button.dataset.statusFilter ?? 'all';
-    const url = new URL(location.href);
-    if (activeFilter === 'all') url.searchParams.delete('status'); else url.searchParams.set('status', activeFilter);
-    history.replaceState({}, '', url);
-    applyFilters();
-  }));
-  document.querySelectorAll<HTMLButtonElement>('[data-sort-btn]').forEach(button => button.addEventListener('click', () => {
-    activeSort = button.dataset.sortBtn === 'default' ? 'default' : activeSort === 'latency_asc' ? 'latency_desc' : 'latency_asc';
-    document.querySelectorAll<HTMLButtonElement>('[data-sort-btn]').forEach(b => {
-      const active = b === button;
-      b.setAttribute('aria-pressed', String(active));
-      b.className = `sort-btn px-3 py-1.5 text-xs rounded-full border ${active ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`;
-    });
-    const latencyButton = document.getElementById('sort-latency-btn');
-    if (latencyButton) latencyButton.textContent = activeSort === 'latency_desc' ? 'Latency ↓' : 'Latency ↑';
-    applySort();
-  }));
-  window.addEventListener('search-change', applyFilters);
-  window.addEventListener('popstate', () => { activeFilter = new URL(location.href).searchParams.get('status') ?? 'all'; applyFilters(); });
-  onStatus(() => { applySort(); applyFilters(); });
-  applyFilters();
-</script>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Free LLM APIs: provider directory moved</title>
+    <script is:inline>location.replace('/' + location.search + location.hash);</script>
+    <meta http-equiv="refresh" content="0; url=/" />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content="noindex" />
+    <style>
+      body { margin: 0; padding: 40px 16px; background: #0F172A; color: #CBD5E1; font: 14px/20px Inter, system-ui, sans-serif; }
+      a { color: #22C55E; }
+    </style>
+  </head>
+  <body>
+    <p>The provider directory is now on the <a href="/">home page</a>.</p>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateProvider, validateChangelog, providerTimeChecks, sortProviders } from '../scripts/lib/catalog-validation.mjs';
+import { validateProvider, validateChangelog, providerTimeChecks, sortProviders, sortModels } from '../scripts/lib/catalog-validation.mjs';
 const valid = JSON.parse(readFileSync(new URL('../site/src/data/providers/aihubmix.json', import.meta.url)));
 const now = '2026-11-19T12:00:00Z';
 const paidModel = { ...valid.models[0], id: 'paid-only-model' };
@@ -66,6 +66,29 @@ test('changelog rejects wrong shape, duplicate identifiers and unknown providers
 test('provider order follows _order.json with unlisted providers alphabetical', () => {
   assert.deepEqual(sortProviders([{ id: 'c' }, { id: 'a' }, { id: 'z' }, { id: 'b' }], ['z', 'b']).map(p => p.id), ['z', 'b', 'a', 'c']);
 });
+test('model display order pins model_order IDs first, then keeps models array order', () => {
+  const models = ['a', 'b', 'c', 'd'].map(id => ({ id }));
+  const ids = list => list.map(m => m.id);
+  for (const order of [undefined, null, [], 'a', { a: 1 }]) {
+    const out = sortModels(models, order);
+    assert.deepEqual(ids(out), ['a', 'b', 'c', 'd']);
+    assert.notEqual(out, models);
+  }
+  assert.deepEqual(ids(sortModels(models, ['c', 'a'])), ['c', 'a', 'b', 'd']);
+  // Unknown and repeated pins are ignored rather than failing the page.
+  assert.deepEqual(ids(sortModels(models, ['gone', 'd', 'd', 'b', 'd'])), ['d', 'b', 'a', 'c']);
+  const before = JSON.stringify(models), order = ['b'];
+  sortModels(models, order);
+  assert.equal(JSON.stringify(models), before);
+  assert.deepEqual(order, ['b']);
+  assert.deepEqual(sortModels(undefined, ['a']), []);
+});
+test('model_order is optional and lenient about unlisted IDs but must be well formed', () => {
+  assert.deepEqual(validateProvider({ ...valid, model_order: [valid.models[1].id, 'no-longer-listed'] }), []);
+  for (const model_order of [null, 'x', [valid.models[0].id, valid.models[0].id], [''], ['  '], [1], [null]]) {
+    assert.match(validateProvider({ ...valid, model_order }).join(), /model_order/, JSON.stringify(model_order));
+  }
+});
 test('repository validation covers monitoring policies and sync state files', async () => {
   const { validateRepository, validateMonitoring, validateStateFile } = await import('../scripts/validate.mjs');
   const ids = new Set(['groq']);
@@ -94,4 +117,12 @@ test('expired promotional prices fail validation unless reported as warnings', a
   if (!expired.length) return; // no promotional prices in the catalog right now
   assert.ok(expired.every(e => lenient.warnings.includes(e)));
   assert.ok(!lenient.errors.some(e => /pricing expired/.test(e)));
+});
+test('changelog accepts documentation reviews as their own type and still rejects unknown types', () => {
+  const review = { id: 'catalog-2026-11-16-groq', date: '2026-11-16', provider_id: 'groq', provider_name: 'Groq', type: 'catalog_reviewed', title: 'Groq catalog and free-tier documentation refreshed' };
+  assert.deepEqual(validateChangelog([review]), []);
+  assert.match(validateChangelog([{ ...review, type: 'catalog_refreshed' }]).join(), /invalid type/);
+  // The curated changelog types every routine review as catalog_reviewed, never as a model addition.
+  const curated = JSON.parse(readFileSync(new URL('../site/src/data/changelog.json', import.meta.url), 'utf8'));
+  assert.deepEqual(curated.filter(e => e.type === 'model_added' && /documentation (refreshed|reviewed)/i.test(e.title)).map(e => e.id), []);
 });

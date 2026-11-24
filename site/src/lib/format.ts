@@ -1,8 +1,17 @@
-// Shared display helpers for catalog pages.
+// Shared display helpers for every public page. Pages must format limits, context windows, prices,
+// latency and dates through these functions so the same value reads the same everywhere.
+// Honesty rules: null/undefined RPM/RPD means "not published" (never "unlimited", never a number);
+// a missing or blank price is never 0; helpers return null for missing values so the caller renders
+// <NotPublished/> (or a muted dash) instead of inventing one.
+
+export const NOT_PUBLISHED = 'Not published';
+export const NOT_PUBLISHED_NOTE = 'The provider does not publish this value.';
+export const NO_CONTEXT_NOTE = 'No context window in the official catalog.';
 
 // Convert a context-window label like "128K" / "1M" / "131,072" (or a plain
 // number) into tokens so columns can sort numerically. Returns -1 when the
 // value is missing or unparseable; catalog data may carry numbers or strings.
+// K/M are decimal here (sorting only); use formatTokens() for display.
 export function contextToNumber(label: unknown): number {
   if (label == null) return -1;
   if (typeof label === 'number') return Number.isFinite(label) && label >= 0 ? label : -1;
@@ -15,17 +24,165 @@ export function contextToNumber(label: unknown): number {
   return n;
 }
 
-const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', CNY: '¥' };
+/** 30 → "30", 14400 → "14,400", 200000 → "200,000". Never lossy ("1K"). null/undefined/invalid → null. */
+export function formatCount(n: number | null | undefined): string | null {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+  return n.toLocaleString('en-US');
+}
 
-// Format a per-1M-token price. USD and CNY use their symbol; any other
-// currency is shown with its ISO code as a suffix so it is never mistaken
-// for dollars.
-export function formatPrice(n: number, currency: string): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+export interface FormattedTokens {
+  /** Short label: "128K", "1M", "1.02M". */
+  text: string;
+  /** Exact value for a title attribute: "131,072 tokens" or "128K tokens, as documented". */
+  title: string;
+}
+
+/**
+ * Context window for display. Raw token counts become K/M: exact binary sizes read 128K / 256K / 1M
+ * (131072, 262144, 1048576); round decimal sizes stay decimal (256000 → 256K, 1000000 → 1M,
+ * 1024000 → 1.02M). Labels that are already "128K" / "1M" pass through (uppercased).
+ * Missing, blank or unparseable → null (render NotPublished / a muted dash).
+ */
+export function formatTokens(value: unknown): FormattedTokens | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (/^\d+(?:\.\d+)?\s*[KM]$/i.test(s)) {
+    const text = s.toUpperCase().replace(/\s/g, '');
+    return { text, title: `${text} tokens, as documented` };
+  }
+  const n = Number(s.replace(/,/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  let text: string;
+  if (n % 1_048_576 === 0) text = `${n / 1_048_576}M`;
+  else if (n % 1000 !== 0 && n % 1024 === 0 && n < 1_024_000) text = `${n / 1024}K`;
+  else if (n >= 1e6) text = `${+(n / 1e6).toFixed(2)}M`;
+  else if (n >= 1e3) {
+    // Round before picking the unit so 999,500-999,999 reads "1M", not "1000K".
+    const k = Math.round(n / 1e3);
+    text = k >= 1000 ? `${+(n / 1e6).toFixed(2)}M` : `${k}K`;
+  }
+  else text = String(n);
+  return { text, title: `${n.toLocaleString('en-US')} tokens` };
+}
+
+/** Largest context window across a provider (provider-level value and every model). Raw value or null. */
+export function maxContext(p: { context_window?: unknown; models?: { context_window?: unknown }[] }): string | number | null {
+  let best: unknown = null, bestN = -1;
+  for (const v of [p.context_window, ...(p.models ?? []).map(m => m.context_window)]) {
+    const n = contextToNumber(v);
+    if (n > bestN) { bestN = n; best = v; }
+  }
+  return bestN > 0 ? best as string | number : null;
+}
+
+/** 420 → "420 ms", 1234 → "1.2 s". null/invalid → null. */
+export function formatLatency(ms: number | null | undefined): string | null {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+  // Round before picking the unit so 999.6 reads "1.0 s", not "1000 ms".
+  const r = Math.round(ms);
+  return r < 1000 ? `${r} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+/** ISO date "2026-11-16" (from a date or a timestamp). Invalid/missing → null. Render in Inter, tabular-nums. */
+export function formatDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : null;
+}
+
+/** "just now", "4 min ago", "3 h ago", "2 d ago". Invalid/missing → null. */
+export function formatRelative(value: string | number | null | undefined, now = Date.now()): string | null {
+  if (value == null || value === '') return null;
+  const t = typeof value === 'number' ? value : Date.parse(value);
+  if (!Number.isFinite(t)) return null;
+  const mins = Math.max(0, Math.floor((now - t) / 60_000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours} h ago`;
+  return `${Math.floor(hours / 24)} d ago`;
+}
+
+/** First sentence of a provider note ("…caps that depend on purchase history."). Empty → ''. */
+export function firstSentence(text: string | null | undefined): string {
+  const s = String(text ?? '').trim();
+  const m = s.match(/^.*?[.!?](?=\s|$)/);
+  return m ? m[0] : s;
+}
+
+export interface Limits {
+  rpm: number | null;
+  rpd: number | null;
+  /** True when at least one of rpm / rpd is a published number. */
+  published: boolean;
+  /** First sentence of quota_note ('' when there is none). */
+  note: string;
+}
+
+/** Request limits of a provider or model. Never fills in a missing value. */
+export function limitsOf(x: { rpm?: number | null; rpd?: number | null; quota_note?: string | null }): Limits {
+  const rpm = typeof x.rpm === 'number' && Number.isFinite(x.rpm) ? x.rpm : null;
+  const rpd = typeof x.rpd === 'number' && Number.isFinite(x.rpd) ? x.rpd : null;
+  return { rpm, rpd, published: rpm != null || rpd != null, note: firstSentence(x.quota_note) };
+}
+
+/** One access conclusion: "Sign-up required" / "Sign-up + credit card required" [+ " · Not available in: X, Y"]. */
+export function accessLine(p: { auth?: string; geo_restrictions?: string[] | null }): string {
+  const base = p.auth === 'credit_card_required' ? 'Sign-up + credit card required' : 'Sign-up required';
+  const geo = Array.isArray(p.geo_restrictions) ? p.geo_restrictions.filter(Boolean) : [];
+  return geo.length ? `${base} · Not available in: ${geo.join(', ')}` : base;
+}
+
+/** Table cell form of accessLine: "Sign-up" or "Card". */
+export function accessShort(p: { auth?: string }): string {
+  return p.auth === 'credit_card_required' ? 'Card' : 'Sign-up';
+}
+
+/** "https://www.cerebras.ai/x" → "cerebras.ai". */
+export function shortHost(url: string | null | undefined): string {
+  try { return new URL(String(url)).host.replace(/^www\./, ''); } catch { return String(url ?? ''); }
+}
+
+/** True when any listed model accepts images. */
+export function hasVision(p: { models?: { modalities?: string[] }[] }): boolean {
+  return (p.models ?? []).some(m => Array.isArray(m.modalities) && m.modalities.includes('vision'));
+}
+
+/** Date a provider was archived: its provider_removed changelog entry, else last_verified. */
+export function archiveDate(
+  p: { id: string; last_verified?: string },
+  changelog: { provider_id?: string; type?: string; date?: string }[] = [],
+): string | null {
+  const entry = changelog.find(e => e.provider_id === p.id && e.type === 'provider_removed');
+  return formatDate(entry?.date ?? p.last_verified);
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', CNY: '¥' };
+const withCurrency = (amount: string, currency: string) => {
   const code = String(currency || 'USD').trim().toUpperCase();
-  const amount = n === 0 ? '0' : n < 0.01 ? n.toFixed(4) : n < 1 ? n.toFixed(3) : n % 1 === 0 ? n.toFixed(0) : n.toFixed(2);
   const symbol = CURRENCY_SYMBOLS[code];
   return symbol ? `${symbol}${amount}` : `${amount} ${code}`;
+};
+
+// Legacy compact price format, kept because tests/format.test.mjs pins it. New UI uses formatRate().
+export function formatPrice(n: number, currency: string): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  const amount = n === 0 ? '0' : n < 0.01 ? n.toFixed(4) : n < 1 ? n.toFixed(3) : n % 1 === 0 ? n.toFixed(0) : n.toFixed(2);
+  return withCurrency(amount, currency);
+}
+
+/**
+ * Per-1M-token price for display (prototype rule): 3 decimals below 1, 2 decimals from 1
+ * ($0.075, $0.800, $1.50, $16.00); non-zero amounts below 0.001 keep 4 decimals so they never read
+ * as $0.000. USD/CNY use their symbol, other currencies an ISO suffix ("1.50 EUR").
+ * Missing / blank / invalid → null: never render a missing price as 0.
+ */
+export function formatRate(n: number | null | undefined, currency = 'USD'): string | null {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return null;
+  const amount = n >= 1 ? n.toFixed(2) : n > 0 && n < 0.001 ? n.toFixed(4) : n.toFixed(3);
+  return withCurrency(amount, currency);
 }
 
 // Quote a value for POSIX shells: wrap in single quotes and escape embedded
@@ -38,6 +195,21 @@ export function shellQuote(value: unknown): string {
 // double-quoted scalars, so colons, '#' and quotes stay literal.
 export function yamlString(value: unknown): string {
   return JSON.stringify(String(value));
+}
+
+/**
+ * Suggested API key environment variable shown to users (code snippets, provider page, Tools YAML
+ * `os.environ/<NAME>`, API key checklist). Derived from the public provider id only, so the static
+ * build and the live (dynamic) catalog always print the same name:
+ * "google-ai-studio" -> "GOOGLE_AI_STUDIO_API_KEY", "groq" -> "GROQ_API_KEY".
+ *
+ * Deliberately NOT the provider's `api_key_env`: that field is the checker's Cloudflare secret binding
+ * name, kept out of the public catalog DTO, and it is an internal deployment detail, not a convention
+ * users need to follow. Any variable name works for the user's own key.
+ */
+export function apiKeyEnvName(id: string): string {
+  const stem = String(id ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^(?=\d)/, '_');
+  return `${stem || 'PROVIDER'}_API_KEY`;
 }
 
 const DAY_MS = 86_400_000;

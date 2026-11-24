@@ -1,0 +1,114 @@
+---
+// The directory table. Desktop (>= md): <table class="tbl"> with whole-row links; below md: a stacked list of
+// ProviderRow cards rendered from the same data. Both carry identical data-* hooks so one script filters both
+// (see arrangeProviderTable in ./provider-table.ts). Pass active providers in catalog order.
+// Default arrangement = sort "rpd": group 1 "Published daily limit" (RPD desc, then RPM desc), group 2
+// "Limits set per account or model" (catalog order). Latency column is live-only (status-client fills it).
+import Icon from './Icon.astro';
+import NotPublished from './NotPublished.astro';
+import ProviderLogo from './ProviderLogo.astro';
+import ProviderRow from './ProviderRow.astro';
+import StatusSlot from './StatusSlot.astro';
+import { accessShort, formatCount, formatDate, formatTokens, hasVision, limitsOf, maxContext, NO_CONTEXT_NOTE } from '../lib/format';
+import { GROUPS, compareByRpd } from './provider-table';
+import type { Provider } from '../data/providers';
+interface Props {
+  providers: Provider[];
+  id?: string;
+  class?: string;
+}
+const { providers, id = 'provider-table', class: className } = Astro.props;
+const indexed = providers.map((p, order) => ({ p, order, L: limitsOf(p) }));
+type Item = typeof indexed[number];
+const byRpd = (a: Item, b: Item) => compareByRpd(
+  { rpd: a.L.rpd, rpm: a.L.rpm, order: a.order }, { rpd: b.L.rpd, rpm: b.L.rpm, order: b.order });
+const groups: { key: string; label: string; help?: string; helpMd?: string; helpSm?: string; items: Item[] }[] = [
+  { ...GROUPS.published, items: indexed.filter(x => x.L.rpd != null).sort(byRpd) },
+  { ...GROUPS.unpublished, items: indexed.filter(x => x.L.rpd == null) },
+];
+const attrs = ({ p, order, L }: Item) => ({
+  'data-pt-row': '',
+  'data-provider-id': p.id,
+  'data-order': order,
+  'data-name': p.name,
+  'data-rpd': L.rpd ?? '',
+  'data-rpm': L.rpm ?? '',
+  'data-models': p.models.length,
+  'data-vision': String(hasVision(p)),
+  'data-oai': String((p.tags ?? []).includes('openai-compatible')),
+  'data-search': [p.name, p.id, ...p.models.map(m => `${m.id} ${m.name}`), ...(p.tags ?? [])].join(' ').toLowerCase(),
+});
+const NCOL = 9;
+---
+<div class:list={['provider-table', className]} id={id} data-provider-table data-grouped="true">
+  <div class="only-md tblwrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th scope="col">Provider</th>
+          <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>
+          <th scope="col" class="r"><abbr title="Requests per day">RPD</abbr></th>
+          <th scope="col" class="r">Context</th>
+          <th scope="col" class="r">Models</th>
+          <th scope="col">Access</th>
+          <th scope="col">Verified</th>
+          <th scope="col" class="r" data-live-only="latency">Latency</th>
+          <th scope="col"><span class="sr-only">Open</span></th>
+        </tr>
+      </thead>
+      <tbody data-pt-body>
+        {groups.map(g => (
+          <>
+            {g.label && (
+              <tr class="grp" data-pt-group={g.key} hidden={g.items.length === 0}>
+                <td colspan={NCOL}>{g.label} · <span data-pt-group-count>{g.items.length}</span>{g.help && <span class="gh-help">{g.help} {g.helpMd}</span>}</td>
+              </tr>
+            )}
+            {g.items.map(item => {
+              const { p, L } = item;
+              const ctx = formatTokens(maxContext(p));
+              return (
+                <tr class="row" data-href={`/providers/${p.id}`} {...attrs(item)}>
+                  <td>
+                    <div class="pcell">
+                      <StatusSlot providerId={p.id} />
+                      <ProviderLogo provider={p} size={24} />
+                      <div class="min0">
+                        <a class="pname" href={`/providers/${p.id}`}>{p.name}</a>
+                        {p.top_models?.[0] && <span class="sub">{p.top_models[0]}</span>}
+                      </div>
+                    </div>
+                  </td>
+                  {!L.published
+                    ? <td class="r" colspan="2"><NotPublished note={L.note} /></td>
+                    : <>
+                        <td class="r">{L.rpm != null ? <span class="num">{formatCount(L.rpm)}</span> : <NotPublished variant="dash" note={L.note} />}</td>
+                        <td class="r">{L.rpd != null ? <span class="num">{formatCount(L.rpd)}</span> : <NotPublished variant="dash" note={L.note} />}</td>
+                      </>}
+                  <td class="r">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
+                  <td class="r"><span class="num">{formatCount(p.models.length)}</span></td>
+                  <td><span class="muted text-xs">{accessShort(p)}</span></td>
+                  <td><span class="date muted text-xs">{formatDate(p.last_verified) ?? '—'}</span></td>
+                  <td class="r" data-live-only="latency"><span data-live-latency={p.id}></span></td>
+                  <td class="r w-8"><Icon name="chev" size={16} class="chev" /></td>
+                </tr>
+              );
+            })}
+          </>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <div class="only-sm">
+    <div class="cards" data-pt-cards>
+      {groups.map(g => (
+        <>
+          {g.label && (
+            <div class="grp-label" data-pt-group={g.key} hidden={g.items.length === 0}>{g.label} · <span data-pt-group-count>{g.items.length}</span>{g.help && <span class="gh-help">{g.help} {g.helpSm}</span>}</div>
+          )}
+          {g.items.map(item => <ProviderRow provider={item.p} {...attrs(item)} />)}
+        </>
+      ))}
+    </div>
+  </div>
+</div>

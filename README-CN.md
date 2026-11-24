@@ -7,7 +7,7 @@
 **网站：https://free-llm-site.free-llm-status.workers.dev**
 
 [![在线站点](https://img.shields.io/badge/在线站点-free--llm--site.free--llm--status.workers.dev-22c55e?style=flat-square)](https://free-llm-site.free-llm-status.workers.dev)
-[![服务商数量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-site.free-llm-status.workers.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=%E6%9C%8D%E5%8A%A1%E5%95%86&style=flat-square&color=3b82f6)](https://free-llm-site.free-llm-status.workers.dev/providers/)
+[![服务商数量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ffree-llm-site.free-llm-status.workers.dev%2Fdata%2Fstatus_summary.json&query=%24.total&label=%E6%9C%8D%E5%8A%A1%E5%95%86&style=flat-square&color=3b82f6)](https://free-llm-site.free-llm-status.workers.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ---
@@ -20,13 +20,14 @@
 
 | 页面 | 说明 |
 |------|------|
-| `/` | 免费服务商对比表，展示最近的探测状态 |
-| `/providers` | 完整服务商列表，支持搜索、筛选和排序 |
+| `/` | 服务商目录：先给出最快能调通的几家，再列出全部免费服务商（支持搜索、筛选和排序），以及最近变更 |
+| `/providers` | 跳转到 `/` 并保留查询参数（动态模式返回 301；静态模式用 JS 或 meta refresh 跳转） |
 | `/providers/{id}` | 详情页：模型列表、速率限制、资料来源、代码示例、每日探测历史 |
 | `/models` | 按模型家族浏览免费服务商与已公布额度 |
 | `/pricing` | 对比有官方来源和核实日期的 token 价格，按币种分组 |
-| `/configs` | 下载 LiteLLM 配置及其他工具的手动连接参考 |
+| `/configs` | Tools：为选中的服务商生成 LiteLLM 配置，并给出填进 Open WebUI、LobeChat、Cursor 的参数 |
 | `/changelog` | 服务商状态变更与模型更新记录 |
+| `/changelog.json` | 机器可读的变更日志，按日期从新到旧 |
 | `/data/status_summary.json` | 目录计数（`total` 为 active 服务商数，徽章使用此值），不含探测健康状态 |
 
 ---
@@ -37,7 +38,7 @@
 - **90 天每日探测历史** — 每格对应一天，按服务商独立展示
 - **目录自动维护** — 定时采集官方模型 API，只写入有实际变化的内容（[说明](docs/automatic-catalog.md)）
 - **自动变更日志** — 自动记录模型/服务商增删和状态变化；手写条目保存在 `site/src/data/changelog.json`
-- **配置导出** — 下载 LiteLLM YAML 配置，以及 Cursor、LobeChat、Open WebUI 的手动连接参考 JSON
+- **Tools** — 为选中的服务商下载 LiteLLM YAML 配置，或复制 Cursor、LobeChat、Open WebUI 需要的 Base URL、模型 ID 和密钥变量名
 - **OpenAI 兼容接口** — 所有收录服务商均支持 `/v1/chat/completions` 格式
 
 ---
@@ -88,7 +89,8 @@
   "context_window": "128K",         // 可选字符串：最大上下文长度
   "tags": ["openai-compatible"],
   "top_models": ["model-id-1"],     // 1–5 个不重复的 ID，必须是 models 中未弃用的模型
-  "models": [                       // 非空，ID 不重复
+  "model_order": ["model-id-1"],    // 可选：在服务商页面置顶显示的模型，其余按 models 顺序
+  "models": [                       // 非空，ID 不重复；数组顺序即显示顺序（自动同步时为接口返回顺序）
     {
       "id": "model-id-1",           // API 请求中使用的模型 ID
       "name": "Model Name",

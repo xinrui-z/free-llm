@@ -28,6 +28,25 @@ export function sortProviders(providers, order = []) {
 }
 
 /**
+ * Display order of one provider's models: IDs pinned in `order` (the provider's `model_order`) first, in
+ * that order, then every other model in array order (upstream API order for synced providers). Unknown and
+ * repeated pins are ignored, so a stale pin can never break a page. Returns a new array.
+ * @template {{ id: string }} T
+ * @param {T[]} models
+ * @param {unknown} [order]
+ * @returns {T[]}
+ */
+export function sortModels(models, order) {
+  const list = Array.isArray(models) ? [...models] : [];
+  if (!Array.isArray(order) || !order.length) return list;
+  const byId = new Map();
+  for (const m of list) if (m && !byId.has(m.id)) byId.set(m.id, m);
+  const pinned = new Set();
+  for (const id of order) if (byId.has(id)) pinned.add(byId.get(id));
+  return [...pinned, ...list.filter(m => !pinned.has(m))];
+}
+
+/**
  * Structural validation; returns errors. Safe to run on published data at read time because
  * nothing here can start failing merely because time passes (see providerTimeChecks for that).
  * Call as validateProvider(p), validateProvider(p, expectedId) or validateProvider(p, expectedId?, { now }).
@@ -88,6 +107,12 @@ export function validateProvider(p, expectedId, options) {
   }
   if (idsByKey.models && idsByKey.paid_models) for (const id of idsByKey.paid_models) require(!idsByKey.models.has(id), `${id}: listed in both models and paid_models`);
   if (Array.isArray(p.models) && Array.isArray(p.top_models)) for (const id of p.top_models) require(p.models.some(m => m?.id === id && m.status !== 'deprecated'), `top model ${id} must reference an active model`);
+  // Pins naming a model that is no longer listed are deliberately allowed: rendering ignores them and writers
+  // prune them, so a stale pin can never take a provider off the live site.
+  if (p.model_order !== undefined) {
+    require(strings(p.model_order), 'model_order must be an array of nonempty model IDs');
+    if (Array.isArray(p.model_order)) require(new Set(p.model_order).size === p.model_order.length, 'model_order must not repeat a model');
+  }
   // sources is optional (the operator attests recurring free access at review time); when present it must be valid.
   if (p.sources !== undefined) {
     require(Array.isArray(p.sources) && p.sources.length > 0, 'sources must be a nonempty array when present');
@@ -132,7 +157,7 @@ export function validateChangelog(entries, { providerIds, removedProviderIds = R
   if (!Array.isArray(entries)) return ['changelog must be an array'];
   const errors = [], ids = new Set();
   const known = providerIds ? new Set([...providerIds, ...removedProviderIds]) : null;
-  const types = ['model_added', 'model_removed', 'provider_added', 'provider_removed', 'status_change', 'rate_limit_change', 'outage', 'recovery', 'degraded'];
+  const types = ['model_added', 'model_removed', 'provider_added', 'provider_removed', 'status_change', 'rate_limit_change', 'outage', 'recovery', 'degraded', 'catalog_reviewed'];
   entries.forEach((e, i) => {
     if (!object(e)) { errors.push(`entry ${i} must be an object`); return; }
     if (typeof e.id !== 'string' || !e.id || ids.has(e.id)) errors.push(`entry ${i}: invalid or duplicate ID`);

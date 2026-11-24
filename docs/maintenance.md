@@ -47,6 +47,16 @@ npm run catalog:sync -- --provider openrouter --from /path/to/models.json --date
 
 OpenRouter updates its free model selection and existing curated paid prices. AIHubMix discovery produces pending candidates without changing free eligibility; catalogued models missing upstream are reported as warnings but never removed automatically. The legacy OpenRouter command also defaults to preview; add `--write` to apply. Machine updates preserve the policy's `last_verified` date and use a separate `catalog_checked_at` date, written only when the catalog content actually changes. Empty, incomplete and unusually large changes are blocked; missing models require spaced confirmation. See [automatic catalog maintenance](automatic-catalog.md) for scheduling, evidence, ownership and recovery rules.
 
+### Model display order
+
+Provider pages list models in `models` array order, which catalog sync keeps in upstream API order (see [model order](automatic-catalog.md#model-order)). To put specific models first, add `model_order` to the provider file:
+
+```json
+"model_order": ["coding-glm-5.1-free", "kimi-for-coding-free"]
+```
+
+Pinned IDs are shown first in the listed order; every other model follows in `models` order. Entries must be unique, nonempty strings. To restore the pure upstream order, delete the field (do not leave `[]`). Sync removes pins for models that leave the catalog; an ID that is not in `models` is ignored by the site and does not fail validation. Do not reorder `models` by hand to change the display: the next sync of a source with a model list restores upstream order. In dynamic mode, set the pins in the review console instead.
+
 For manual provider changes, update `sources` with the exact URL, label and `checked_at`, and update `last_verified` only after reviewing the represented claims (never just because an API call or sync succeeded). Active providers must have at least one source. Keep monthly credit/token budgets in `quota_note`; never convert them into invented daily request limits. `pricing` values are per million tokens, with `source_url` and `checked_at`; time-limited promotional prices also set `valid_until` (last day, YYYY-MM-DD). `npm run validate` warns 30 days before that date and fails once it has passed, so PR validation turns red until someone updates or removes the price; the site labels such prices as promotional. Scheduled syncs, deployments (`CATALOG_ALLOW_EXPIRED=1` / `validate.mjs --allow-expired`) and `build-providers-bundle.mjs` only warn about expired prices, so one provider's deadline cannot block unrelated releases or local tooling. An active provider whose `last_verified` is more than 90 days old also produces a warning.
 
 Deployment (`.github/workflows/deploy.yml`) runs on pushes to `main` and on dispatch from the catalog sync:

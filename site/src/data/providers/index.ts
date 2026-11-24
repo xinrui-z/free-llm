@@ -53,6 +53,10 @@ export interface Provider {
   // direct paid counterpart by the same id. Only consumed by the /pricing
   // page — never by the free-tier status/family-browser pages.
   paid_models?: ProviderModel[];
+  // Optional manual display order: these model IDs are shown first, in this order, and the
+  // rest follow in `models` array order (upstream API order for synced providers). Unknown
+  // IDs are ignored when rendering; see sortModels.
+  model_order?: string[];
   last_verified?: string;
   // Machine catalog observation, independent of the human policy review date.
   catalog_checked_at?: string;

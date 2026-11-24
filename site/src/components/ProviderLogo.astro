@@ -1,0 +1,14 @@
+---
+// Provider logo tile (decorative; the provider name must be next to it). Archived providers render gray at 60%.
+// Falls back to the first letter when there is no logo or the image fails to load.
+interface Props {
+  provider: { name: string; logo?: string; status?: string };
+  size?: 16 | 20 | 24 | 40;
+  class?: string;
+}
+const { provider, size = 24, class: className } = Astro.props;
+const initial = (provider.name.trim()[0] ?? '?').toUpperCase();
+---
+<span class:list={['av', `av-${size}`, { gray: provider.status === 'archived' }, className]} aria-hidden="true">{provider.logo
+  ? <img src={provider.logo} alt="" width={size} height={size} loading="lazy" decoding="async" data-initial={initial} onerror="this.replaceWith(document.createTextNode(this.dataset.initial||''))" />
+  : initial}</span>
