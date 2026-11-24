@@ -17,7 +17,7 @@ import ProviderRow from '../../components/ProviderRow.astro';
 import StatusNotice from '../../components/StatusNotice.astro';
 import { siteURL } from '../../lib/site-url';
 import {
-  NO_CONTEXT_NOTE, accessLine, apiKeyEnvName, archiveDate, formatCount, formatDate, formatRate, formatTokens, limitsOf, shellQuote, shortHost,
+  NO_CONTEXT_NOTE, accessLine, apiKeyEnvName, archiveDate, formatCount, formatDate, formatRate, formatTokens, limitsOf, modelDisplayName, shellQuote, shortHost,
 } from '../../lib/format';
 import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 import { MODEL_FAMILIES } from '../../data/model-families';
@@ -386,7 +386,7 @@ const pageDescription = archived
                             {m.status === 'deprecated' && <span class="tag">Deprecated</span>}
                           </div>
                         </td>
-                        <td class="pm-name">{m.name && m.name !== m.id ? m.name : ''}</td>
+                        <td class="pm-name">{modelDisplayName(m)}</td>
                         <td class="r">{c ? <span class="num" title={c.title}>{c.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
                         {showModelLimits && <td class="r">{ml.rpm != null ? <span class="num">{formatCount(ml.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
                         {showModelLimits && <td class="r">{ml.tpm != null ? <span class="num">{formatCount(ml.tpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
