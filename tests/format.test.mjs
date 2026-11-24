@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, shellQuote, yamlString } from '../site/src/lib/format.ts';
+import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, shellQuote, yamlString } from '../site/src/lib/format.ts';
 
 test('context window labels and numbers sort numerically; unparseable values sort last', () => {
   for (const [label, tokens] of [['128K', 128_000], ['1M', 1_000_000], ['1.5m', 1_500_000], ['131,072', 131_072], [131072, 131072], [' 32k ', 32_000]]) {
@@ -98,4 +98,11 @@ test('display numbers round before picking a unit and never abbreviate counts', 
   assert.equal(formatCount(1000), '1,000');
   assert.equal(formatCount(14_400), '14,400');
   assert.equal(formatCount(null), null);
+});
+
+test('per-million rates keep the digits that distinguish them', () => {
+  for (const [n, text] of [[0.0375, '$0.0375'], [0.075, '$0.075'], [0.8, '$0.800'], [0.0005, '$0.0005'], [0, '$0.000'], [2.5, '$2.50'], [15, '$15.00']]) {
+    assert.equal(formatRate(n), text, String(n));
+  }
+  for (const bad of [null, undefined, -1, NaN]) assert.equal(formatRate(bad), null, String(bad));
 });

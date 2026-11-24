@@ -99,6 +99,41 @@ Branch rules must allow the bot's generated commit; if direct pushes are prohibi
 
 Manual **Run workflow** defaults to `apply=false` for a preview. `apply=true` performs the same write and deployment path as the scheduled run. Failed collections or checks stop publication.
 
+## Price drift report for pricing pages
+
+Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud prices are maintained by hand in `models[].pricing`, because no catalog sync source covers them. [`scripts/check-prices.mjs`](../scripts/check-prices.mjs) compares those values with the official pages and reports differences. It never writes catalog or state files.
+
+| Provider | Page read | Parsed as |
+| --- | --- | --- |
+| Cohere | `https://cohere.com/pricing` | Pricing cards in the page payload (`"per":"1M tokens"`, `inputPrice`/`outputPrice`), mapped from display names to IDs (Command R7B → `command-r7b-12-2024`, Command R → `command-r-08-2024`); the legacy FAQ sentence for Command R+ 08-2024. Requires "All prices in USD" |
+| SambaNova | `https://api.sambanova.ai/v1/models` (public JSON) | `pricing.prompt`/`pricing.completion` (USD per token) × 1,000,000; catalog cites `https://cloud.sambanova.ai/plans/pricing` |
+| Cerebras | `https://inference-docs.cerebras.ai/models/openai-oss.md`, `.../qwen-3.8-27b.md` | The `Model ID: ... Pricing: $X per million input tokens, $Y per million output tokens` summary line; catalog cites `https://www.cerebras.ai/pricing` |
+| Groq | `https://console.groq.com/docs/models.md` | `PRICE PER 1M TOKENS` cell `$X input$Y output`; `ContactSales` and per-hour/per-character rows are not token prices |
+| Mistral | `https://docs.mistral.ai/inference/pricing.md` | `Input $X /M Tokens` and `Output $Y /M Tokens`; cached input is ignored |
+| Google AI Studio | `https://aistudio.google.com/docs/pricing.md` | The paid tier of the **Standard** tab only. Promotions (`$X through <date>` / `$Y starting <date>`) give the promotional price and `valid_until` until that date, then the later price; per-modality cells use the text line; context-tier cells use the lower tier |
+| Ollama Cloud | `https://ollama.com/pricing` | The `Model pricing` table (Model, Input, Cached input, Output); `(Off-Peak)` rows are ignored |
+
+Parsers fail closed: a changed table header, column count, unit statement or model cell blocks that provider (`⛔ blocked`) rather than producing prices, and a catalogued model whose price cell is in an unknown format is reported as not parsed. Fetches use the same transport rules as the catalog sync (no credentials, no redirects, timeouts, size cap) and also require the expected content type. Each report row records `page_sha256`.
+
+Compared per catalogued model with `pricing` (in `models` or `paid_models`): input and output price, `valid_until`, and whether `source_url` is the page above.
+
+### New model candidates
+
+A model with a recognised token price on one of these pages that is in neither `models` nor `paid_models` is listed as a candidate, with a paste-ready entry (`id`, placeholder `name`, `modalities: ["text"]`, null `rpm`/`tpm` and the page price). Nothing is added automatically, because pricing pages do not say whether a model belongs in a free-tier directory or what its free limits are. For each candidate, either:
+
+- add it: complete `name`, `modalities` and `context_window`, put it in `models` only after confirming its free-tier access and limits from official documentation, otherwise in `paid_models`; or
+- list it in [`catalog/price-candidates-ignore.json`](../catalog/price-candidates-ignore.json) under its provider with a short reason (for example a classifier, audio or superseded model). Ignored models are reported in `report.json` as `ignored` but not proposed again. A model that is in the catalog must not also be in the ignore list; a unit test checks this.
+
+```bash
+npm run prices:check                                     # against site/src/data/providers/*.json
+npm run prices:check -- --catalog-url https://<checker>  # against a live /api/catalog (dynamic mode)
+npm run prices:check -- --provider groq --from page.md --date 2026-11-24   # offline replay
+```
+
+Reports are written to `.catalog-reports/prices/` (`report.json`, `report.md`). The exit status is 0 when every tracked price matches and there are no candidates, 1 when anything needs review, and 2 when the check could not run (usage error, invalid ignore list, unreadable catalog or catalog API).
+
+[`price-drift.yml`](../.github/workflows/price-drift.yml) runs daily at 03:41 UTC and on demand. It compares against the live catalog in dynamic mode (`PUBLIC_STATUS_WORKER_URL`) and against `main` in static mode. While anything needs review it keeps one open issue titled "Price check: catalog prices and new models to review" up to date, and closes it once every price matches and no candidate is waiting. The check job has read-only repository access and installs no dependencies; only the reporting job, which runs no repository code, can write issues. To act on a report, update the prices (static mode: the provider JSON and its `checked_at`; dynamic mode: the review console), add or ignore each candidate, or fix the parser when a provider is blocked.
+
 ## Promoting an AIHubMix candidate
 
 Read `catalog/state/aihubmix.json` and verify the candidate's official model page and policy. Confirm recurring free access, model modality, constraints and exact callable ID. Then add it to `site/src/data/providers/aihubmix.json`, attach its official sources and update the human policy review date. Run `npm run check`. The next discovery run automatically drops that ID from the pending candidate list. If it is a finite trial or outside the site's scope, leave it unlisted; a reusable rejection/override workflow is deferred to the next phase.

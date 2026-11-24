@@ -9,7 +9,7 @@ Reviewed on 2026-11-16. This review used public official documents and model cat
 | Groq | Selected GPT-OSS 120B/20B and Qwen 3.8 27B from the current free-plan table. Older Llama entries are marked Enterprise. [Models](https://console.groq.com/docs/models) · [Limits](https://console.groq.com/docs/rate-limits) |
 | Cohere | Replaced retired Command aliases with current IDs. The monthly 1,000-call evaluation cap is not a fixed 33-RPD limit. [Models](https://docs.cohere.com/docs/models) · [Limits](https://docs.cohere.com/docs/rate-limits) |
 | BigModel | Updated the explicitly zero-priced GLM Flash text/vision selection. Zero token price does not establish unlimited requests. [Pricing](https://docs.bigmodel.cn/cn/guide/start/pricing) |
-| Google AI Studio | Updated selected text/vision models with an explicit free tier; paid figures are for standard text input. Gemini 3.8/3.6 Flash promotional prices require another review by 2026-12-31. [Pricing](https://ai.google.dev/gemini-api/docs/pricing) |
+| Google AI Studio | Updated selected text/vision models with an explicit free tier; paid figures are for standard text input. Gemini 3.8/3.6 Flash promotional prices require another review by 2026-12-31. [Pricing](https://aistudio.google.com/docs/pricing) |
 | SambaNova | Current documented free models have 20 RPM, 20 RPD and 200,000 TPD; excluded preview models without a documented free allowance. [Limits](https://docs.sambanova.ai/docs/en/models/rate-limits) |
 | GitHub Models | Archived: all service features retired on 2026-07-30. [Notice](https://docs.github.com/en/github-models) |
 | Hugging Face | Archived: free accounts receive no monthly Inference Providers credits. [Pricing](https://huggingface.co/docs/inference-providers/pricing) |
@@ -94,6 +94,8 @@ Rollback:
 - Back to static mode: a checker bound to D1 rejects the static deployment's full catalog replacement (`PUT /api/providers` returns 409), so `sync-providers` fails and nothing is published. Return the checker to legacy KV mode first, following the private runbook's full legacy rollback, and deploy it with `ALLOWED_ORIGIN=https://free-llm-apis.pages.dev`. Then set `CATALOG_MODE` back to `static` and `PUBLIC_SITE_URL` to the Pages URL, and rerun the deploy workflow. It republishes the static site to Pages, replacing the redirect.
 
 ## Checks and deployment
+
+Prices of Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud are maintained by hand. The daily [price drift report](automatic-catalog.md#price-drift-report-for-pricing-pages) compares them with the official pricing pages, lists newly priced models as candidates to add or ignore, and keeps an issue open until both are handled; run `npm run prices:check` locally after editing them.
 
 - `npm run check` validates data, runs logic regressions, checks Astro types and builds the production site.
 - `npm --prefix site run test:e2e` builds and tests static pages separately. Install Chromium first with `cd site && npx playwright install chromium`; local runs can instead point `PW_CHROME_PATH` at an installed Chrome (for example `PW_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`). The dynamic suite (`npm --prefix site run test:dynamic`) runs its fake catalog API on `CATALOG_TEST_PORT` (default 4334).

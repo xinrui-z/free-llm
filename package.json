@@ -5,6 +5,7 @@
   "scripts": {
     "catalog:sync": "node scripts/sync-catalog.mjs",
     "catalog:sources": "node scripts/sync-catalog.mjs --list",
+    "prices:check": "node scripts/check-prices.mjs",
     "validate": "node scripts/validate.mjs",
     "prepare": "husky",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",

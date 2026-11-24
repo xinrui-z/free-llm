@@ -181,7 +181,8 @@ export function formatPrice(n: number, currency: string): string {
  */
 export function formatRate(n: number | null | undefined, currency = 'USD'): string | null {
   if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return null;
-  const amount = n >= 1 ? n.toFixed(2) : n > 0 && n < 0.001 ? n.toFixed(4) : n.toFixed(3);
+  // Four decimals when three would round the price (0.0375 must not read as 0.037).
+  const amount = n >= 1 ? n.toFixed(2) : n > 0 && (n < 0.001 || Number(n.toFixed(3)) !== n) ? n.toFixed(4) : n.toFixed(3);
   return withCurrency(amount, currency);
 }
 
