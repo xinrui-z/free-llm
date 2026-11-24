@@ -95,7 +95,7 @@ Rollback:
 
 ## Checks and deployment
 
-Prices of Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud are maintained by hand. The daily [price drift report](automatic-catalog.md#price-drift-report-for-pricing-pages) compares them with the official pricing pages, lists newly priced models as candidates to add or ignore, and keeps an issue open until both are handled; run `npm run prices:check` locally after editing them.
+Prices of Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud are synced daily from their official pricing pages by the [Price sync workflow](automatic-catalog.md#daily-price-sync), which pushes verified changes to `main`; the private checker copies them into the live catalog. Its issue ("Price sync: needs attention") lists only what it could not apply on its own. To keep a newly priced model out, add it to `catalog/price-candidates-ignore.json`.
 
 - `npm run check` validates data, runs logic regressions, checks Astro types and builds the production site.
 - `npm --prefix site run test:e2e` builds and tests static pages separately. Install Chromium first with `cd site && npx playwright install chromium`; local runs can instead point `PW_CHROME_PATH` at an installed Chrome (for example `PW_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`). The dynamic suite (`npm --prefix site run test:dynamic`) runs its fake catalog API on `CATALOG_TEST_PORT` (default 4334).

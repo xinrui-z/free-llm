@@ -257,7 +257,13 @@ export function dateRange(dates: readonly unknown[]): { oldest: string; newest: 
 // source it writes into a provider's `sources`.
 export const LIVE_CATALOG_SOURCE_LABEL = 'Live model catalog and token prices';
 
+// Providers whose prices the daily Price sync workflow reads from their official
+// pricing pages and applies automatically (the keys of pricePages in
+// scripts/catalog/price-pages.mjs; a unit test keeps the two in step).
+export const PRICE_PAGE_PROVIDERS: readonly string[] = ['cohere', 'sambanova', 'cerebras', 'groq', 'mistral', 'google-ai-studio', 'ollama-cloud'];
+
 interface SyncedProviderLike {
+  id?: unknown;
   catalog_checked_at?: unknown;
   sources?: readonly { label?: unknown; url?: unknown; checked_at?: unknown }[];
 }
@@ -283,6 +289,11 @@ export function liveCatalogSource(provider: SyncedProviderLike): { url?: string;
 // True when a provider's prices come from the catalog sync job.
 export function isAutoSyncedPricing(provider: SyncedProviderLike): boolean {
   return liveCatalogSource(provider) !== null;
+}
+
+// True when a provider's prices are read daily from its official pricing page (see PRICE_PAGE_PROVIDERS).
+export function isPricePageSynced(provider: SyncedProviderLike): boolean {
+  return typeof provider.id === 'string' && PRICE_PAGE_PROVIDERS.includes(provider.id);
 }
 
 // Tokens whose brand casing title case would get wrong.
