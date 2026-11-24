@@ -72,7 +72,7 @@ export function validateProvider(p, expectedId, options) {
     notFuture(p.catalog_checked_at, 'catalog_checked_at');
   }
   if (p.api_key_env != null) require(typeof p.api_key_env === 'string' && /^[A-Z][A-Z0-9_]*$/.test(p.api_key_env), 'invalid API key environment variable');
-  for (const key of ['rpm', 'rpd', 'latency_ms']) if (p[key] != null) require(nonnegative(p[key]), `${key} must be nonnegative or null`);
+  for (const key of ['rpm', 'tpm', 'latency_ms']) if (p[key] != null) require(nonnegative(p[key]), `${key} must be nonnegative or null`);
   for (const key of PROVIDER_TEXT) if (p[key] != null) require(typeof p[key] === 'string', `${key} must be a string`);
   for (const key of ['tags', 'geo_restrictions']) if (p[key] != null) require(strings(p[key]), `${key} must be an array of strings`);
   require(strings(p.top_models) && p.top_models.length > 0 && p.top_models.length <= 5, 'top_models must contain 1–5 model IDs');
@@ -88,7 +88,7 @@ export function validateProvider(p, expectedId, options) {
       ids.add(m.id);
       require(typeof m.name === 'string' && m.name.trim(), `${m.id}: model name is required`);
       require(['active', 'deprecated'].includes(m.status), `${m.id}: invalid model status`);
-      for (const field of ['rpm', 'rpd']) if (m[field] != null) require(nonnegative(m[field]), `${m.id}: ${field} must be nonnegative or null`);
+      for (const field of ['rpm', 'tpm']) if (m[field] != null) require(nonnegative(m[field]), `${m.id}: ${field} must be nonnegative or null`);
       for (const field of MODEL_TEXT) if (m[field] != null) require(typeof m[field] === 'string', `${m.id}: ${field} must be a string`);
       if (m.modalities != null) require(strings(m.modalities), `${m.id}: modalities must be an array of strings`);
       if (m.pricing != null) {

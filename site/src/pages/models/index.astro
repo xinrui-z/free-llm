@@ -47,7 +47,7 @@ interface Listing {
   f: ModelFamily | null;
   caps: Cap[];
   rpm: number | null;
-  rpd: number | null;
+  tpm: number | null;
   pub: boolean;
 }
 
@@ -67,38 +67,38 @@ activeProviders.forEach((p, order) => {
     if (tags.includes('thinking') || REASONING_ID.test(m.id.split('/').pop() ?? '')) caps.push('reasoning');
     if (mods.includes('code') || tags.includes('code') || /cod(e|ing)|codestral/i.test(m.id)) caps.push('code');
     const L = limitsOf(m);
-    listings.push({ key: `${p.id}:${m.id}`, m, p, order, f, caps, rpm: L.rpm, rpd: L.rpd, pub: L.published });
+    listings.push({ key: `${p.id}:${m.id}`, m, p, order, f, caps, rpm: L.rpm, tpm: L.tpm, pub: L.published });
   }
 });
 
 const byLimits = (a: Listing, b: Listing) =>
-  (b.rpd ?? -1) - (a.rpd ?? -1) || (b.rpm ?? -1) - (a.rpm ?? -1) || a.order - b.order;
+  (b.tpm ?? -1) - (a.tpm ?? -1) || (b.rpm ?? -1) - (a.rpm ?? -1) || a.order - b.order;
 
-interface Group { key: string; f: ModelFamily | null; rows: Listing[]; pub: boolean; maxRpd: number; nprov: number }
+interface Group { key: string; f: ModelFamily | null; rows: Listing[]; pub: boolean; maxTpm: number; nprov: number }
 const byFamily = new Map<string, Group>();
 const unmatched: Listing[] = [];
 for (const x of listings) {
   if (!x.f) { unmatched.push(x); continue; }
-  if (!byFamily.has(x.f.id)) byFamily.set(x.f.id, { key: x.f.id, f: x.f, rows: [], pub: false, maxRpd: -1, nprov: 0 });
+  if (!byFamily.has(x.f.id)) byFamily.set(x.f.id, { key: x.f.id, f: x.f, rows: [], pub: false, maxTpm: -1, nprov: 0 });
   byFamily.get(x.f.id)!.rows.push(x);
 }
 const families = [...byFamily.values()].map(g => {
   g.rows.sort(byLimits); // stable: same-provider rows keep sortModels order
   g.pub = g.rows.some(x => x.pub);
-  g.maxRpd = Math.max(-1, ...g.rows.map(x => x.rpd ?? -1));
+  g.maxTpm = Math.max(-1, ...g.rows.map(x => x.tpm ?? -1));
   g.nprov = new Set(g.rows.map(x => x.p.id)).size;
   return g;
 });
-// Families with published limits first, highest daily limit on top; explicit families before the
+// Families with published limits first, highest TPM on top; explicit families before the
 // auto-generated vendor groups, which only collect models no explicit family matches yet.
 const byPublished = (a: Group, b: Group) =>
-  Number(b.pub) - Number(a.pub) || b.maxRpd - a.maxRpd || b.nprov - a.nprov || a.f!.name.localeCompare(b.f!.name);
+  Number(b.pub) - Number(a.pub) || b.maxTpm - a.maxTpm || b.nprov - a.nprov || a.f!.name.localeCompare(b.f!.name);
 const mainGroups = [
   ...families.filter(g => !g.f!.auto).sort(byPublished),
   ...families.filter(g => g.f!.auto).sort(byPublished),
 ];
 const otherGroup: Group | null = unmatched.length
-  ? { key: 'other', f: null, rows: unmatched, pub: unmatched.some(x => x.pub), maxRpd: -1, nprov: new Set(unmatched.map(x => x.p.id)).size }
+  ? { key: 'other', f: null, rows: unmatched, pub: unmatched.some(x => x.pub), maxTpm: -1, nprov: new Set(unmatched.map(x => x.p.id)).size }
   : null;
 const groups: Group[] = otherGroup ? [...mainGroups, otherGroup] : mainGroups;
 
@@ -111,7 +111,7 @@ const chips = [
   { name: 'vision', label: 'Vision', count: capCount('vision') },
   { name: 'reasoning', label: 'Reasoning', count: capCount('reasoning') },
   { name: 'code', label: 'Code', count: capCount('code') },
-  { name: 'pub', label: 'Published RPM or RPD', count: pubCount },
+  { name: 'pub', label: 'Published RPM or TPM', count: pubCount },
 ];
 
 const nprovText = (n: number) => ` · ${n} provider${n === 1 ? '' : 's'}`;
@@ -163,7 +163,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
     <span class="count" id="m-count" aria-live="polite"></span>
   </div>
   <p class="caption m-caption">
-    Families with published limits come first, highest daily limit on top. New models outside a known family
+    Families with published limits come first, highest TPM on top. New models outside a known family
     are grouped by vendor after the named families. A dash means the provider does not publish that value;
     it never means unlimited.
   </p>
@@ -180,8 +180,8 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
           <tr>
             <th scope="col">Model ID</th>
             <th scope="col">Provider</th>
-            <th scope="col" class="r"><abbr title="Requests per day">RPD</abbr></th>
             <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>
+            <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>
             <th scope="col" class="r">Context</th>
             <th scope="col">Capabilities</th>
             <th scope="col"><span class="sr-only">Use</span></th>
@@ -222,8 +222,8 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                         <a class="lnk m-nowrap" href={`/providers/${x.p.id}`}>{x.p.name}</a>
                       </div>
                     </td>
-                    <td class="r">{x.rpd != null ? <span class="num">{formatCount(x.rpd)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
                     <td class="r">{x.rpm != null ? <span class="num">{formatCount(x.rpm)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
+                    <td class="r">{x.tpm != null ? <span class="num">{formatCount(x.tpm)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
                     <td class="r">{t ? <span class="num" title={t.title}>{t.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
                     <td><span class="m-caps">{x.caps.map(c => <span class="tag tag-o">{c}</span>)}</span></td>
                     <td class="r"><a class="lnk m-nowrap" href={useHref(x)} aria-label={`Use ${x.m.id} from ${x.p.name} in Quick start`}>Use →</a></td>
@@ -275,9 +275,9 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                     </div>
                     <div class="facts">
                       <span class="m-prov"><StatusSlot providerId={x.p.id} liveOnly /><a class="lnk" href={`/providers/${x.p.id}`}>{x.p.name}</a></span>
-                      {x.rpd != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.rpd)}</span> RPD</span></>}
                       {x.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.rpm)}</span> RPM</span></>}
-                      {x.pub && (x.rpd == null || x.rpm == null) && <><span class="sep" aria-hidden="true">·</span><span>{x.rpd == null ? 'RPD' : 'RPM'} not published</span></>}
+                      {x.tpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.tpm)}</span> TPM</span></>}
+                      {x.pub && (x.tpm == null || x.rpm == null) && <><span class="sep" aria-hidden="true">·</span><span>{x.rpm == null ? 'RPM' : 'TPM'} not published</span></>}
                       {!x.pub && <><span class="sep" aria-hidden="true">·</span><span>Limits not published</span></>}
                       {t && <><span class="sep" aria-hidden="true">·</span><span><span class="num" title={t.title}>{t.text}</span> context</span></>}
                       {x.caps.length > 0 && <><span class="sep" aria-hidden="true">·</span><span class="m-caps">{x.caps.map(c => <span class="tag tag-o">{c}</span>)}</span></>}

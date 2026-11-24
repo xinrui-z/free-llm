@@ -22,7 +22,7 @@ export interface ProviderModel {
   context_window?: string;
   modalities?: string[];
   rpm?: number | null;
-  rpd?: number | null;
+  tpm?: number | null;
   status?: string;
   // Present only when this model has a public, per-token paid rate. Absent/null
   // means free-only or no publicly disclosed per-token price (e.g. subscription
@@ -42,7 +42,7 @@ export interface Provider {
   status: 'active' | 'archived';
   latency_ms?: number | null;
   rpm?: number | null;
-  rpd?: number | null;
+  tpm?: number | null;
   context_window?: string;
   auth: string;
   tags?: string[];

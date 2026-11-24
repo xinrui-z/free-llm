@@ -51,11 +51,11 @@ const familiesOf = (list: { id: string }[] = []) => new Set(list.map(m => family
 const ownFamilies = familiesOf(models);
 
 // Archived providers are never recommended: alternatives are active providers only, ranked by the number
-// of model families they share with this provider, then published daily limit, then catalog order.
+// of model families they share with this provider, then published TPM, then catalog order.
 const alternatives = providers
   .map((o, order) => ({ o, order, shared: [...familiesOf(o.models)].filter(f => ownFamilies.has(f)).length }))
   .filter(x => x.o.status === 'active' && x.o.id !== p.id)
-  .sort((a, b) => b.shared - a.shared || (limitsOf(b.o).rpd ?? -1) - (limitsOf(a.o).rpd ?? -1) || a.order - b.order)
+  .sort((a, b) => b.shared - a.shared || (limitsOf(b.o).tpm ?? -1) - (limitsOf(a.o).tpm ?? -1) || a.order - b.order)
   .slice(0, 3);
 const sharedCount = alternatives.filter(x => x.shared > 0).length;
 // One caption, under the heading, on active and archived pages alike.
@@ -367,7 +367,7 @@ const pageDescription = archived
                     <th scope="col">Name</th>
                     <th scope="col" class="r">Context</th>
                     {showModelLimits && <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>}
-                    {showModelLimits && <th scope="col" class="r"><abbr title="Requests per day">RPD</abbr></th>}
+                    {showModelLimits && <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>}
                     <th scope="col">Input</th>
                     <th scope="col"><span class="sr-only">Actions</span></th>
                   </tr>
@@ -389,7 +389,7 @@ const pageDescription = archived
                         <td class="pm-name">{m.name && m.name !== m.id ? m.name : ''}</td>
                         <td class="r">{c ? <span class="num" title={c.title}>{c.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
                         {showModelLimits && <td class="r">{ml.rpm != null ? <span class="num">{formatCount(ml.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
-                        {showModelLimits && <td class="r">{ml.rpd != null ? <span class="num">{formatCount(ml.rpd)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
+                        {showModelLimits && <td class="r">{ml.tpm != null ? <span class="num">{formatCount(ml.tpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
                         <td><span class="pm-mods">{modalitiesOf(m).map(x => <span class="tag tag-o">{x}</span>)}</span></td>
                         <td class="r"><button type="button" class="btn btn-sm" data-pm-use={m.id} aria-label={`Use ${m.id} in Quick start`}>Use</button></td>
                       </tr>
@@ -413,7 +413,7 @@ const pageDescription = archived
                     <div class="facts">
                       {c ? <span><span class="num" title={c.title}>{c.text}</span> context</span> : <span class="muted">No context listed</span>}
                       {ml.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(ml.rpm)}</span> RPM</span></>}
-                      {ml.rpd != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(ml.rpd)}</span> RPD</span></>}
+                      {ml.tpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(ml.tpm)}</span> TPM</span></>}
                       {vision && <><span class="sep" aria-hidden="true">·</span><span>vision</span></>}
                       {m.status === 'deprecated' && <><span class="sep" aria-hidden="true">·</span><span>deprecated</span></>}
                     </div>

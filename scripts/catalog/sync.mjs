@@ -132,7 +132,7 @@ export function planSync({ provider, raw, source, state, observedAt = new Date()
           merged.pricing = isDeepStrictEqual(withoutDate(previous.pricing), withoutDate(pricing)) ? previous.pricing : pricing;
         }
         if (Object.hasOwn(previous, 'rpm')) merged.rpm = previous.rpm;
-        if (Object.hasOwn(previous, 'rpd')) merged.rpd = previous.rpd;
+        if (Object.hasOwn(previous, 'tpm')) merged.tpm = previous.tpm;
         listed.set(previous.id, merged);
       } else if (key === 'models' && normalized.ineligible.includes(previous.id)) {
         // Positive billing evidence revokes free eligibility immediately.

@@ -14,7 +14,7 @@ Free LLM API directory with sourced limits, prices and probe monitoring, includi
 
 ## Overview
 
-Each provider page shows current status, response latency, RPM / RPD limits, model list, sources and a 90-day daily probe history. Provider data comes from official documents and model APIs; health comes from a private Cloudflare checker Worker. Browsers refresh status every 5 minutes while the tab is visible.
+Each provider page shows current status, response latency, RPM / TPM limits, model list, sources and a 90-day daily probe history. Provider data comes from official documents and model APIs; health comes from a private Cloudflare checker Worker. Browsers refresh status every 5 minutes while the tab is visible.
 
 ### Pages
 
@@ -51,7 +51,7 @@ Evidence rules:
 
 - `sources` is optional: an array of official HTTPS URLs with a label and `checked_at` date, kept for maintainers (not shown on the site). When present it must be nonempty and valid.
 - Missing, blank or boolean prices never count as zero. A model API's `:free`/`-free` suffix alone is not evidence; automated free classification also requires explicit zero billing values.
-- A `null` RPM/RPD means unpublished or account-dependent, never unlimited. Monthly credit or token budgets go in `quota_note`, not invented daily request limits.
+- A `null` RPM/TPM means unpublished or account-dependent, never unlimited. Daily caps (RPD, TPD) and monthly credit or token budgets go in `quota_note`; never derive a TPM from them.
 - Catalog `active` means listed, not operational. Health checks sample specific models with the monitoring account; missing or stale observations and account/quota errors (401/402/403/429) are `unknown`, not outages. Daily history records the worst result each day; the percentage is healthy days / observed days, not a time-based uptime SLA.
 
 ---
@@ -85,7 +85,7 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
   "auth": "required",               // required | optional | none | credit_card_required
   "latency_ms": null,               // leave null — filled by the checker
   "rpm": 20,                        // provider-wide requests per minute, or null if unpublished
-  "rpd": 200,                       // provider-wide requests per day, or null if unpublished
+  "tpm": 20000,                     // provider-wide tokens per minute, or null if unpublished
   "context_window": "128K",         // optional string: largest context window
   "tags": ["openai-compatible"],
   "top_models": ["model-id-1"],     // 1–5 unique IDs of active (non-deprecated) entries in models
@@ -97,7 +97,7 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
       "context_window": "128K",     // optional string
       "modalities": ["text"],       // text | vision | code | embedding
       "rpm": 20,                    // nonnegative number or null
-      "rpd": 200,
+      "tpm": 20000,                 // nonnegative number or null
       "status": "active",           // active | deprecated
       "pricing": {                  // optional: standard paid price per million tokens
         "input_per_million": 0.5,

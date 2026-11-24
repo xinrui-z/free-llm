@@ -34,7 +34,7 @@ assignees: ''
 - [ ] No
 
 **Rate limits:**
-<!-- e.g. RPM 30 / RPD 1000 / TPM 50000 — fill in what you know -->
+<!-- e.g. RPM 30 / TPM 50000 / RPD 1000 — fill in what you know -->
 
 **Geo restrictions:**
 <!-- e.g. not available in EU/UK, or accessible from mainland China -->

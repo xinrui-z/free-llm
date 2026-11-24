@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -32,7 +32,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "1M"
     },
@@ -44,7 +44,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "1M"
     },
@@ -56,7 +56,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "1M"
     },
@@ -68,7 +68,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "context_window": "256K"
     },
@@ -80,7 +80,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -90,7 +90,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -100,7 +100,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -110,7 +110,7 @@
         "text"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     },
     {
@@ -121,7 +121,7 @@
         "code"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active"
     }
   ],

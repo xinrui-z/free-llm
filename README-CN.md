@@ -14,7 +14,7 @@
 
 ## 概览
 
-每个服务商的详情页展示：当前状态、响应延迟、RPM / RPD 限制、模型列表、资料来源，以及 90 天每日探测历史。模型与额度按官方文档和模型 API 维护；健康状态来自私有的 Cloudflare checker Worker。标签页可见时，浏览器每 5 分钟刷新一次状态。
+每个服务商的详情页展示：当前状态、响应延迟、RPM / TPM 限制、模型列表、资料来源，以及 90 天每日探测历史。模型与额度按官方文档和模型 API 维护；健康状态来自私有的 Cloudflare checker Worker。标签页可见时，浏览器每 5 分钟刷新一次状态。
 
 ### 页面
 
@@ -51,7 +51,7 @@
 
 - `sources` 为可选字段：官方 HTTPS 链接、说明文字和 `checked_at` 日期，供维护者留档，站点上不显示。填写时必须非空且合法。
 - 缺失、空白或布尔类型的价格一律不视为 0。模型 API 中 `:free`/`-free` 后缀本身不构成证据；自动判定免费还需要明确的零计费值。
-- RPM/RPD 为 `null` 表示未公布或取决于账号，不代表无限。按月的额度或 token 预算写进 `quota_note`，不要换算成编造的每日请求数。
+- RPM/TPM 为 `null` 表示未公布或取决于账号，不代表无限。每日上限（RPD、TPD）和按月的额度或 token 预算写进 `quota_note`，不要据此换算出 TPM。
 - 目录中的 `active` 只表示收录，不代表可用。健康检查用监测账号抽样探测指定模型；无数据、数据过期和账号/额度错误（401/402/403/429）记为 `unknown`，不等同于宕机。每日历史显示当日最差结果，百分比是正常天数 / 已监测天数，不是按时间计算的 SLA。
 
 ---
@@ -85,7 +85,7 @@
   "auth": "required",               // required | optional | none | credit_card_required
   "latency_ms": null,               // 留 null，由 checker 填写
   "rpm": 20,                        // 服务商级每分钟请求数，未公布填 null
-  "rpd": 200,                       // 服务商级每天请求数，未公布填 null
+  "tpm": 20000,                     // 服务商级每分钟 token 数，未公布填 null
   "context_window": "128K",         // 可选字符串：最大上下文长度
   "tags": ["openai-compatible"],
   "top_models": ["model-id-1"],     // 1–5 个不重复的 ID，必须是 models 中未弃用的模型
@@ -97,7 +97,7 @@
       "context_window": "128K",     // 可选字符串
       "modalities": ["text"],       // text | vision | code | embedding
       "rpm": 20,                    // 非负数或 null
-      "rpd": 200,
+      "tpm": 20000,                 // 非负数或 null
       "status": "active",           // active | deprecated
       "pricing": {                  // 可选：标准付费价格，单位为每百万 token
         "input_per_million": 0.5,

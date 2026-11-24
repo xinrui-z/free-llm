@@ -15,7 +15,7 @@ assignees: ''
 <!-- Check all that apply -->
 - [ ] New model added
 - [ ] Model removed
-- [ ] Rate limit change (RPM / RPD / TPM / monthly cap)
+- [ ] Rate limit change (RPM / TPM / daily or monthly cap)
 - [ ] Outage / recovery
 - [ ] Free tier policy change (new / paywalled / credit card now required)
 - [ ] Other
@@ -25,10 +25,10 @@ assignees: ''
 ## What Changed
 
 **Before:**
-<!-- e.g. RPD 14400 -->
+<!-- e.g. TPM 6000 -->
 
 **After:**
-<!-- e.g. RPD 1000 -->
+<!-- e.g. TPM 8000 -->
 
 **Source link:**
 <!-- Official announcement / Discord / docs link — can be left blank if unavailable -->

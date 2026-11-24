@@ -1,6 +1,6 @@
 // Shared display helpers for every public page. Pages must format limits, context windows, prices,
 // latency and dates through these functions so the same value reads the same everywhere.
-// Honesty rules: null/undefined RPM/RPD means "not published" (never "unlimited", never a number);
+// Honesty rules: null/undefined RPM/TPM means "not published" (never "unlimited", never a number);
 // a missing or blank price is never 0; helpers return null for missing values so the caller renders
 // <NotPublished/> (or a muted dash) instead of inventing one.
 
@@ -114,18 +114,18 @@ export function firstSentence(text: string | null | undefined): string {
 
 export interface Limits {
   rpm: number | null;
-  rpd: number | null;
-  /** True when at least one of rpm / rpd is a published number. */
+  tpm: number | null;
+  /** True when at least one of rpm / tpm is a published number. */
   published: boolean;
   /** First sentence of quota_note ('' when there is none). */
   note: string;
 }
 
 /** Request limits of a provider or model. Never fills in a missing value. */
-export function limitsOf(x: { rpm?: number | null; rpd?: number | null; quota_note?: string | null }): Limits {
+export function limitsOf(x: { rpm?: number | null; tpm?: number | null; quota_note?: string | null }): Limits {
   const rpm = typeof x.rpm === 'number' && Number.isFinite(x.rpm) ? x.rpm : null;
-  const rpd = typeof x.rpd === 'number' && Number.isFinite(x.rpd) ? x.rpd : null;
-  return { rpm, rpd, published: rpm != null || rpd != null, note: firstSentence(x.quota_note) };
+  const tpm = typeof x.tpm === 'number' && Number.isFinite(x.tpm) ? x.tpm : null;
+  return { rpm, tpm, published: rpm != null || tpm != null, note: firstSentence(x.quota_note) };
 }
 
 /** One access conclusion: "Sign-up required" / "Sign-up + credit card required" [+ " · Not available in: X, Y"]. */

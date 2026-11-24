@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": 20,
-  "rpd": 20,
+  "tpm": null,
   "auth": "required",
   "tags": [
     "fast-inference",
@@ -31,7 +31,7 @@
         "text"
       ],
       "rpm": 20,
-      "rpd": 20,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     },
@@ -42,7 +42,7 @@
         "text"
       ],
       "rpm": 20,
-      "rpd": 20,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     },
@@ -53,7 +53,7 @@
         "text"
       ],
       "rpm": 20,
-      "rpd": 20,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     },
@@ -64,7 +64,7 @@
         "text"
       ],
       "rpm": 20,
-      "rpd": 20,
+      "tpm": null,
       "status": "active",
       "context_window": "32K"
     },
@@ -76,7 +76,7 @@
         "vision"
       ],
       "rpm": 20,
-      "rpd": 20,
+      "tpm": null,
       "status": "active",
       "context_window": "128K"
     }

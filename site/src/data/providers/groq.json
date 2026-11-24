@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": 30,
-  "rpd": 1000,
+  "tpm": 8000,
   "auth": "required",
   "tags": [
     "fast-inference",
@@ -30,7 +30,7 @@
         "text"
       ],
       "rpm": 30,
-      "rpd": 1000,
+      "tpm": 8000,
       "status": "active",
       "context_window": "131072",
       "pricing": {
@@ -48,7 +48,7 @@
         "text"
       ],
       "rpm": 30,
-      "rpd": 1000,
+      "tpm": 8000,
       "status": "active",
       "context_window": "131072",
       "pricing": {
@@ -67,7 +67,7 @@
         "vision"
       ],
       "rpm": 30,
-      "rpd": 1000,
+      "tpm": 8000,
       "status": "active",
       "context_window": "131072",
       "pricing": {

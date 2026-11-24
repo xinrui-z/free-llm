@@ -9,7 +9,7 @@
   "status": "active",
   "latency_ms": null,
   "rpm": null,
-  "rpd": null,
+  "tpm": null,
   "auth": "required",
   "tags": [
     "openai-compatible",
@@ -31,7 +31,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 1.5,
@@ -49,7 +49,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.75,
@@ -68,7 +68,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.75,
@@ -87,7 +87,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.3,
@@ -105,7 +105,7 @@
         "vision"
       ],
       "rpm": null,
-      "rpd": null,
+      "tpm": null,
       "status": "active",
       "pricing": {
         "input_per_million": 0.25,
