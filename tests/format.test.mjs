@@ -122,3 +122,12 @@ test('model names fall back to a readable form of the ID when the catalog name i
   assert.equal(modelDisplayName({ id: 'intern-s2-free' }), 'Intern S2 Free');
   assert.equal(modelDisplayName({ id: 'coding-glm-5.1-free', name: 'Coding GLM 5.1 Free' }), 'Coding GLM 5.1 Free');
 });
+
+test('price-page providers on the site match the daily Price sync parsers', async () => {
+  const { pricePages } = await import('../scripts/catalog/price-pages.mjs');
+  const { PRICE_PAGE_PROVIDERS, isPricePageSynced } = await import('../site/src/lib/format.ts');
+  assert.deepEqual([...PRICE_PAGE_PROVIDERS].sort(), Object.keys(pricePages).sort());
+  assert.equal(isPricePageSynced({ id: 'groq' }), true);
+  assert.equal(isPricePageSynced({ id: 'openrouter' }), false);
+  assert.equal(isPricePageSynced({}), false);
+});

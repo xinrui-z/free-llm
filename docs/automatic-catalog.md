@@ -99,9 +99,9 @@ Branch rules must allow the bot's generated commit; if direct pushes are prohibi
 
 Manual **Run workflow** defaults to `apply=false` for a preview. `apply=true` performs the same write and deployment path as the scheduled run. Failed collections or checks stop publication.
 
-## Price drift report for pricing pages
+## Price sync from official pricing pages
 
-Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud prices are maintained by hand in `models[].pricing`, because no catalog sync source covers them. [`scripts/check-prices.mjs`](../scripts/check-prices.mjs) compares those values with the official pages and reports differences. It never writes catalog or state files.
+Cohere, SambaNova, Cerebras, Groq, Mistral, Google AI Studio and Ollama Cloud publish prices only on their pricing pages. [`scripts/check-prices.mjs`](../scripts/check-prices.mjs) reads those pages, compares them with `models[].pricing` and `paid_models`, and with `--write` applies the differences to the provider JSON. The [Price sync workflow](#daily-price-sync) does this every day without a person; the private checker then copies the merged prices into the live catalog.
 
 | Provider | Page read | Parsed as |
 | --- | --- | --- |
@@ -117,22 +117,41 @@ Parsers fail closed: a changed table header, column count, unit statement or mod
 
 Compared per catalogued model with `pricing` (in `models` or `paid_models`): input and output price, `valid_until`, and whether `source_url` is the page above.
 
-### New model candidates
+### What `--write` changes
 
-A model with a recognised token price on one of these pages that is in neither `models` nor `paid_models` is listed as a candidate, with a paste-ready entry (`id`, placeholder `name`, `modalities: ["text"]`, null `rpm`/`tpm` and the page price). Nothing is added automatically, because pricing pages do not say whether a model belongs in a free-tier directory or what its free limits are. For each candidate, either:
+[`scripts/catalog/price-apply.mjs`](../scripts/catalog/price-apply.mjs) applies a report and touches pricing data only:
 
-- add it: complete `name`, `modalities` and `context_window`, put it in `models` only after confirming its free-tier access and limits from official documentation, otherwise in `paid_models`; or
-- list it in [`catalog/price-candidates-ignore.json`](../catalog/price-candidates-ignore.json) under its provider with a short reason (for example a classifier, audio or superseded model). Ignored models are reported in `report.json` as `ignored` but not proposed again. A model that is in the catalog must not also be in the ignore list; a unit test checks this.
+- a changed price or promotion end date: the new values, `source_url` set to the page and `checked_at` to the check date. A promotion that ended drops `valid_until`, so the standard rate replaces the promotional one without an expiry error;
+- a moved pricing page: `source_url` only (`checked_at` stays, the price did not change);
+- a new model priced on the page (in neither list and not ignored): added to `paid_models` with its ID as name (the site derives a readable name), `modalities: ["text"]` and null limits. A model with a free tier belongs in `models`; moving it there, with its limits, stays a manual decision.
+
+It never removes a model, never edits `models` membership, and writes nothing for a blocked page, an unrecognised price or a model missing from its page; those stay in the report and the workflow's issue. Each provider is validated before it is saved.
+
+To keep a model out of the catalog, list it in [`catalog/price-candidates-ignore.json`](../catalog/price-candidates-ignore.json) under its provider with a short reason (for example a classifier, audio or superseded model). Ignored models are reported in `report.json` as `ignored`. A model that is in the catalog must not also be in the ignore list; a unit test checks this.
 
 ```bash
-npm run prices:check                                     # against site/src/data/providers/*.json
-npm run prices:check -- --catalog-url https://<checker>  # against a live /api/catalog (dynamic mode)
+npm run prices:check                                     # report only, against site/src/data/providers/*.json
+npm run prices:check -- --write                          # apply to that JSON
+npm run prices:check -- --catalog-url https://<checker>  # report against a live /api/catalog
 npm run prices:check -- --provider groq --from page.md --date 2026-11-24   # offline replay
 ```
 
-Reports are written to `.catalog-reports/prices/` (`report.json`, `report.md`). The exit status is 0 when every tracked price matches and there are no candidates, 1 when anything needs review, and 2 when the check could not run (usage error, invalid ignore list, unreadable catalog or catalog API).
+Reports are written to `.catalog-reports/prices/` (`report.json`, `report.md`). The exit status is 0 when every tracked price matches and there are no candidates, 1 when anything differs or needs review, and 2 when the check could not run (usage error, invalid ignore list, unreadable catalog or catalog API).
 
-[`price-drift.yml`](../.github/workflows/price-drift.yml) runs daily at 03:41 UTC and on demand. It compares against the live catalog in dynamic mode (`PUBLIC_STATUS_WORKER_URL`) and against `main` in static mode. While anything needs review it keeps one open issue titled "Price check: catalog prices and new models to review" up to date, and closes it once every price matches and no candidate is waiting. The check job has read-only repository access and installs no dependencies; only the reporting job, which runs no repository code, can write issues. To act on a report, update the prices (static mode: the provider JSON and its `checked_at`; dynamic mode: the review console), add or ignore each candidate, or fix the parser when a provider is blocked.
+### Daily price sync
+
+[`price-sync.yml`](../.github/workflows/price-sync.yml) runs daily at 03:41 UTC and on demand, on `main` only:
+
+1. **collect** (read-only, Node built-ins only): `check-prices --write` on `main`; uploads the changed provider files and their digest.
+2. **verify** (read-only): applies those files to the same commit, reads every pricing page **again** and fails unless the second reading agrees with them, then runs `npm run check` (validation, unit tests, type check, build). Both must pass.
+3. **publish** (`contents: write`, runs no repository code): checks the digest and that only existing `site/src/data/providers/<id>.json` files changed, commits as `github-actions[bot]`, pushes to `main` (a concurrent update makes the push fail safely; the next run starts from the new `main`) and dispatches the Deploy workflow.
+4. **report** (`issues: write` only): keeps one issue titled "Price sync: needs attention", opened by `github-actions`, for what still needs a person: blocked pages, prices the parser could not read, models missing from their page, a provider that would fail validation, or a run whose changes were not published. It closes the issue once a run applies everything on its own.
+
+There is no size limit on a price change: a run is published whenever both readings agree and the checks pass.
+
+### Live catalog (dynamic mode)
+
+The private checker pulls the reviewed prices from `main` every hour (`raw.githubusercontent.com/<repo>/main/site/src/data/providers/<id>.json` for these seven providers) and merges them into the live catalog with `mergePricing`: each model's `pricing`, new `paid_models`, `pricing_note` and the cited pricing-page source. All other live fields, including free-model membership and limits edited in the review console, are kept. No management credential leaves Cloudflare. A change therefore reaches the live site within about an hour of the workflow's push.
 
 ## Promoting an AIHubMix candidate
 

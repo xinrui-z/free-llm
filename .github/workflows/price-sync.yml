@@ -1,0 +1,216 @@
+name: Price sync
+# Daily: reads the official pricing pages of providers without a price API (scripts/catalog/price-pages.mjs), applies
+# changed prices, moved pricing pages and newly priced paid-only models to the provider JSON, and merges the change
+# into main once the checks below pass. The private checker copies merged prices into the live catalog.
+#
+#   collect  Node built-ins only, read-only. Runs check-prices --write and uploads the changed provider files.
+#   verify   Read-only. Applies the files to the same base commit, runs the full repository check, then reads every
+#            pricing page again and requires the result to match the files (two independent readings agree).
+#   publish  Holds contents:write but runs no repository code: re-checks the artifact digest and the file allowlist,
+#            commits as github-actions[bot] and pushes to main (fails safely if main moved), then deploys.
+#   report   issues:write only. Keeps one issue open for what still needs a person: blocked pages, prices the parser
+#            could not read, models missing from a page, or a publish that failed.
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: price-sync
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      base: ${{ steps.base.outputs.sha }}
+      changed: ${{ steps.changes.outputs.changed }}
+      digest: ${{ steps.changes.outputs.digest }}
+      attention: ${{ steps.check.outputs.attention }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Read pricing pages and apply changes
+        id: check
+        run: |
+          set +e
+          node scripts/check-prices.mjs --write
+          code=$?
+          set -e
+          [ "$code" -le 1 ] || exit "$code"
+          # Anything left after applying (blocked pages, unreadable prices, missing models) needs a person.
+          attention=$(node -e 'const r=require("./.catalog-reports/prices/report.json");const w=r.written??{skipped:[]};const open=r.providers.some(p=>p.status==="blocked"||p.unpriced?.length||p.missing?.length)||w.skipped.length;process.stdout.write(open?"true":"false")')
+          echo "attention=$attention" >> "$GITHUB_OUTPUT"
+          cat .catalog-reports/prices/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Stage changed provider files
+        id: changes
+        run: |
+          mkdir -p "$RUNNER_TEMP/price-changes"
+          git diff --name-only -z -- site/src/data/providers > "$RUNNER_TEMP/changed.list"
+          if [ -s "$RUNNER_TEMP/changed.list" ]; then
+            xargs -0 cp --parents -t "$RUNNER_TEMP/price-changes" < "$RUNNER_TEMP/changed.list"
+            digest=$(cd "$RUNNER_TEMP/price-changes" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.changes.outputs.changed == 'true'
+        with:
+          name: price-changes
+          path: ${{ runner.temp }}/price-changes/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: price-report
+          path: .catalog-reports/prices/
+          include-hidden-files: true
+          retention-days: 14
+
+  verify:
+    needs: collect
+    if: needs.collect.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.collect.outputs.base }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: price-changes
+          path: ${{ runner.temp }}/price-changes
+      - name: Apply the collected changes
+        run: cp -R -- "$RUNNER_TEMP/price-changes/." "$GITHUB_WORKSPACE/"
+      - name: Second reading of every pricing page must agree with the changes
+        # Runs before any dependency is installed. Exit 0 means every catalogued price now matches the pages.
+        run: |
+          set +e
+          node scripts/check-prices.mjs --report-dir "$RUNNER_TEMP/second"
+          code=$?
+          set -e
+          [ "$code" -le 1 ] || exit "$code"
+          node -e '
+            const r = require(process.argv[1]);
+            const bad = r.providers.filter(p => p.status !== "blocked" && (p.changed.length || p.source_url.length || p.candidates.length));
+            if (bad.length) { console.error("The second reading disagrees with the collected changes:", JSON.stringify(bad.map(p => ({ provider: p.provider_id, changed: p.changed, candidates: p.candidates.map(c => c.id) })))); process.exit(1); }
+          ' "$RUNNER_TEMP/second/report.json"
+      - run: npm ci --prefix site --ignore-scripts
+      - name: Validate catalog, run tests and build site
+        run: npm run check
+        env:
+          CATALOG_ALLOW_EXPIRED: '1'
+
+  publish:
+    needs: [collect, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      commit: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.collect.outputs.base }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: price-changes
+          path: ${{ runner.temp }}/price-changes
+      - name: Apply exactly the verified files
+        env:
+          CHANGES: ${{ runner.temp }}/price-changes
+          EXPECTED_DIGEST: ${{ needs.collect.outputs.digest }}
+        run: |
+          cd "$CHANGES"
+          digest=$(find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          [[ "$EXPECTED_DIGEST" =~ ^[0-9a-f]{64}$ ]] && [ "$digest" = "$EXPECTED_DIGEST" ] || { echo '::error::Changes do not match the collected digest'; exit 1; }
+          find . -mindepth 1 ! -type d -print | sed 's|^\./||' | sort > "$RUNNER_TEMP/files.list"
+          while IFS= read -r path; do
+            [ -f "$path" ] && [ ! -L "$path" ] || { echo "::error::Unexpected artifact entry: $path"; exit 1; }
+            [[ "$path" =~ ^site/src/data/providers/[a-z0-9-]+\.json$ ]] && [ -f "$GITHUB_WORKSPACE/$path" ] || { echo "::error::Unexpected file: $path"; exit 1; }
+          done < "$RUNNER_TEMP/files.list"
+          cd "$GITHUB_WORKSPACE"
+          while IFS= read -r path; do cp -- "$CHANGES/$path" "$path"; done < "$RUNNER_TEMP/files.list"
+      - name: Commit and push to main
+        id: commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- site/src/data/providers
+          git diff --cached --quiet && exit 0
+          git -c core.hooksPath=/dev/null commit -m 'chore(prices): sync official pricing pages'
+          # A concurrent update of main makes this fail safely; the next run starts from the new main.
+          git push origin HEAD:main
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Deploy
+        if: steps.commit.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BASE_REV: ${{ needs.collect.outputs.base }}
+        # Pushes made with GITHUB_TOKEN do not trigger push workflows, so the deployment is dispatched explicitly.
+        run: gh workflow run deploy.yml --ref main -f catalog_base="$BASE_REV"
+
+  report:
+    needs: [collect, verify, publish]
+    if: always() && needs.collect.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: price-report
+          path: ${{ runner.temp }}/report
+      - name: Open, update or close the price sync issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ATTENTION: ${{ needs.collect.outputs.attention }}
+          CHANGED: ${{ needs.collect.outputs.changed }}
+          VERIFY: ${{ needs.verify.result }}
+          PUBLISH: ${{ needs.publish.result }}
+          COMMIT: ${{ needs.publish.outputs.commit }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPORT: ${{ runner.temp }}/report/report.md
+        run: |
+          title='Price sync: needs attention'
+          # Only the issue this workflow opened counts: anyone can open an issue with the same title.
+          number=$(gh issue list --state open --author app/github-actions --search "\"$title\" in:title" --json number,title --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          failed=false
+          if [ "$CHANGED" = true ] && { [ "$VERIFY" != success ] || [ "$PUBLISH" != success ]; }; then failed=true; fi
+          if [ "$ATTENTION" = true ] || [ "$failed" = true ]; then
+            {
+              if [ "$failed" = true ]; then echo "**The collected price changes were not published** (verify: $VERIFY, publish: $PUBLISH). See the run log."; echo; fi
+              cat "$REPORT"; echo; echo "Run: $RUN_URL"; echo
+              echo '_Updated automatically by the Price sync workflow. It closes this issue once a run applies everything without help._'
+            } > "$RUNNER_TEMP/body.md"
+            if [ -n "$number" ]; then gh issue edit "$number" --body-file "$RUNNER_TEMP/body.md"
+            else gh issue create --title "$title" --body-file "$RUNNER_TEMP/body.md"; fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --comment "The latest run applied every change without help ($RUN_URL)${COMMIT:+, commit $COMMIT}."
+          fi

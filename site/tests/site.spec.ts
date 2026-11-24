@@ -102,8 +102,11 @@ test('pricing shows where each price comes from and how fresh it is', async ({pa
     await expect(page.locator('#pricing-table [data-pr-row][data-stale="true"]:visible .pr-stale').first()).toHaveText('May be outdated');
   } else {
     await expect(chips.locator('[data-src-provider="openrouter"]')).toContainText('Synced from live API');
-    await expect(chips.locator('[data-src-provider="google-ai-studio"]')).toContainText(/Manual · checked \d{4}-\d{2}-\d{2}/);
+    await expect(chips.locator('[data-src-provider="google-ai-studio"]')).toContainText('Synced daily from pricing page');
   }
+  // Prices read daily from an official pricing page are auto-synced and never marked "May be outdated".
+  await expect(page.locator('#pricing-table [data-pr-row][data-provider="google-ai-studio"]').first().locator('.pr-date')).toContainText('Auto-synced');
+  await expect(page.locator('#pricing-table [data-pr-row][data-provider="google-ai-studio"][data-stale="true"]')).toHaveCount(0);
   // A provenance chip filters the table like the provider select, and pressing it again clears it.
   await chips.locator('[data-src-provider="groq"]').click();
   await expect(page.locator('#pr-provider')).toHaveValue('groq');

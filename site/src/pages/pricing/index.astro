@@ -9,7 +9,7 @@ import NotPublished from '../../components/NotPublished.astro';
 import Icon from '../../components/Icon.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-import { contextToNumber, dateRange, daysSince, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
+import { contextToNumber, dateRange, daysSince, formatRate, formatTokens, isAutoSyncedPricing, isPricePageSynced, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
 import type { Provider, ProviderModel } from '../../data/providers';
 
 const providers = getProviders(Astro.locals) as Provider[];
@@ -27,8 +27,8 @@ interface PriceRow {
   checkedAt?: string;
   validUntil?: string;
   free: FreeTier;
-  // Price comes from the provider's live API via the catalog sync job; its checkedAt is then the date
-  // the price last changed, not the date of the last check.
+  // Price comes from the provider's live API (catalog sync job) or from its official pricing page (daily Price sync
+  // workflow); its checkedAt is then the date the price last changed, not the date of the last check.
   autoSynced: boolean;
 }
 
@@ -37,7 +37,7 @@ interface PriceRow {
 const rows: PriceRow[] = [];
 for (const p of providers) {
   const archived = p.status === 'archived';
-  const live = liveCatalogSource(p);
+  const live = liveCatalogSource(p), pageSynced = isPricePageSynced(p);
   const seen = new Set<string>();
   const add = (m: ProviderModel, isFreeModel: boolean) => {
     const pricing = m.pricing;
@@ -56,8 +56,8 @@ for (const p of providers) {
       checkedAt: pricing.checked_at,
       validUntil: pricing.valid_until,
       free: archived ? 'no' : isFreeModel ? 'yes' : 'other',
-      // A price recorded from another page stays manual even for a synced provider.
-      autoSynced: live !== null && (!live.url || !pricing.source_url || pricing.source_url === live.url),
+      // A price recorded from another page stays manual even for an API-synced provider.
+      autoSynced: pageSynced || (live !== null && (!live.url || !pricing.source_url || pricing.source_url === live.url)),
     });
   };
   for (const m of p.models ?? []) add(m, true);
@@ -80,7 +80,7 @@ const notShownActive = notShown.filter(p => p.status !== 'archived').length;
 
 // Freshness is evaluated at build time (static mode) or request time (dynamic mode). Manually maintained
 // prices checked more than STALE_DAYS ago are marked "May be outdated"; auto-synced prices never are,
-// because the sync job only moves their date when the price itself changes.
+// because the sync jobs only move their date when the price itself changes.
 const STALE_DAYS = 30;
 const now = new Date();
 const isRowStale = (r: PriceRow) => !r.autoSynced && isStale(r.checkedAt, now, STALE_DAYS);
@@ -101,9 +101,10 @@ const sourceSummaries = pricedProviders.map(p => {
     p,
     archived: p.status === 'archived',
     count: own.length,
-    autoSynced: isAutoSyncedPricing(p) && manual.length === 0,
-    // Date the live catalog last changed (it is not re-stamped on quiet syncs).
-    changed: liveCatalogSource(p)?.checkedAt ?? null,
+    autoSynced: (isAutoSyncedPricing(p) || isPricePageSynced(p)) && manual.length === 0,
+    pageSynced: isPricePageSynced(p),
+    // Date the live catalog (or, for pricing-page providers, the newest price) last changed. Not re-stamped on quiet syncs.
+    changed: isPricePageSynced(p) ? latestDate(own.map(r => r.checkedAt)) : liveCatalogSource(p)?.checkedAt ?? null,
     lastChecked: latestDate(manual.map(r => r.checkedAt)),
     stale: manual.some(isRowStale),
   };
@@ -114,13 +115,14 @@ const unpricedFree = providers.filter(p => p.status === 'active' && !rows.some(r
   .sort((a, b) => a.name.localeCompare(b.name));
 
 const checkedLabel = (r: PriceRow) => r.autoSynced
-  ? (r.checkedAt ? `Price unchanged since ${r.checkedAt}` : 'Synced from live API')
+  ? (r.checkedAt ? `Price unchanged since ${r.checkedAt}` : 'Synced automatically')
   : `Checked ${r.checkedAt ?? 'date unknown'}`;
 const staleTip = (r: PriceRow) => {
   const age = daysSince(r.checkedAt, now);
   return age === null ? 'No check date recorded. Verify on the provider\'s pricing page.' : `Last checked ${age} days ago. Verify on the provider's pricing page.`;
 };
 const autoTip = 'Synced from the provider\'s live API on each catalog sync; the date shows when this price last changed.';
+const pageTip = 'Read daily from the provider\'s official pricing page and applied automatically; the date shows when this price last changed.';
 const search = (r: PriceRow) => `${r.model.id} ${r.model.name ?? ''} ${r.provider.name} ${r.provider.id}`.toLowerCase();
 const promoTip = (d: string) => `Promotional price until ${d}. The standard rate applies after that.`;
 const freeTitle = (r: PriceRow) => r.free === 'other' ? `${r.provider.name} has a free tier, but this model is paid only` : undefined;
@@ -183,7 +185,7 @@ const sortHeaders = [
     </Fragment>
     <Fold summary="How prices are compared" class="pr-how">
       <p class="sec">Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
-      <p class="sec">Auto-synced prices are read from the provider's live API on each catalog sync, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
+      <p class="sec">Auto-synced prices are read automatically, either from the provider's live API on each catalog sync or once a day from its official pricing page, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
       <p class="sec">Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
     </Fold>
   </PageHeader>
@@ -205,7 +207,7 @@ const sortHeaders = [
             <span class="pr-src-name">{s.p.name}</span>
             <span class="muted"><span class="num">{s.count}</span> {s.count === 1 ? 'price' : 'prices'}</span>
             {s.autoSynced
-              ? <span class="muted" title={autoTip}>· Synced from live API{s.changed && <> · changed <span class="date">{s.changed}</span></>}</span>
+              ? <span class="muted" title={s.pageSynced ? pageTip : autoTip}>· {s.pageSynced ? 'Synced daily from pricing page' : 'Synced from live API'}{s.changed && <> · changed <span class="date">{s.changed}</span></>}</span>
               : <span class="muted">· Manual · checked <span class="date">{s.lastChecked ?? 'unknown'}</span></span>}
             {s.stale && <span class="tag tag-o pr-stale">May be outdated</span>}
           </button>
@@ -284,7 +286,7 @@ const sortHeaders = [
                 <div class="pr-date-cell">
                   {r.checkedAt ? <span class="date" title={checkedLabel(r)}>{r.checkedAt}</span> : <span class="muted">Unknown</span>}
                   {r.autoSynced
-                    ? <span class="tag tag-o" title={autoTip}>Auto-synced</span>
+                    ? <span class="tag tag-o" title={isPricePageSynced(r.provider) ? pageTip : autoTip}>Auto-synced</span>
                     : isRowStale(r) && <span class="tag tag-o pr-stale" title={staleTip(r)}>May be outdated</span>}
                 </div>
               </td>

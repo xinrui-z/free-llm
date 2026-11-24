@@ -1,22 +1,27 @@
 #!/usr/bin/env node
-// Price drift report: compares catalogued per-token prices with the official pricing pages of providers
-// that have no price API (see scripts/catalog/price-pages.mjs). It never writes catalog or state files;
-// it writes a JSON and Markdown report so a maintainer (or the scheduled workflow's issue) can act on it.
+// Price check: compares catalogued per-token prices with the official pricing pages of providers
+// that have no price API (see scripts/catalog/price-pages.mjs) and writes a JSON and Markdown report. With --write
+// it also applies the differences to the repository JSON (scripts/catalog/price-apply.mjs): the daily workflow opens
+// a pull request with them, and the private checker copies merged prices into the live catalog.
 //
 //   node scripts/check-prices.mjs                         # compare against site/src/data/providers/*.json
+//   node scripts/check-prices.mjs --write                 # ...and apply prices and new paid models to that JSON
 //   node scripts/check-prices.mjs --catalog-url URL       # compare against a live /api/catalog
 //   node scripts/check-prices.mjs --provider groq --from page.md --date 2026-11-24   # offline replay
 //
 // Exit status: 0 = every tracked price matches and no new model awaits review; 1 = drift, a blocked source or
 // unreviewed candidates; 2 = the check could not run (usage error, invalid ignore list, unreadable catalog).
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createHash } from 'node:crypto';
 import { pricePages, comparePrices } from './catalog/price-pages.mjs';
+import { applyPriceResult, candidateEntry } from './catalog/price-apply.mjs';
 import { fetchCatalog, fetchText } from './catalog/fetch.mjs';
-import { validDate } from './lib/catalog-validation.mjs';
+import { validDate, validateProvider } from './lib/catalog-validation.mjs';
+
+export { candidateEntry };
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -45,16 +50,6 @@ export function loadIgnored(root) {
     }
   }
   return data.providers;
-}
-
-// A paste-ready catalog entry. Name, modalities, context window and limits are not on pricing pages,
-// so the maintainer fills them in; status starts as active.
-export function candidateEntry(candidate, page, date) {
-  return {
-    id: candidate.id, name: candidate.id, modalities: ['text'], rpm: null, tpm: null, status: 'active',
-    pricing: { input_per_million: candidate.input_per_million, output_per_million: candidate.output_per_million, currency: 'USD',
-      source_url: page.page_url, checked_at: date, ...(candidate.valid_until ? { valid_until: candidate.valid_until } : {}) },
-  };
 }
 
 export async function checkPrices({ root = ROOT, providerId, from, date = new Date().toISOString().slice(0, 10), catalogUrl, fetchImpl } = {}) {
@@ -88,7 +83,31 @@ export async function checkPrices({ root = ROOT, providerId, from, date = new Da
     attention: results.some(r => r.status !== 'ok'), candidates, providers: results };
 }
 
+// Applies a report to the repository JSON: changed prices, moved pricing pages and new paid-only models. Models
+// missing from a page, unrecognised prices and blocked pages are never written. Each provider is validated before it
+// is saved; one that would become invalid is skipped and reported.
+export function writeChanges(report, { root = ROOT } = {}) {
+  if (report.catalog !== 'repository' || report.replay) throw new Error('--write applies only to a live check of the repository JSON');
+  const applied = [], skipped = [];
+  for (const result of report.providers) {
+    const page = pricePages[result.provider_id];
+    const path = resolve(root, `site/src/data/providers/${result.provider_id}.json`);
+    const plan = applyPriceResult(JSON.parse(readFileSync(path, 'utf8')), result, page, report.checked_on);
+    if (!plan) continue;
+    const errors = validateProvider(plan.provider);
+    if (errors.length) { skipped.push({ provider_id: result.provider_id, errors }); continue; }
+    const temp = `${path}.${process.pid}.tmp`;
+    writeFileSync(temp, JSON.stringify(plan.provider, null, 2) + '\n');
+    renameSync(temp, path);
+    applied.push(...plan.applied);
+  }
+  return { applied, skipped };
+}
+
 const fmt = n => n == null ? '—' : `$${n}`;
+const describe = a => a.kind === 'source_url' ? `source_url → ${a.after}`
+  : a.kind === 'paid_model_added' ? `added to paid_models at ${fmt(a.after.input_per_million)} / ${fmt(a.after.output_per_million)}${a.after.valid_until ? ` until ${a.after.valid_until}` : ''}`
+  : `${fmt(a.before.input_per_million)} / ${fmt(a.before.output_per_million)} → ${fmt(a.after.input_per_million)} / ${fmt(a.after.output_per_million)}${a.after.valid_until ? ` until ${a.after.valid_until}` : ''}`;
 
 export function renderMarkdown(report) {
   // The catalog URL comes from a repository secret in CI, so reports (posted to a public issue) never contain it.
@@ -114,14 +133,20 @@ export function renderMarkdown(report) {
   }
   if (report.candidates) {
     out.push('', '## New model candidates', '',
-      'Priced on an official pricing page but not in the catalog. Nothing is added automatically: review each one, then either add it (complete `name`, `modalities` and `context_window`, and confirm free-tier access and limits for `models`, or add it to `paid_models` if it is paid-only), or list it with a reason in `catalog/price-candidates-ignore.json` so it is not proposed again.', '');
+      'Priced on an official pricing page but not in the catalog. The daily workflow adds each one to `paid_models`; to keep one out, list it with a reason in `catalog/price-candidates-ignore.json`. A model with a free tier belongs in `models` and is moved there by hand.', '');
     for (const r of report.providers) {
       if (!r.candidates?.length) continue;
       out.push(`<details><summary><strong>${r.provider_id}</strong>: ${r.candidates.length} candidate(s) — ${r.candidates.map(c => `${c.id} (${fmt(c.input_per_million)} / ${fmt(c.output_per_million)}${c.valid_until ? ` until ${c.valid_until}` : ''})`).join(', ')}</summary>`, '',
         `Source: ${r.page_url}`, '', '```json', r.candidates.map(c => JSON.stringify(c.entry, null, 2)).join(',\n'), '```', '', '</details>', '');
     }
   }
-  out.push('', 'Prices are compared as standard paid-tier text input/output rates per 1M tokens; cached, batch, off-peak and audio rates are ignored. This report never changes the catalog.');
+  if (report.written) {
+    out.push('', '## Applied to the repository', '');
+    if (!report.written.applied.length && !report.written.skipped.length) out.push('Nothing to apply.');
+    for (const a of report.written.applied) out.push(`- ${a.provider_id} **${a.model_id}**: ${describe(a)}`);
+    for (const s of report.written.skipped) out.push(`- ${s.provider_id}: not written, it would fail validation (${s.errors.join('; ')})`);
+  }
+  out.push('', 'Prices are compared as standard paid-tier text input/output rates per 1M tokens; cached, batch, off-peak and audio rates are ignored.');
   return out.join('\n') + '\n';
 }
 
@@ -130,14 +155,16 @@ export async function main(argv = process.argv.slice(2), { root = ROOT, fetchImp
   try {
     ({ values } = parseArgs({ args: argv, strict: true, options: {
       provider: { type: 'string' }, from: { type: 'string' }, date: { type: 'string' },
-      'catalog-url': { type: 'string' }, 'report-dir': { type: 'string' },
+      'catalog-url': { type: 'string' }, 'report-dir': { type: 'string' }, write: { type: 'boolean' },
     } }));
+    if (values.write && (values.from || values['catalog-url'])) throw new Error('--write applies only to a live check of the repository JSON (no --from or --catalog-url)');
     if (values.date && !values.from) throw new Error('--date is only valid with --from');
     if (values.date && !validDate(values.date)) throw new Error('--date must be YYYY-MM-DD');
   } catch (e) { error(e.message); return 2; }
   let report;
   try {
     report = await checkPrices({ root, providerId: values.provider, from: values.from, date: values.date, catalogUrl: values['catalog-url'], fetchImpl });
+    if (values.write) report.written = writeChanges(report, { root });
   } catch (e) { error(e.message); return 2; }
   const dir = resolve(root, values['report-dir'] ?? '.catalog-reports/prices');
   mkdirSync(dir, { recursive: true });
