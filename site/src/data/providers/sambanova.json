@@ -19,33 +19,10 @@
     "function-call"
   ],
   "top_models": [
-    "DeepSeek-V3.1",
-    "Meta-Llama-3.3-70B-Instruct",
-    "gpt-oss-120b"
+    "gpt-oss-120b",
+    "gemma-4-31B-it"
   ],
   "models": [
-    {
-      "id": "DeepSeek-V3.1",
-      "name": "DeepSeek V3.1",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "tpm": null,
-      "status": "active",
-      "context_window": "128K"
-    },
-    {
-      "id": "Meta-Llama-3.3-70B-Instruct",
-      "name": "Llama 3.3 70B",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "tpm": null,
-      "status": "active",
-      "context_window": "128K"
-    },
     {
       "id": "gpt-oss-120b",
       "name": "GPT-OSS 120B",
@@ -63,17 +40,6 @@
         "source_url": "https://cloud.sambanova.ai/plans/pricing",
         "checked_at": "2026-11-24"
       }
-    },
-    {
-      "id": "DeepSeek-V3.2",
-      "name": "DeepSeek V3.2",
-      "modalities": [
-        "text"
-      ],
-      "rpm": 20,
-      "tpm": null,
-      "status": "active",
-      "context_window": "32K"
     },
     {
       "id": "gemma-4-31B-it",
@@ -114,6 +80,45 @@
       "label": "Paid per-token prices",
       "url": "https://cloud.sambanova.ai/plans/pricing",
       "checked_at": "2026-11-24"
+    }
+  ],
+  "paid_models": [
+    {
+      "id": "GLM-5.3",
+      "name": "GLM-5.3",
+      "context_window": "128K",
+      "modalities": [
+        "text"
+      ],
+      "rpm": null,
+      "tpm": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 2.8,
+        "output_per_million": 8.8,
+        "currency": "USD",
+        "source_url": "https://cloud.sambanova.ai/plans/pricing",
+        "checked_at": "2026-11-24"
+      }
+    },
+    {
+      "id": "MiniMax-M3.1-Flash",
+      "name": "MiniMax M3.1 Flash",
+      "context_window": "1M",
+      "modalities": [
+        "text",
+        "vision"
+      ],
+      "rpm": null,
+      "tpm": null,
+      "status": "active",
+      "pricing": {
+        "input_per_million": 0.3,
+        "output_per_million": 1.2,
+        "currency": "USD",
+        "source_url": "https://cloud.sambanova.ai/plans/pricing",
+        "checked_at": "2026-11-24"
+      }
     }
   ]
 }
