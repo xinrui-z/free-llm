@@ -123,6 +123,8 @@
 
 `last_verified`、`catalog_checked_at` 和所有 `checked_at` 必须是真实日期，且不能晚于今天（容许 1 天时区差）。`npm run validate` 会以 `warning:` 前缀提示但不报错的情况：active 服务商的 `last_verified` 超过 90 天，或价格在 30 天内到期。`valid_until` 已过期时 PR 校验失败，直到更新或删除该价格；部署和定时同步只给出 warning。校验还覆盖 `_order.json`、`changelog.json` 中的 provider ID、`catalog/sources.json` 和 `catalog/state/*.json`。删除某个仍被 `changelog.json` 引用的服务商时，要把它的 ID 加进校验库的 `REMOVED_PROVIDER_IDS`。
 
+`api_key_env` 只是 checker 的 secret 名称，站点上不会显示。代码示例和 Tools 配置里的密钥变量名由服务商 ID 推出：转成大写，非字母数字的连续字符换成 `_`，再加 `_API_KEY`（例如 `google-ai-studio` → `GOOGLE_AI_STUDIO_API_KEY`）。从 2026-11-24 起所有服务商都按这条规则，所以 Google AI Studio 的示例里变量名从 `GOOGLE_API_KEY` 改成了 `GOOGLE_AI_STUDIO_API_KEY`，API Key 本身不变。
+
 **可用标签：** `openai-compatible` · `aggregator` · `multi-provider` · `china-available` · `vision` · `thinking` · `function-call` · `deepseek` · `llama` · `embedding`
 
 ### 提交前检查

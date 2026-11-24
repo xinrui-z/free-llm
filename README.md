@@ -123,6 +123,8 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
 
 `last_verified`, `catalog_checked_at` and every `checked_at` must be real dates and not in the future (one day of timezone grace). `npm run validate` prints `warning:` lines without failing for an active provider whose `last_verified` is more than 90 days old and for prices expiring within 30 days. A `valid_until` in the past fails PR validation until the price is updated or removed; deployments and scheduled syncs only warn. Validation also checks `_order.json`, `changelog.json` provider IDs, `catalog/sources.json` and `catalog/state/*.json`. When deleting a provider that `changelog.json` still mentions, add its ID to `REMOVED_PROVIDER_IDS` in the validation library.
 
+`api_key_env` is only the checker's secret name and is never shown on the site. The key variable in code examples and in the Tools configs is derived from the provider ID: uppercase, non-alphanumeric runs become `_`, then `_API_KEY` (for example `google-ai-studio` → `GOOGLE_AI_STUDIO_API_KEY`). Since 2026-11-24 this applies to every provider, so Google AI Studio examples use `GOOGLE_AI_STUDIO_API_KEY` instead of `GOOGLE_API_KEY`. The API key itself is unchanged.
+
 **Available tags:** `openai-compatible` · `aggregator` · `multi-provider` · `china-available` · `vision` · `thinking` · `function-call` · `deepseek` · `llama` · `embedding`
 
 ### Checklist before submitting
