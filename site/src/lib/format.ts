@@ -128,6 +128,44 @@ export function limitsOf(x: { rpm?: number | null; tpm?: number | null; quota_no
   return { rpm, tpm, published: rpm != null || tpm != null, note: firstSentence(x.quota_note) };
 }
 
+/** Meta descriptions longer than this are cut in search results. */
+export const META_DESCRIPTION_MAX = 158;
+
+/** Shorten text to `max` characters at a word boundary, ending with "…". Shorter text is returned unchanged. */
+export function clampText(text: string, max = META_DESCRIPTION_MAX): string {
+  const s = text.replace(/\s+/g, ' ').trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:.—–-]+$/, '')}…`;
+}
+
+/**
+ * Meta description for a provider page. Active: published limits first (same number format as the page),
+ * then the catalog blurb, led by "<Name> free API" when the blurb names neither. Archived: a short notice
+ * pointing to the alternatives the page lists (archive_reason stays in the page body). Always clamped.
+ */
+export function providerMetaDescription(
+  p: { name: string; status?: string; description?: string | null; rpm?: number | null; tpm?: number | null },
+  opts: { modelCount?: number; alternatives?: number } = {},
+): string {
+  if (p.status === 'archived') {
+    const alts = opts.alternatives ?? 0;
+    return clampText(`${p.name} no longer offers a recurring free API tier.${alts ? ` Compare ${alts} active free LLM API ${alts === 1 ? 'alternative' : 'alternatives'}.` : ''}`);
+  }
+  const L = limitsOf(p);
+  const limits = [L.rpm != null && `${formatCount(L.rpm)} RPM`, L.tpm != null && `${formatCount(L.tpm)} TPM`].filter(Boolean).join(', ');
+  const blurb = p.description?.trim();
+  if (!blurb) {
+    const n = opts.modelCount ?? 0;
+    const models = n ? `${n} free ${n === 1 ? 'model' : 'models'}` : 'free models';
+    return clampText(`${p.name} free API: ${limits ? `${limits}, ` : ''}${models}, base URL and an OpenAI-compatible quick start.`);
+  }
+  const named = blurb.toLowerCase().includes(p.name.toLowerCase()) && /\bfree\b/i.test(blurb);
+  const lead = limits ? `${p.name} free tier: ${limits}. ` : named ? '' : `${p.name} free API: `;
+  return clampText(lead + blurb);
+}
+
 /** One access conclusion: "Sign-up required" / "Sign-up + credit card required" [+ " · Not available in: X, Y"]. */
 export function accessLine(p: { auth?: string; geo_restrictions?: string[] | null }): string {
   const base = p.auth === 'credit_card_required' ? 'Sign-up + credit card required' : 'Sign-up required';
@@ -243,6 +281,22 @@ export function isStale(date: unknown, now: unknown = Date.now(), days = 30): bo
 export function latestDate(dates: readonly unknown[]): string | null {
   const times = dates.map(toTime).filter(Number.isFinite);
   return times.length ? new Date(Math.max(...times)).toISOString().slice(0, 10) : null;
+}
+
+// Sitemap <lastmod> for a provider page: the newest date at which its shown content changed (policy review,
+// catalog change, a source re-check or a price change). Each of these dates moves only when the content does.
+export function providerLastmod(p: {
+  last_verified?: unknown;
+  catalog_checked_at?: unknown;
+  sources?: readonly { checked_at?: unknown }[];
+  models?: readonly { pricing?: { checked_at?: unknown } | null }[];
+}): string | null {
+  return latestDate([
+    p.last_verified,
+    p.catalog_checked_at,
+    ...(p.sources ?? []).map(s => s?.checked_at),
+    ...(p.models ?? []).map(m => m?.pricing?.checked_at),
+  ]);
 }
 
 // Oldest and newest valid dates among `dates`, as YYYY-MM-DD; null when none parse.

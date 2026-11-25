@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, modelDisplayName, nameFromId, shellQuote, yamlString } from '../site/src/lib/format.ts';
+import { contextToNumber, dateRange, daysSince, formatCount, formatLatency, formatPrice, formatRate, formatTokens, isAutoSyncedPricing, isStale, latestDate, providerLastmod, clampText, providerMetaDescription, liveCatalogSource, LIVE_CATALOG_SOURCE_LABEL, modelDisplayName, nameFromId, shellQuote, yamlString } from '../site/src/lib/format.ts';
 
 test('context window labels and numbers sort numerically; unparseable values sort last', () => {
   for (const [label, tokens] of [['128K', 128_000], ['1M', 1_000_000], ['1.5m', 1_500_000], ['131,072', 131_072], [131072, 131072], [' 32k ', 32_000]]) {
@@ -130,4 +130,38 @@ test('price-page providers on the site match the daily Price sync parsers', asyn
   assert.equal(isPricePageSynced({ id: 'groq' }), true);
   assert.equal(isPricePageSynced({ id: 'openrouter' }), false);
   assert.equal(isPricePageSynced({}), false);
+});
+
+test('providerLastmod picks the newest content date and ignores missing or invalid ones', () => {
+  assert.equal(providerLastmod({
+    last_verified: '2026-11-16',
+    catalog_checked_at: '2026-11-17',
+    sources: [{ checked_at: '2026-11-10' }, {}],
+    models: [{ pricing: { checked_at: '2026-11-20' } }, { pricing: null }, {}],
+  }), '2026-11-20');
+  assert.equal(providerLastmod({ last_verified: '2026-04-28', catalog_checked_at: 'not a date' }), '2026-04-28');
+  assert.equal(providerLastmod({}), null);
+});
+
+test('clampText cuts at a word boundary with an ellipsis and leaves short text alone', () => {
+  assert.equal(clampText('short text'), 'short text');
+  const out = clampText('word '.repeat(60), 50);
+  assert.ok(out.length <= 50 && out.endsWith('…') && !out.includes('wor…'), out);
+});
+
+test('providerMetaDescription leads with published limits, names the provider and stays short', () => {
+  assert.equal(
+    providerMetaDescription({ name: 'Groq', status: 'active', rpm: 30, tpm: 8000, description: 'Groq-hosted GPT-OSS and Qwen models with a recurring free developer tier.' }),
+    'Groq free tier: 30 RPM, 8,000 TPM. Groq-hosted GPT-OSS and Qwen models with a recurring free developer tier.',
+  );
+  // No published limits and a blurb without the name: lead with "<Name> free API".
+  assert.match(providerMetaDescription({ name: 'OpenRouter', status: 'active', description: 'Aggregates multiple LLM providers.' }), /^OpenRouter free API: Aggregates/);
+  // No blurb: built from facts instead of a one-size template.
+  assert.equal(providerMetaDescription({ name: 'Kilo', status: 'active' }, { modelCount: 4 }), 'Kilo free API: 4 free models, base URL and an OpenAI-compatible quick start.');
+  // Archived: a short notice with the alternatives count; archive_reason stays in the page body.
+  assert.equal(
+    providerMetaDescription({ name: 'Cerebras', status: 'archived', description: 'x'.repeat(300) }, { alternatives: 3 }),
+    'Cerebras no longer offers a recurring free API tier. Compare 3 active free LLM API alternatives.',
+  );
+  assert.ok(providerMetaDescription({ name: 'X', status: 'active', description: 'free X '.repeat(80) }).length <= 158);
 });

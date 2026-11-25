@@ -17,7 +17,7 @@ import ProviderRow from '../../components/ProviderRow.astro';
 import StatusNotice from '../../components/StatusNotice.astro';
 import { siteURL } from '../../lib/site-url';
 import {
-  NO_CONTEXT_NOTE, accessLine, apiKeyEnvName, archiveDate, formatCount, formatDate, formatRate, formatTokens, limitsOf, modelDisplayName, shellQuote, shortHost,
+  NO_CONTEXT_NOTE, accessLine, apiKeyEnvName, archiveDate, formatCount, formatDate, formatRate, formatTokens, limitsOf, modelDisplayName, providerLastmod, providerMetaDescription, shellQuote, shortHost,
 } from '../../lib/format';
 import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 import { MODEL_FAMILIES } from '../../data/model-families';
@@ -35,7 +35,10 @@ export function getStaticPaths() {
 
 const providers = getProviders(Astro.locals);
 const provider = providers.find(p => p.id === Astro.params.id);
-if (!provider) return new Response(Astro.locals.catalog?.unavailable ? 'Live catalog unavailable. Please try again shortly.' : 'Provider not found', { status: Astro.locals.catalog?.unavailable ? 503 : 404 });
+// Unknown id: a body-less 404, which Astro reroutes to the custom 404 page (still status 404).
+if (!provider) return Astro.locals.catalog?.unavailable
+  ? new Response('Live catalog unavailable. Please try again shortly.', { status: 503 })
+  : new Response(null, { status: 404 });
 
 const p: Provider = provider;
 const archived = p.status === 'archived';
@@ -140,9 +143,22 @@ const ctxOf = (m: { context_window?: unknown }) => formatTokens(m.context_window
 const modalitiesOf = (m: ProviderModel) => (Array.isArray(m.modalities) && m.modalities.length ? m.modalities : ['text']);
 
 /* ---------- Notes ---------- */
+// With published limits, quota_note is shown in the Free tier section (limitsSentence), not repeated here.
 const notes: [string, string][] = [];
-if (L.published && p.quota_note) notes.push(['Provider terms', p.quota_note]);
 if (p.catalog_note) notes.push(['Catalog note', p.catalog_note]);
+
+/* ---------- Free tier summary sentence ---------- */
+// One plain sentence a crawler (and a reader) can quote: the published limits in the same number format
+// as the facts above, then the provider's own terms (daily limits etc.). Only for published limits; the
+// "How limits work" paragraph covers the rest.
+const plural = (n: number, one: string, many: string) => `${formatCount(n)} ${n === 1 ? one : many}`;
+const limitParts = [
+  L.rpm != null && `${plural(L.rpm, 'request', 'requests')} per minute`,
+  L.tpm != null && `${plural(L.tpm, 'token', 'tokens')} per minute`,
+].filter(Boolean).join(' and ');
+const limitsSentence = L.published
+  ? `The ${p.name} free tier allows ${limitParts}.`
+  : '';
 
 /* ---------- Paid rates (after the free tier) ---------- */
 const priced = models.filter(m => m.pricing && (formatRate(m.pricing.input_per_million) || formatRate(m.pricing.output_per_million)));
@@ -150,7 +166,7 @@ const paidCatalog = p.paid_models?.length ?? 0;
 const showPaid = !archived && (priced.length > 0 || paidCatalog > 0 || !!p.pricing_note);
 const paidNote = priced.length ? `(${priced.length} ${priced.length === 1 ? 'model' : 'models'})`
   : paidCatalog ? `(${paidCatalog} paid catalog ${paidCatalog === 1 ? 'model' : 'models'})` : undefined;
-const pricingHref = `/pricing?provider=${encodeURIComponent(p.id)}`;
+const pricingHref = `/pricing/?provider=${encodeURIComponent(p.id)}`;
 
 /* ---------- Archived ---------- */
 const archivedOn = archived ? archiveDate(p, changelog as { provider_id?: string; type?: string; date?: string }[]) : null;
@@ -158,44 +174,39 @@ const archiveSource = sources[0];
 const showArchivedDesc = !!p.description && p.description !== p.archive_reason;
 
 /* ---------- SEO ---------- */
-const pageTitle = archived ? `${p.name}: archived free tier` : `${p.name} free API: limits, models and quick start`;
-const pageDescription = archived
-  ? `${p.name} no longer offers a recurring free API tier. ${p.archive_reason ?? ''}`.trim()
-  : p.description ?? `${p.name} free API limits, models and an OpenAI-compatible quick start.`;
+const pageTitle = archived ? `${p.name} free API: archived, free alternatives` : `${p.name} free API: limits, models and quick start`;
+const pageDescription = providerMetaDescription(p, { modelCount: models.length, alternatives: alternatives.length });
+// Search results cut titles at about 60 characters; drop the site suffix when it would push past that.
+const brandedTitle = `${pageTitle} · Free LLM APIs`;
+const documentTitle = brandedTitle.length <= 60 ? brandedTitle : pageTitle;
+const modified = providerLastmod(p);
 ---
 
 <Layout
-  title={`${pageTitle} · Free LLM APIs`}
+  title={documentTitle}
   description={pageDescription}
-  jsonLd={[
-    {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": pageTitle,
-      "description": pageDescription,
-      "url": siteURL(Astro.site, `/providers/${p.id}/`),
-      "breadcrumb": {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Providers", "item": siteURL(Astro.site) },
-          { "@type": "ListItem", "position": 2, "name": p.name, "item": siteURL(Astro.site, `/providers/${p.id}/`) }
-        ]
-      }
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": pageTitle,
+    "description": pageDescription,
+    "url": siteURL(Astro.site, `/providers/${p.id}/`),
+    ...(modified ? { "dateModified": modified } : {}),
+    // The provider is described as an organization, not a SoftwareApplication: that type needs ratings
+    // for Google's rich result, and this site collects none.
+    "about": {
+      "@type": "Organization",
+      "name": p.name,
+      ...(p.website_url ? { "url": p.website_url, "sameAs": [p.website_url] } : {})
     },
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": `${p.name} API`,
-      "url": p.website_url ?? p.base_url,
-      "applicationCategory": "DeveloperApplication",
-      "description": p.description ?? `${p.name} free LLM API`,
-      "offers": !archived ? {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      } : undefined
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
+        { "@type": "ListItem", "position": 2, "name": p.name, "item": siteURL(Astro.site, `/providers/${p.id}/`) }
+      ]
     }
-  ]}
+  }}
 >
   <a class="crumb" href="/"><Icon name="back" size={14} />All providers</a>
 
@@ -280,7 +291,7 @@ const pageDescription = archived
             <ProviderLogo provider={p} size={40} />
             <div class="min0">
               <div class="phd-name">
-                <h1 class="h1" id="page-title" tabindex="-1">{p.name}</h1>
+                <h1 class="h1" id="page-title" tabindex="-1">{p.name} <span class="pp-h1-sub">free API</span></h1>
                 <span data-live-status={p.id} data-live-only></span>
               </div>
               {p.description && <p class="phd-desc">{p.description}</p>}
@@ -304,8 +315,9 @@ const pageDescription = archived
       <StatusNotice providerId={p.id} class="pp-notice" />
 
       <section class="sect" aria-labelledby="ft-h">
-        <div class="sect-head"><h2 class="h2" id="ft-h">Free tier</h2></div>
+        <div class="sect-head"><h2 class="h2" id="ft-h">{p.name} free tier limits</h2></div>
         <LimitFacts provider={p} size="large" />
+        {limitsSentence && <p class="note-p">{limitsSentence}{p.quota_note && <> {p.quota_note}</>}</p>}
         {!L.published && p.quota_note && <p class="note-p"><b>How limits work:</b> {p.quota_note}</p>}
         {(verified || sources.length > 0) && (
           <div class="srcs">
@@ -352,7 +364,7 @@ const pageDescription = archived
 
       <section class="sect" aria-labelledby="m-h">
         <div class="sect-head">
-          <h2 class="h2" id="m-h">Models <span class="muted pp-count">(<span class="num">{formatCount(models.length)}</span>)</span></h2>
+          <h2 class="h2" id="m-h">Free models on {p.name} <span class="muted pp-count">(<span class="num">{formatCount(models.length)}</span>)</span></h2>
           {models.length > 0 && !showModelLimits && <span class="caption">The provider does not publish per-model request limits.</span>}
         </div>
         {models.length === 0 ? (
@@ -539,6 +551,8 @@ const pageDescription = archived
   .pp-notice { margin-top: 20px; }
   .pp-strong { color: var(--text-secondary); }
   .pp-count { font-weight: 400; }
+  /* "free API" after the provider name in the H1: part of the heading text, visually secondary. */
+  .pp-h1-sub { font-weight: 400; color: var(--text-muted); }
   .pp-mt6 { margin-top: 6px; }
   .pp-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .pp-hist { padding: 6px 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 12px; }

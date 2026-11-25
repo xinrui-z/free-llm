@@ -167,7 +167,14 @@ const sortHeaders = [
     "name": "Paid rates after the free tier",
     "description": "Paid per-token rates of free LLM API providers, from official pricing pages.",
     "url": siteURL(Astro.site, '/pricing/'),
-    ...(pricesLastUpdated ? { "dateModified": pricesLastUpdated } : {})
+    ...(pricesLastUpdated ? { "dateModified": pricesLastUpdated } : {}),
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
+        { "@type": "ListItem", "position": 2, "name": "Paid rates", "item": siteURL(Astro.site, '/pricing/') }
+      ]
+    }
   }}
 >
   <PageHeader
@@ -270,14 +277,14 @@ const sortHeaders = [
               <td>
                 <div class="pcell pr-prov">
                   <ProviderLogo provider={r.provider} size={16} />
-                  <span class="pr-pname">{r.provider.name}</span>
+                  <a class="pr-pname" href={`/providers/${r.provider.id}/`}>{r.provider.name}</a>
                   {r.archived && <span class="tag">Archived</span>}
                 </div>
               </td>
               <td>
                 {r.free === 'no'
                   ? <span class="muted">No</span>
-                  : <a class="lnk" href={`/providers/${r.provider.id}`} title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'} →</a>}
+                  : <span class="sec" title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'}</span>}
               </td>
               <td class="r">{input ? <span class="num">{input}</span> : <NotPublished variant="dash" note="No input rate on the official pricing page." />}</td>
               <td class="r">{output ? <span class="num">{output}</span> : <NotPublished variant="dash" note="No output rate on the official pricing page." />}</td>
@@ -312,7 +319,7 @@ const sortHeaders = [
             {r.validUntil && <button type="button" class="tag tag-o pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo</button>}
           </div>
           <div class="facts">
-            <span class="sec">{r.provider.name}</span>
+            <a class="sec pr-pname" href={`/providers/${r.provider.id}/`}>{r.provider.name}</a>
             {r.archived && <span class="tag">Archived</span>}
             <span class="sep">·</span>
             <span>{input ? <span class="num">{input}</span> : <NotPublished variant="dash" note="No input rate on the official pricing page." />} in</span>
@@ -323,7 +330,7 @@ const sortHeaders = [
           <div class="caption">
             Free tier: {r.free === 'no'
               ? <span>No</span>
-              : <a class="lnk" href={`/providers/${r.provider.id}`} title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'} →</a>}
+              : <span title={freeTitle(r)}>{r.free === 'yes' ? 'Yes' : 'Yes, other models'}</span>}
             {' · '}{r.source
               ? <a class="lnk" href={r.source} target="_blank" rel="noopener noreferrer" title={sourceTitle(r)}>{checkedLabel(r)} ↗</a>
               : <span>{checkedLabel(r)}</span>}
@@ -346,13 +353,13 @@ const sortHeaders = [
         {unpricedFree.length > 0 && (
           <p class="sec" id="pr-unpriced">
             Free providers without published per-token prices:{' '}
-            {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}`}>{p.name}</a></>)}.
+            {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a></>)}.
             {' '}Their free quotas are on each provider page.
           </p>
         )}
         {notShown.map(p => (
           <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
-            <a class="pr-ns-name" href={`/providers/${p.id}`}>{p.name}</a>
+            <a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a>
             {p.status === 'archived' && <> <span class="tag">Archived</span></>}
             {' '}— {p.pricing_note}
           </p>
@@ -369,6 +376,7 @@ const sortHeaders = [
   .tbl tr.arch .pr-id .mono { color: var(--text-muted); }
   .pr-prov { gap: 8px; }
   .pr-pname { white-space: nowrap; color: var(--text-secondary); }
+  .pr-pname:hover { color: var(--brand); }
   .tbl tr.arch .pr-pname { color: var(--text-muted); }
   .pr-promo { cursor: help; flex-shrink: 0; }
   .pr-src { width: 40px; }

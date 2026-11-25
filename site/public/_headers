@@ -1,0 +1,6 @@
+# Cloudflare static asset headers (Workers static assets and Pages).
+# Machine-readable feeds stay fetchable but out of search results.
+/changelog.json
+  X-Robots-Tag: noindex
+/data/status_summary.json
+  X-Robots-Tag: noindex

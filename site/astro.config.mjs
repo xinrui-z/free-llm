@@ -1,6 +1,8 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { readdirSync, readFileSync } from 'node:fs';
+import { providerLastmod } from './src/lib/format.ts';
 
 import tailwindcss from '@tailwindcss/vite';
 
@@ -62,6 +64,19 @@ const testChecker = dynamic && testCheckerUpstream ? { auxiliaryWorkers: [{ conf
 // Keep the test Worker's build out of dist/, which is what gets deployed (Vite would default to dist/free_llm_checker).
 const testCheckerEnvironments = testChecker.auxiliaryWorkers ? { free_llm_checker: { build: { outDir: '.wrangler/test-checker' } } } : undefined;
 
+// <lastmod> for static provider pages, from the bundled catalog (the same dates sitemap-providers.xml uses).
+const providersDir = new URL('./src/data/providers/', import.meta.url);
+const providerLastmods = new Map(readdirSync(providersDir)
+  .filter(f => f.endsWith('.json') && !f.startsWith('_'))
+  .map(f => JSON.parse(readFileSync(new URL(f, providersDir), 'utf8')))
+  .map(p => [p.id, providerLastmod(p)]));
+/** @param {import('@astrojs/sitemap').SitemapItem} item */
+const withLastmod = item => {
+  const id = new URL(item.url).pathname.match(/^\/providers\/([^/]+)\/$/)?.[1];
+  const lastmod = id ? providerLastmods.get(decodeURIComponent(id)) : null;
+  return lastmod ? { ...item, lastmod } : item;
+};
+
 // https://astro.build/config
 export default defineConfig({
   output: dynamic ? 'server' : 'static',
@@ -72,7 +87,7 @@ export default defineConfig({
   // trailing-slash form produced by build.format 'directory' (see src/lib/site-url.ts).
   trailingSlash: 'ignore',
   // /providers/ only redirects to / (src/pages/providers/index.astro), so keep it out of the sitemap.
-  integrations: [sitemap({ filter: page => !/\/providers\/?$/.test(new URL(page).pathname) })],
+  integrations: [sitemap({ filter: page => !/\/providers\/?$/.test(new URL(page).pathname), serialize: withLastmod })],
   vite: {
     define: {
       'import.meta.env.CATALOG_DYNAMIC': JSON.stringify(dynamic),

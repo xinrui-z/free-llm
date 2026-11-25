@@ -15,5 +15,6 @@ export const GET: APIRoute = ({ locals }) => {
     ...(catalog ? { revision: catalog.revision, source: catalog.origin === 'snapshot' ? 'snapshot' : catalog.stale ? 'stale' : 'live' } : {}),
     generated_at: new Date().toISOString(),
   };
-  return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+  // Rendered per request in dynamic mode, so the header is set here; public/_headers covers the static file.
+  return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json', 'X-Robots-Tag': 'noindex' } });
 };

@@ -1,0 +1,36 @@
+---
+// Shown for unknown paths and unknown provider ids (providers/[id].astro returns a body-less 404, which
+// Astro reroutes here). Prerendered in both modes: it needs no live catalog, and in dynamic mode Astro
+// fetches the static /404.html and serves it with status 404. noindex keeps it out of search results.
+import Layout from '../layouts/Layout.astro';
+import PageHeader from '../components/PageHeader.astro';
+
+export const prerender = true;
+
+const LINKS = [
+  { href: '/', label: 'Free LLM API providers', note: 'Every provider with a recurring free tier, with limits and live status.' },
+  { href: '/models/', label: 'Free models', note: 'Which providers let you call a model for free, and with what limits.' },
+  { href: '/pricing/', label: 'Paid rates', note: 'What the same providers charge per 1M tokens after the free tier.' },
+  { href: '/configs/', label: 'Tools', note: 'Ready configs for LiteLLM, Open WebUI, LobeChat and Cursor.' },
+  { href: '/changelog/', label: 'Changelog', note: 'Providers added or archived, new free models and reviews.' },
+];
+---
+
+<Layout
+  title="Page not found · Free LLM APIs"
+  description="This page does not exist. Browse free LLM API providers, models, paid rates and tools."
+  noindex
+>
+  <PageHeader title="Page not found" lead="This page does not exist or has moved. A provider that ended its free tier keeps its page, so check the directory." />
+  <ul class="nf-list">
+    {LINKS.map(l => (
+      <li><a class="lnk nf-a" href={l.href}>{l.label}</a><span class="caption">{l.note}</span></li>
+    ))}
+  </ul>
+</Layout>
+
+<style>
+  .nf-list { display: grid; gap: 12px; margin: 8px 0 48px; max-width: 72ch; }
+  .nf-list li { display: flex; flex-direction: column; gap: 2px; }
+  .nf-a { font-weight: 500; }
+</style>

@@ -26,7 +26,7 @@ test('new providers and their models appear without rebuilding the server',async
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(404);
   await request.post(`${catalogAPI}/test/state`,{data:{extra:true}});
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(200);
-  await expect(page.getByRole('heading',{name:'Discovered Demo',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Discovered Demo free API',exact:true,level:1})).toBeVisible();
   // Model status comes only from the live status snapshot; each model row has one live dot per layout.
   const fresh=page.locator('.only-md [data-model-id="fresh-model"] .dot');
   await expect(fresh).toHaveClass(/d-active/);
@@ -51,6 +51,24 @@ test('new providers and their models appear without rebuilding the server',async
   await expect(page.locator('[data-pt-row][data-provider-id="discovered-demo"]:visible')).toBeVisible();
   await page.goto('/models?q=fresh-model');await expect(page.locator('.m-tbl').getByText('fresh-model',{exact:true})).toBeVisible();
   await page.goto('/configs');await expect(page.locator('body')).toContainText('discovered-demo');
+  // The on-demand sitemap lists the live catalog with lastmod, and internal links use the canonical trailing-slash form.
+  const sitemap=await (await request.get('/sitemap-providers.xml')).text();
+  expect(sitemap).toContain('/providers/discovered-demo/</loc><lastmod>');
+  await page.goto('/');
+  await expect(page.locator('a[href="/providers/discovered-demo/"]').first()).toBeAttached();
+  expect(await page.locator('a[href^="/providers/"]:not([href*="/providers/"][href$="/"]):not([href*="#"]):not([href*="?"])').count()).toBe(0);
+  // Non-canonical '/x' 301s to '/x/' with the query string; file-like paths are left alone.
+  for (const [from, to] of [['/models', '/models/'], ['/pricing?provider=groq', '/pricing/?provider=groq'], ['/providers/groq', '/providers/groq/']]) {
+    const r=await request.get(from,{maxRedirects:0});
+    expect(r.status()).toBe(301);
+    expect(r.headers()['location']).toMatch(new RegExp(`^(https?://[^/]+)?${to.replace(/[?]/g,'\\?')}$`));
+  }
+  expect((await request.get('/data/status_summary.json',{maxRedirects:0})).headers()['x-robots-tag']).toBe('noindex');
+  // Provider pages describe the provider as an Organization, never as a rating-less SoftwareApplication.
+  await page.goto('/providers/groq/');
+  const ld=await page.locator('script[type="application/ld+json"]').textContent();
+  expect(ld).not.toContain('SoftwareApplication');
+  expect(ld).toContain('"about":{"@type":"Organization"');
 });
 test('unavailable or malformed live catalogs show a labeled snapshot and do not invent new routes',async({page,request})=>{
   // Seed the site's last-known-good copy with a catalog that lacks discovered-demo.
@@ -69,6 +87,15 @@ test('removed providers disappear on the next request and unknown routes return 
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(200);
   await request.post(`${catalogAPI}/test/state`,{data:{}});
   expect((await page.goto('/providers/discovered-demo'))?.status()).toBe(404);
+  // Unknown provider ids and unknown paths both get the site's 404 page: status 404, navigation, noindex.
+  for (const path of ['/providers/discovered-demo/', '/no-such-page/']) {
+    const res=await page.goto(path);
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole('heading',{name:'Page not found',level:1})).toBeVisible();
+    await expect(page.locator('#navbar a[href="/models/"]')).toBeAttached();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content','noindex');
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+  }
 });
 test('the provider page and Tools name the API key variable from the public id, the same rule as static mode',async({page,request})=>{
   // Never the checker's secret binding name (api_key_env, e.g. GOOGLE_API_KEY): it is not in the public DTO.

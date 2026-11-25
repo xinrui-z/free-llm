@@ -12,13 +12,16 @@ interface Props {
   description?: string;
   ogImage?: string;
   jsonLd?: object | object[];
+  /** Error pages: keep out of search results; no canonical or og:url (the URL is not a real page). */
+  noindex?: boolean;
 }
 
 const {
   title = 'Free LLM APIs — Real-time Status',
   description = 'Real-time monitoring of free LLM API availability. Track OpenRouter, AIHubMix, BigModel and more — find free LLM APIs that are actually working.',
   ogImage = '/og-image.png',
-  jsonLd
+  jsonLd,
+  noindex = false
 } = Astro.props;
 
 const siteBase = Astro.site || DEFAULT_SITE;
@@ -36,6 +39,9 @@ const catalogNotice = !catalog?.unavailable ? null
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -43,11 +49,11 @@ const catalogNotice = !catalog?.unavailable ? null
 
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonicalURL} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonicalURL} />}
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content={canonicalURL} />
+    {!noindex && <meta property="og:url" content={canonicalURL} />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImageURL} />
@@ -97,10 +103,10 @@ const catalogNotice = !catalog?.unavailable ? null
           <h2>Pages</h2>
           <ul>
             <li><a class="lnk" href="/">Providers</a></li>
-            <li><a class="lnk" href="/models">Models</a></li>
-            <li><a class="lnk" href="/configs">Tools</a></li>
-            <li><a class="lnk" href="/changelog">Changelog</a></li>
-            <li><a class="lnk" href="/pricing">Paid rates</a></li>
+            <li><a class="lnk" href="/models/">Models</a></li>
+            <li><a class="lnk" href="/configs/">Tools</a></li>
+            <li><a class="lnk" href="/changelog/">Changelog</a></li>
+            <li><a class="lnk" href="/pricing/">Paid rates</a></li>
           </ul>
         </nav>
         <div>
