@@ -123,6 +123,35 @@ test('history excludes unobserved days and shows coverage', async ({page}) => {
   await expect(page.locator('[data-live-uptime]').first()).toHaveText('100.0%');
   await expect(page.locator('#history-coverage')).toContainText('7 healthy / 7 observed days');
 });
+test('provider headings and the free tier sentence name the provider and its published limits', async ({page}) => {
+  await page.route('https://status.test/**', route => route.abort());
+  await page.goto('/providers/groq/');
+  await expect(page.getByRole('heading', {level: 1})).toHaveText('Groq free API');
+  await expect(page.locator('#ft-h')).toHaveText('Groq free tier limits');
+  await expect(page.locator('#m-h')).toContainText('Free models on Groq');
+  // One server-rendered sentence with the published limits, in the page's number format, then the provider's terms.
+  const sentence = page.locator('section[aria-labelledby="ft-h"] .note-p').first();
+  await expect(sentence).toContainText('The Groq free tier allows 30 requests per minute and 8,000 tokens per minute.');
+  await expect(sentence).toContainText('1,000 RPD');
+  // The terms are no longer repeated under Notes.
+  await expect(page.locator('main dt', {hasText: 'Provider terms'})).toHaveCount(0);
+});
+test('unknown paths get the site 404 page with navigation and noindex', async ({page}) => {
+  const res = await page.goto('/no-such-page/');
+  expect(res?.status()).toBe(404);
+  await expect(page.getByRole('heading', {name: 'Page not found', level: 1})).toBeVisible();
+  await expect(page.locator('main a[href="/models/"]')).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+});
+test('pricing links provider names to their pages; the free tier cell is plain text', async ({page}) => {
+  await mock(page);
+  await page.goto('/pricing/');
+  const row = page.locator('#pricing-table [data-pr-row][data-provider="groq"]').first();
+  await expect(row.locator('a.pr-pname')).toHaveAttribute('href', '/providers/groq/');
+  await expect(row.locator('a.pr-pname')).toHaveText('Groq');
+  await expect(page.locator('#pricing-table a', {hasText: /^Yes/})).toHaveCount(0);
+});
 test('stale monitoring snapshots never show providers as operational', async ({page}) => {
   await mock(page, 'active', true);
   await page.goto('/');

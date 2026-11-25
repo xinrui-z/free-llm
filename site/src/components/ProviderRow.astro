@@ -18,7 +18,7 @@ const { provider: p, class: className, ...rest } = Astro.props;
 const L = limitsOf(p);
 const showNote = (L.tpm == null || L.rpm == null) && L.note;
 ---
-<a class:list={['pcard', className]} href={`/providers/${p.id}`} {...rest}>
+<a class:list={['pcard', className]} href={`/providers/${p.id}/`} {...rest}>
   <span class="pcard-1">
     <StatusSlot providerId={p.id} />
     <ProviderLogo provider={p} size={20} />

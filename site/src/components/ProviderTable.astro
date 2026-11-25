@@ -69,13 +69,13 @@ const NCOL = 9;
               const { p, L } = item;
               const ctx = formatTokens(maxContext(p));
               return (
-                <tr class="row" data-href={`/providers/${p.id}`} {...attrs(item)}>
+                <tr class="row" data-href={`/providers/${p.id}/`} {...attrs(item)}>
                   <td>
                     <div class="pcell">
                       <StatusSlot providerId={p.id} />
                       <ProviderLogo provider={p} size={24} />
                       <div class="min0">
-                        <a class="pname" href={`/providers/${p.id}`}>{p.name}</a>
+                        <a class="pname" href={`/providers/${p.id}/`}>{p.name}</a>
                         {p.top_models?.[0] && <span class="sub">{p.top_models[0]}</span>}
                       </div>
                     </div>

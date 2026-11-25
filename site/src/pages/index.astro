@@ -70,6 +70,7 @@ const home = siteURL(Astro.site);
       name: 'Free LLM APIs you can call today',
       url: home,
       description,
+      ...(lastVerified ? { dateModified: lastVerified } : {}),
       mainEntity: {
         '@type': 'ItemList',
         numberOfItems: total,
@@ -112,14 +113,14 @@ const home = siteURL(Astro.site);
               <div class="pick-h">
                 <StatusSlot providerId={p.id} />
                 <ProviderLogo provider={p} size={24} />
-                <a id={`pick-${p.id}`} href={`/providers/${p.id}`}>{p.name}</a>
+                <a id={`pick-${p.id}`} href={`/providers/${p.id}/`}>{p.name}</a>
               </div>
               <LimitFacts provider={p} size="compact" />
               <div class="access">{accessLine(p)} · <span class="num">{formatCount(p.models.length)}</span> free {p.models.length === 1 ? 'model' : 'models'}</div>
               <CopyField label="Base URL" value={p.base_url} id={`pk-${p.id}`} toast="Base URL copied" />
               <div class="pick-acts">
                 {key && <a class="btn btn-p" href={key} target="_blank" rel="noopener noreferrer">Get API key ↗</a>}
-                <a class="btn btn-t" href={`/providers/${p.id}#quick-start`}>Quick start →</a>
+                <a class="btn btn-t" href={`/providers/${p.id}/#quick-start`}>Quick start →</a>
               </div>
             </article>
           );
@@ -168,7 +169,7 @@ const home = siteURL(Astro.site);
             const why = p.archive_reason ?? '';
             return (
               <div class="arch-row">
-                <a href={`/providers/${p.id}`}>{p.name}</a>
+                <a href={`/providers/${p.id}/`}>{p.name}</a>
                 <span class="text-xs">{date ? <>Archived <span class="date">{date}</span></> : 'Archived'}</span>
                 <span class="why" title={why || undefined}>{why}</span>
               </div>
@@ -182,7 +183,7 @@ const home = siteURL(Astro.site);
   <section class="sect" aria-labelledby="rc-h">
     <div class="sect-head">
       <h2 class="h2" id="rc-h">Recent changes</h2>
-      <a class="lnk text-sm" href="/changelog">Full changelog →</a>
+      <a class="lnk text-sm" href="/changelog/">Full changelog →</a>
     </div>
     <div id="recent-changes" data-providers={linkable}>
       {recent.length === 0 && <p class="muted text-sm">No changes recorded yet.</p>}

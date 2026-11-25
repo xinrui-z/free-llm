@@ -15,6 +15,7 @@ import CopyButton from '../../components/CopyButton.astro';
 import ProviderLogo from '../../components/ProviderLogo.astro';
 import StatusSlot from '../../components/StatusSlot.astro';
 import { getProviders } from '../../lib/providers';
+import { siteURL } from '../../lib/site-url';
 import { formatCount, formatTokens, limitsOf, NO_CONTEXT_NOTE } from '../../lib/format';
 import { classifyModels, isListableModel, type ModelFamily } from '../../data/model-families';
 import type { Provider, ProviderModel } from '../../data/providers';
@@ -117,7 +118,7 @@ const chips = [
 const nprovText = (n: number) => ` · ${n} provider${n === 1 ? '' : 's'}`;
 // Vendor is plain text; skip it when the family name already starts with it ("Mistral / Magistral …").
 const vendorOf = (f: ModelFamily) => (f.category && !f.name.toLowerCase().startsWith(f.category.toLowerCase()) ? f.category : '');
-const useHref = (x: Listing) => `/providers/${encodeURIComponent(x.p.id)}?model=${encodeURIComponent(x.m.id)}#quick-start`;
+const useHref = (x: Listing) => `/providers/${encodeURIComponent(x.p.id)}/?model=${encodeURIComponent(x.m.id)}#quick-start`;
 const rowAttrs = (x: Listing, g: Group) => ({
   'data-m-row': '',
   'data-key': x.key,
@@ -140,10 +141,24 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
 ---
 
 <Layout
-  title="Models — Free LLM APIs"
+  title="Free LLM Models by Provider, with Rate Limits"
   description={`Find which of ${providerCount} free LLM API providers let you call ${topFamilies || 'open models'} and more for free, with the rate limits each provider documents.`}
+  jsonLd={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Models",
+    "description": "Which free LLM API providers serve each model, with the rate limits each provider documents.",
+    "url": siteURL(Astro.site, '/models/'),
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": siteURL(Astro.site) },
+        { "@type": "ListItem", "position": 2, "name": "Models", "item": siteURL(Astro.site, '/models/') }
+      ]
+    }
+  }}
 >
-  <PageHeader title="Models" lead="Find which providers let you call a model for free, and with what limits.">
+  <PageHeader title="Free LLM API models" lead="Find which providers let you call a model for free, and with what limits.">
     <Fragment slot="meta"><span class="num">{total}</span> model listings across <span class="num">{providerCount}</span> providers · archived providers excluded</Fragment>
   </PageHeader>
   <StatusNotice liveOnly />
@@ -192,7 +207,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
           return (
             <tbody data-m-group={g.key} data-fold={foldOf(g, false)}>
               <tr class="grp">
-                <td colspan={NCOL}>
+                <th scope="rowgroup" colspan={NCOL} class="m-gh">
                   {g.f ? (
                     <>
                       {vendorOf(g.f) && <span class="m-gh-soft">{vendorOf(g.f)} · </span>}
@@ -206,7 +221,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                       <span class="m-gh-soft"> · no known family or vendor · <span data-m-n>{g.rows.length}</span></span>
                     </>
                   )}
-                </td>
+                </th>
               </tr>
               {g.rows.map((x, i) => {
                 const t = formatTokens(x.m.context_window);
@@ -219,7 +234,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                       <div class="pcell m-pcell">
                         <StatusSlot providerId={x.p.id} />
                         <ProviderLogo provider={x.p} size={16} />
-                        <a class="lnk m-nowrap" href={`/providers/${x.p.id}`}>{x.p.name}</a>
+                        <a class="lnk m-nowrap" href={`/providers/${x.p.id}/`}>{x.p.name}</a>
                       </div>
                     </td>
                     <td class="r">{x.rpm != null ? <span class="num">{formatCount(x.rpm)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
@@ -248,7 +263,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
         const fold = folded(g, true);
         return (
           <section class="m-grp" data-m-group={g.key} data-fold={foldOf(g, true)} aria-label={g.f ? g.f.name : 'Other models'}>
-            <div class="sticky-h">
+            <h2 class="sticky-h">
               {g.f ? (
                 <>
                   {vendorOf(g.f) && <span class="m-gh-soft">{vendorOf(g.f)} · </span>}
@@ -262,7 +277,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                   <span class="m-gh-soft"> · no known family or vendor · <span data-m-n>{g.rows.length}</span></span>
                 </>
               )}
-            </div>
+            </h2>
             <div class="srows">
               {g.rows.map((x, i) => {
                 const t = formatTokens(x.m.context_window);
@@ -274,7 +289,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                       <span class="use"><a class="lnk m-nowrap" href={useHref(x)} aria-label={`Use ${x.m.id} from ${x.p.name} in Quick start`}>Use →</a></span>
                     </div>
                     <div class="facts">
-                      <span class="m-prov"><StatusSlot providerId={x.p.id} liveOnly /><a class="lnk" href={`/providers/${x.p.id}`}>{x.p.name}</a></span>
+                      <span class="m-prov"><StatusSlot providerId={x.p.id} liveOnly /><a class="lnk" href={`/providers/${x.p.id}/`}>{x.p.name}</a></span>
                       {x.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.rpm)}</span> RPM</span></>}
                       {x.tpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.tpm)}</span> TPM</span></>}
                       {x.pub && (x.tpm == null || x.rpm == null) && <><span class="sep" aria-hidden="true">·</span><span>{x.rpm == null ? 'RPM' : 'TPM'} not published</span></>}
@@ -301,11 +316,19 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
 <style>
   .m-caption { margin-bottom: 12px; max-width: 72ch; }
   .m-tbl tr.grp .m-gh-name, .m-list .m-gh-name { color: var(--text-secondary); }
+  /* Group labels are real headings for crawlers and screen readers: a rowgroup <th> on desktop and an
+     <h2> on mobile. Both keep the look of the old <td> / <div> label. */
+  .m-tbl tr.grp th.m-gh { background: var(--bg-surface); border-bottom-color: var(--border-default); font: 600 12px/16px var(--font-ui); color: var(--text-muted); height: 32px; padding-block: 6px; white-space: normal; }
+  .m-list h2.sticky-h { margin-block: 0; text-wrap: initial; }
+  /* Mobile row status dots sit in the gutter left of the provider name, out of the flow (like
+     .slot:not([data-live-only]) in global.css): the name never moves, live or not. The liveOnly notice above
+     keeps the global display:none when status is not live, as designed (no empty gap). */
+  .m-prov :global(.slot) { position: absolute; left: -11px; top: 50%; height: 8px; margin-top: -4px; }
   .m-gh-soft { font-weight: 400; color: var(--text-muted); }
   .m-pcell { gap: 8px; }
   .m-nowrap { white-space: nowrap; }
   .m-caps { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-  .m-prov { display: inline-flex; align-items: center; gap: 6px; }
+  .m-prov { position: relative; display: inline-flex; align-items: center; }
   .m-grp + .m-grp { margin-top: 8px; }
   .m-fold { margin: 4px 0 8px; }
   .m-tbl tbody tr[data-m-more-row] td { padding-block: 10px; }

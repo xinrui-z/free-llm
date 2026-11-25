@@ -90,7 +90,7 @@ export function kindOf(e: Pick<ChangeEntry, 'type' | 'title' | 'id'>): string {
 
 const text = (v: unknown) => (typeof v === 'string' ? v : '');
 const providerName = (e: ChangeEntry, providers: ProviderIndex) => e.provider_name || providers[e.provider_id]?.name || e.provider_id;
-const href = (id: string, providers: ProviderIndex) => (providers[id] ? `/providers/${encodeURIComponent(id)}` : undefined);
+const href = (id: string, providers: ProviderIndex) => (providers[id] ? `/providers/${encodeURIComponent(id)}/` : undefined);
 
 /** Title with the provider name turned into a link to its page (when the page exists). */
 function linkTitle(e: ChangeEntry, providers: ProviderIndex): TextPart[] {

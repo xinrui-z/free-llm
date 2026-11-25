@@ -3,6 +3,7 @@ import { getSecret } from 'astro:env/server';
 import fallback from './data/providers';
 import { checkerBinding } from 'virtual:checker-binding';
 import { CATALOG_TTL_MS, catalogResponsePolicy, catalogSource, fetchLiveCatalog, snapshotState } from './lib/catalog';
+import { canonicalPath } from './lib/site-url';
 
 let reportedMisconfiguration = false;
 const ttl = (value: unknown) => {
@@ -11,6 +12,15 @@ const ttl = (value: unknown) => {
 };
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  // '/x' and '/x/' both render (trailingSlash: 'ignore'); on-demand pages 301 to the canonical '/x/' form,
+  // query string kept, before any catalog work. Paths with a file extension are left alone (canonicalPath).
+  if (import.meta.env.CATALOG_DYNAMIC && !context.isPrerendered
+      && (context.request.method === 'GET' || context.request.method === 'HEAD')) {
+    const { pathname, search } = context.url;
+    // '/providers' itself only redirects to '/' (pages/providers/index.astro): go there in one hop.
+    const canonical = pathname === '/providers' ? '/' : canonicalPath(pathname);
+    if (canonical !== pathname) return context.redirect(canonical + search, 301);
+  }
   // Prerendered routes (robots.txt) never depend on the live catalog.
   if (import.meta.env.CATALOG_DYNAMIC && !context.isPrerendered) {
     // The CHECKER service binding (production Worker) wins; otherwise the catalog is read over HTTP.

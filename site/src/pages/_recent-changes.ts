@@ -32,7 +32,7 @@ export function recentChanges(entries: RecentEntry[], providers: { id: string; n
   const known = new Map(providers.map(p => [p.id, p.name]));
   const link = (e: RecentEntry) => ({
     name: known.get(e.provider_id) ?? e.provider_name ?? e.provider_id,
-    href: known.has(e.provider_id) ? `/providers/${encodeURIComponent(e.provider_id)}` : null,
+    href: known.has(e.provider_id) ? `/providers/${encodeURIComponent(e.provider_id)}/` : null,
   });
   const byDate = new Map<string, RecentEntry[]>();
   for (const e of entries) {

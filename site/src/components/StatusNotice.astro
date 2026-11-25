@@ -11,8 +11,9 @@ interface Props {
   class?: string;
 }
 const { providerId, liveOnly = false, class: className } = Astro.props;
+// data-nosnippet: the SSR "unavailable" line must never become a search result snippet.
 ---
-<div class:list={['sn-wrap', className]} data-live-only={liveOnly ? '' : undefined}>
+<div class:list={['sn-wrap', className]} data-nosnippet data-live-only={liveOnly ? '' : undefined}>
   <div class="sn" data-status-notice data-status-provider={providerId}>
     <span data-sn-dot><span class="dot d-unknown" aria-hidden="true"></span></span>
     <span class="sn-text" data-sn-text>Live health checks are unavailable. Showing documented limits from official sources.</span>

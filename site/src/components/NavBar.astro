@@ -5,9 +5,9 @@ import Icon from './Icon.astro';
 const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const links = [
   { href: '/', label: 'Providers', active: path === '/' || path === '/providers' || path.startsWith('/providers/') },
-  { href: '/models', label: 'Models', active: path === '/models' || path.startsWith('/models/') },
-  { href: '/configs', label: 'Tools', active: path === '/configs' || path.startsWith('/configs/') },
-  { href: '/changelog', label: 'Changelog', active: path === '/changelog' || path.startsWith('/changelog/') },
+  { href: '/models/', label: 'Models', active: path === '/models' || path.startsWith('/models/') },
+  { href: '/configs/', label: 'Tools', active: path === '/configs' || path.startsWith('/configs/') },
+  { href: '/changelog/', label: 'Changelog', active: path === '/changelog' || path.startsWith('/changelog/') },
 ];
 const paidActive = path === '/pricing' || path.startsWith('/pricing/');
 ---
@@ -19,10 +19,10 @@ const paidActive = path === '/pricing' || path.startsWith('/pricing/');
     </a>
     <nav class="nav-links" aria-label="Main">
       {links.map(l => <a href={l.href} aria-current={l.active ? 'page' : undefined}>{l.label}</a>)}
-      <a href="/pricing" class="m-only" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
+      <a href="/pricing/" class="m-only" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
     </nav>
     <div class="nav-right">
-      <a href="/pricing" class="paid-link" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
+      <a href="/pricing/" class="paid-link" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
       <a class="gh" href="https://github.com/xinrui-z/free-llm" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
         <Icon name="github" size={18} />
       </a>
