@@ -21,6 +21,8 @@ import {
 } from '../../lib/format';
 import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 import { MODEL_FAMILIES } from '../../data/model-families';
+import { CAPABILITY_SHORT, capabilityChip, inputModalities, modelCapabilities } from '../../lib/capabilities';
+import { LIMIT_LABELS, SCOPE_LABELS, hasStructuredLimits, limitRows } from '../../lib/limits';
 import changelog from '../../data/changelog.json';
 
 import fallbackProviders, { type Provider, type ProviderModel } from '../../data/providers';
@@ -140,7 +142,15 @@ const langs = [
 const FIRST_MODELS = 8;
 const showModelLimits = models.some(m => limitsOf(m).published);
 const ctxOf = (m: { context_window?: unknown }) => formatTokens(m.context_window);
-const modalitiesOf = (m: ProviderModel) => (Array.isArray(m.modalities) && m.modalities.length ? m.modalities : ['text']);
+// Only documented modalities; a model without any is "Not disclosed", never assumed to be text.
+const modalitiesOf = (m: ProviderModel) => inputModalities(m);
+const showMaxOutput = models.some(m => formatTokens(m.max_output_tokens));
+const capChip = capabilityChip;
+
+/* ---------- Limits table ---------- */
+const limitTable = limitRows(p);
+const structuredLimits = hasStructuredLimits(p);
+const oaiCompatible = (p.tags ?? []).includes('openai-compatible');
 
 /* ---------- Notes ---------- */
 // With published limits, quota_note is shown in the Free tier section (limitsSentence), not repeated here.
@@ -217,7 +227,7 @@ const modified = providerLastmod(p);
           <div class="phd-id">
             <ProviderLogo provider={p} size={40} />
             <div class="min0">
-              <div class="phd-name"><h1 class="h1" id="page-title" tabindex="-1">{p.name}</h1><span class="tag">Archived</span></div>
+              <div class="phd-name"><h1 class="h1" id="page-title" tabindex="-1">{p.name}</h1><span class="pill pill-neutral"><span class="dot d-unknown" aria-hidden="true"></span>Archived</span></div>
               {showArchivedDesc && <p class="phd-desc">{p.description}</p>}
               {p.website_url && (
                 <p class="phd-acc"><a class="lnk muted" href={p.website_url} target="_blank" rel="noopener noreferrer">{shortHost(p.website_url)} ↗</a></p>
@@ -229,7 +239,7 @@ const modified = providerLastmod(p);
 
       <div class="arch-box" role="note">
         <div class="ttl">
-          <span class="tag"><span class="dot dot-sm d-dead" aria-hidden="true"></span>Archived</span>
+          <span class="pill pill-neutral"><span class="dot d-unknown" aria-hidden="true"></span>Archived</span>
           <span>{archivedOn ? <><span class="date">{archivedOn}</span> · </> : null}No longer offers a recurring free tier.</span>
         </div>
         {p.archive_reason && <p class="sec">{p.archive_reason}</p>}
@@ -319,9 +329,49 @@ const modified = providerLastmod(p);
         <LimitFacts provider={p} size="large" />
         {limitsSentence && <p class="note-p">{limitsSentence}{p.quota_note && <> {p.quota_note}</>}</p>}
         {!L.published && p.quota_note && <p class="note-p"><b>How limits work:</b> {p.quota_note}</p>}
+        <div class="tblwrap pp-limits">
+          <table class="tbl">
+            <caption class="sr-only">Free-tier limits by metric and scope</caption>
+            <thead>
+              <tr>
+                <th scope="col">Limit</th>
+                <th scope="col" class="r">Value</th>
+                <th scope="col">Applies to</th>
+                <th scope="col">Source</th>
+                <th scope="col">Checked</th>
+              </tr>
+            </thead>
+            <tbody>
+              {limitTable.map(r => (
+                <tr data-limit={r.metric}>
+                  <th scope="row" class="pp-lim-name">{LIMIT_LABELS[r.metric].long} <span class="muted">({LIMIT_LABELS[r.metric].short})</span></th>
+                  <td class="r">{r.value != null ? <span class="num">{formatCount(r.value)}</span> : <NotPublished note={p.quota_note} />}</td>
+                  <td>
+                    {r.scope
+                      ? <button type="button" class="pp-scope" data-tip={SCOPE_LABELS[r.scope].note} aria-label={`${SCOPE_LABELS[r.scope].label}. ${SCOPE_LABELS[r.scope].note}`}>{SCOPE_LABELS[r.scope].label}{r.models?.length ? ` · ${r.models.length} ${r.models.length === 1 ? 'model' : 'models'}` : ''}</button>
+                      : r.value != null ? <span class="muted">Scope not specified</span> : <span class="muted">—</span>}
+                    {r.note && <span class="caption pp-lim-note">{r.note}</span>}
+                  </td>
+                  <td class="pp-lim-srccell">
+                    {r.source_url
+                      ? <a class="lnk pp-lim-src" href={r.source_url} target="_blank" rel="noopener noreferrer">{shortHost(r.source_url)} ↗</a>
+                      : <span class="muted">{r.value != null ? 'Provider sources below' : '—'}</span>}
+                  </td>
+                  <td>{r.checked_at && formatDate(r.checked_at) ? <span class="date sec">{formatDate(r.checked_at)}</span> : <span class="muted">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="caption pp-mt6">
+          {structuredLimits
+            ? 'Each value is copied from the linked page; "Not disclosed" means the provider does not publish that limit. Your own account limits may differ.'
+            : 'No per-metric limits are recorded here; RPM and TPM are the headline values, and daily or monthly caps are in the terms above. "Not disclosed" is never zero or unlimited.'}
+        </p>
         {(verified || sources.length > 0) && (
           <div class="srcs">
-            {verified && <span class="s">Verified <span class="date pp-strong">{verified}</span></span>}
+            {verified && <span class="s pp-verified"><span class="pill pill-outline">Verified <span class="date">{verified}</span></span></span>}
+            {formatDate(p.catalog_checked_at) && <span class="s">Model list synced <span class="date">{formatDate(p.catalog_checked_at)}</span></span>}
             {sources.map((s, i) => (
               <span class="s">
                 {i === 0 && <>{sources.length === 1 ? 'Source:' : 'Sources:'} </>}
@@ -341,7 +391,7 @@ const modified = providerLastmod(p);
         data-qs-sentinel={SENTINEL}
         data-qs-default={defaultModel}
       >
-        <div class="sect-head"><h2 class="h2" id="qs-h">Quick start</h2><span class="caption">OpenAI-compatible chat completion</span></div>
+        <div class="sect-head"><h2 class="h2" id="qs-h">Quick start</h2><span class="caption">{oaiCompatible ? 'OpenAI-compatible chat completion' : 'OpenAI-style request; compatibility is not documented in this catalog, so check the provider docs'}</span></div>
         <div class="qs-row">
           {modelIds.length > 0 && (
             <div class="qs-model">
@@ -378,9 +428,11 @@ const modified = providerLastmod(p);
                     <th scope="col">Model ID</th>
                     <th scope="col">Name</th>
                     <th scope="col" class="r">Context</th>
+                    {showMaxOutput && <th scope="col" class="r">Max output</th>}
                     {showModelLimits && <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>}
                     {showModelLimits && <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>}
                     <th scope="col">Input</th>
+                    <th scope="col">Capabilities</th>
                     <th scope="col"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
@@ -388,6 +440,8 @@ const modified = providerLastmod(p);
                   {models.map((m, i) => {
                     const c = ctxOf(m);
                     const ml = limitsOf(m);
+                    const mods = modalitiesOf(m);
+                    const out = formatTokens(m.max_output_tokens);
                     return (
                       <tr data-pm-more={i >= FIRST_MODELS ? '' : undefined}>
                         <td>
@@ -400,9 +454,11 @@ const modified = providerLastmod(p);
                         </td>
                         <td class="pm-name">{modelDisplayName(m)}</td>
                         <td class="r">{c ? <span class="num" title={c.title}>{c.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
+                        {showMaxOutput && <td class="r">{out ? <span class="num" title={out.title}>{out.text}</span> : <NotPublished variant="dash" note="No maximum output length in the official catalog." />}</td>}
                         {showModelLimits && <td class="r">{ml.rpm != null ? <span class="num">{formatCount(ml.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
                         {showModelLimits && <td class="r">{ml.tpm != null ? <span class="num">{formatCount(ml.tpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>}
-                        <td><span class="pm-mods">{modalitiesOf(m).map(x => <span class="tag tag-o">{x}</span>)}</span></td>
+                        <td>{mods ? <span class="pm-mods">{mods.map(x => <span class="tag tag-o">{x}</span>)}</span> : <NotPublished variant="dash" note="The catalog lists no input modalities for this model." />}</td>
+                        <td><span class="pm-mods">{modelCapabilities(m).filter(x => x.key !== 'vision').map(x => <button {...capChip(x)}>{CAPABILITY_SHORT[x.key]}</button>)}</span></td>
                         <td class="r"><button type="button" class="btn btn-sm" data-pm-use={m.id} aria-label={`Use ${m.id} in Quick start`}>Use</button></td>
                       </tr>
                     );
@@ -414,7 +470,7 @@ const modified = providerLastmod(p);
               {models.map((m, i) => {
                 const c = ctxOf(m);
                 const ml = limitsOf(m);
-                const vision = modalitiesOf(m).includes('vision');
+                const vision = (modalitiesOf(m) ?? []).includes('image');
                 return (
                   <div class="srow" data-pm-more={i >= FIRST_MODELS ? '' : undefined}>
                     <div class="idline">
@@ -449,11 +505,17 @@ const modified = providerLastmod(p);
         <div data-health-history hidden>
           <div class="strip" role="img" id="health-strip" aria-label="Daily health over the last 90 days"></div>
           <div class="strip-legend" aria-hidden="true"><span>90 days ago</span><span>today</span></div>
+          <ul class="pp-legend" aria-label="Legend">
+            <li><span class="pp-sw h-active"></span>Healthy</li>
+            <li><span class="pp-sw h-degraded"></span>Degraded</li>
+            <li><span class="pp-sw h-dead"></span>Unavailable</li>
+            <li><span class="pp-sw"></span>No data</li>
+          </ul>
           <p class="note-p">Healthy on <span class="num" data-live-uptime>—</span> of observed days<span> · last probe </span><span data-live-latency={p.id}></span></p>
           <p class="caption pp-mt6" id="history-coverage"></p>
         </div>
         <p class="caption pp-mt6" data-probe-coverage={p.id} aria-live="polite"></p>
-        <p class="caption pp-mt6">Each day shows its worst probe result; gray days had no probes. This is not an uptime guarantee, and your own access and limits may differ.</p>
+        <p class="caption pp-mt6">Each day shows its worst probe result; days without probes are “No data” and count neither as healthy nor as an outage. The percentage is healthy days / observed days, not an uptime guarantee; your own access and limits may differ.</p>
       </section>
 
       {notes.length > 0 && (
@@ -474,8 +536,8 @@ const modified = providerLastmod(p);
                     <thead>
                       <tr>
                         <th scope="col">Model ID</th>
-                        <th scope="col" class="r">Paid input /1M</th>
-                        <th scope="col" class="r">Paid output /1M</th>
+                        <th scope="col" class="r">Input / 1M tokens</th>
+                        <th scope="col" class="r">Output / 1M tokens</th>
                         <th scope="col"><span class="sr-only">Source</span></th>
                       </tr>
                     </thead>
@@ -490,10 +552,10 @@ const modified = providerLastmod(p);
                           <tr>
                             <td>
                               <span class="mono pp-paid-id">{m.id}</span>
-                              {promo && <span class="caption pp-promo">Promotional rate until <span class="date">{promo}</span></span>}
+                              {promo && <span class="pill pill-accent pp-promo">Promo to <span class="date">{promo}</span></span>}
                             </td>
-                            <td class="r">{input ? <span class="num paid">{input}</span> : <span class="dash" title="No published rate">—</span>}</td>
-                            <td class="r">{output ? <span class="num paid">{output}</span> : <span class="dash" title="No published rate">—</span>}</td>
+                            <td class="r">{input ? <span class="num">{input}</span> : <NotPublished variant="dash" note="No input rate on the official pricing page." />}</td>
+                            <td class="r">{output ? <span class="num">{output}</span> : <NotPublished variant="dash" note="No output rate on the official pricing page." />}</td>
                             <td class="r">
                               {pr.source_url && (
                                 <a class="lnk pp-src" href={pr.source_url} target="_blank" rel="noopener noreferrer" title={checked ? `Source checked ${checked}` : 'Price source'} aria-label={`Price source for ${m.id}`}><Icon name="ext" size={14} /></a>
@@ -548,8 +610,10 @@ const modified = providerLastmod(p);
 </Layout>
 
 <style>
-  .pp-notice { margin-top: 20px; }
+  .pp-notice { margin-top: 16px; }
   .pp-strong { color: var(--text-secondary); }
+  .pp-verified .pill { color: var(--text-secondary); }
+  .pp-verified .date { font-size: inherit; }
   .pp-count { font-weight: 400; }
   /* "free API" after the provider name in the H1: part of the heading text, visually secondary. */
   .pp-h1-sub { font-weight: 400; color: var(--text-muted); }
@@ -557,18 +621,33 @@ const modified = providerLastmod(p);
   .pp-links { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .pp-hist { padding: 6px 0; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 12px; }
   .pp-hist-id { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; min-width: 0; }
-  .pp-hist-ctx { font-size: 12px; color: var(--text-muted); }
+  .pp-hist-ctx { font-size: var(--fs-caption); color: var(--text-muted); }
   .pp-paid-id { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
-  .pp-promo { display: block; margin-top: 2px; }
+  .pp-promo { margin-left: 8px; }
+  .pp-promo .date { font-size: inherit; }
   /* 24x24 hit areas (WCAG 2.5.8) for the small source links. */
-  .pp-src { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; color: var(--text-muted); }
+  .pp-src { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; border-radius: var(--r-sm); color: var(--text-muted); }
+  .pp-src:hover { background: var(--bg-elevated); }
   .pp-src-m { display: inline-flex; align-items: center; min-height: 24px; }
   .pp-alt-head { margin-bottom: 4px; }
-  .pp-alt-cap { margin-bottom: 12px; }
+  .pp-alt-cap { margin-bottom: 10px; }
   #health :global(.num) { white-space: nowrap; }
-  .pm-name { font-size: 13px; color: var(--text-muted); }
+  /* Health legend: same swatches as the strip, so every colour is named. */
+  .pp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; font-size: var(--fs-caption); color: var(--text-muted); }
+  .pp-legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .pp-sw { width: 10px; height: 10px; border-radius: 2px; background: var(--bg-overlay); }
+  .pp-sw.h-active { background: var(--status-active); }
+  .pp-sw.h-degraded { background: var(--status-degraded); }
+  .pp-sw.h-dead { background: var(--status-dead); }
+  .pm-name { font-size: var(--fs-data); color: var(--text-muted); }
   .pm-mods { display: inline-flex; flex-wrap: wrap; gap: 4px; }
   .pm-toggle { margin-top: 10px; }
+  .pp-limits { margin-top: 12px; max-width: 60rem; }
+  .pp-limits tbody th { font-weight: 400; text-align: left; color: var(--text-secondary); background: transparent; white-space: nowrap; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-data); }
+  .pp-limits tbody tr:last-child th { border-bottom: 0; }
+  .pp-scope { font: inherit; padding: 0; color: var(--text-secondary); text-decoration: underline dotted var(--text-subtle); text-underline-offset: 3px; cursor: help; white-space: nowrap; }
+  .pp-lim-note { display: block; margin-top: 2px; }
+  .pp-lim-src { font-size: var(--fs-data); white-space: nowrap; }
   .pm-use-m { padding: 0; }
   .pm-models[data-collapsed] [data-pm-more] { display: none; }
 </style>
@@ -667,7 +746,7 @@ const modified = providerLastmod(p);
       const days = history.slice(-90);
       const padded: HealthStatus[] = [...Array<HealthStatus>(90 - days.length).fill('unknown'), ...days];
       const anchor = data.last_checked ? new Date(data.last_checked) : new Date();
-      const words: Record<HealthStatus, string> = { active: 'healthy', degraded: 'degraded', dead: 'down', unknown: 'no data' };
+      const words: Record<HealthStatus, string> = { active: 'healthy', degraded: 'degraded', dead: 'unavailable', unknown: 'no data' };
       strip.replaceChildren(...padded.map((status, index) => {
         const bar = document.createElement('span');
         if (status !== 'unknown') bar.className = `h-${status}`;

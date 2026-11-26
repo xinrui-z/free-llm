@@ -16,8 +16,11 @@ import ProviderLogo from '../../components/ProviderLogo.astro';
 import StatusSlot from '../../components/StatusSlot.astro';
 import { getProviders } from '../../lib/providers';
 import { siteURL } from '../../lib/site-url';
-import { formatCount, formatTokens, limitsOf, NO_CONTEXT_NOTE } from '../../lib/format';
+import { contextToNumber, formatCount, formatTokens, limitsOf, NO_CONTEXT_NOTE } from '../../lib/format';
+import { CAPABILITY_SHORT, capabilityChip, modelCapabilities, type Capability } from '../../lib/capabilities';
+import { LONG_CONTEXT_TOKENS } from '../../lib/explore';
 import { classifyModels, isListableModel, type ModelFamily } from '../../data/model-families';
+import { familyPages, familyPath } from '../../lib/families';
 import type { Provider, ProviderModel } from '../../data/providers';
 import { sortModels } from '../../../../scripts/lib/catalog-validation.mjs';
 
@@ -39,36 +42,33 @@ for (const { family, entries } of classified.families) {
   }
 }
 
-type Cap = 'vision' | 'reasoning' | 'code';
+// Filterable capabilities. Evidence rules live in lib/capabilities.ts: catalog modalities/flags, or the model
+// name only (shown as a dashed "name hint" chip). Family-level tags are never treated as a model capability.
+type Cap = 'vision' | 'reasoning' | 'coding';
+const FILTER_CAPS: Cap[] = ['vision', 'reasoning', 'coding'];
 interface Listing {
   key: string;
   m: ProviderModel;
   p: Provider;
   order: number;
   f: ModelFamily | null;
-  caps: Cap[];
+  caps: Capability[];
   rpm: number | null;
   tpm: number | null;
   pub: boolean;
+  long: boolean;
 }
 
-const REASONING_ID = /(^|[-_.:])(reason(ing|er)?|thinking|z1|r1)([-_.:]|$)/i;
 const listings: Listing[] = [];
 activeProviders.forEach((p, order) => {
   // Each provider's models follow its own display order (model_order pins first, then upstream order).
   for (const m of sortModels(p.models, p.model_order) as ProviderModel[]) {
     if (!isListableModel(m)) continue;
     const f = familyByKey.get(`${p.id}:${m.id}`) ?? null;
-    const tags = f?.tags ?? [];
-    const mods = m.modalities ?? [];
-    const caps: Cap[] = [];
-    if (mods.includes('vision')) caps.push('vision');
-    // Model part of the ID only (after the last '/'), as whole tokens: vendor names ("Thinking Machines")
-    // and stray substrings ("-r100") must not make a model "reasoning".
-    if (tags.includes('thinking') || REASONING_ID.test(m.id.split('/').pop() ?? '')) caps.push('reasoning');
-    if (mods.includes('code') || tags.includes('code') || /cod(e|ing)|codestral/i.test(m.id)) caps.push('code');
+    const caps = modelCapabilities(m);
     const L = limitsOf(m);
-    listings.push({ key: `${p.id}:${m.id}`, m, p, order, f, caps, rpm: L.rpm, tpm: L.tpm, pub: L.published });
+    listings.push({ key: `${p.id}:${m.id}`, m, p, order, f, caps, rpm: L.rpm, tpm: L.tpm, pub: L.published,
+      long: contextToNumber(m.context_window) >= LONG_CONTEXT_TOKENS });
   }
 });
 
@@ -106,14 +106,16 @@ const groups: Group[] = otherGroup ? [...mainGroups, otherGroup] : mainGroups;
 const total = listings.length;
 const providerCount = new Set(listings.map(x => x.p.id)).size;
 const listedProviders = activeProviders.filter(p => listings.some(x => x.p.id === p.id));
-const capCount = (c: Cap) => listings.filter(x => x.caps.includes(c)).length;
+const capCount = (c: Cap) => listings.filter(x => x.caps.some(k => k.key === c)).length;
 const pubCount = listings.filter(x => x.pub).length;
 const chips = [
-  { name: 'vision', label: 'Vision', count: capCount('vision') },
+  { name: 'vision', label: 'Vision input', count: capCount('vision') },
   { name: 'reasoning', label: 'Reasoning', count: capCount('reasoning') },
-  { name: 'code', label: 'Code', count: capCount('code') },
+  { name: 'coding', label: 'Coding', count: capCount('coding') },
+  { name: 'long', label: `${LONG_CONTEXT_TOKENS / 1000}K+ context`, count: listings.filter(x => x.long).length },
   { name: 'pub', label: 'Published RPM or TPM', count: pubCount },
 ];
+const capChip = capabilityChip;
 
 const nprovText = (n: number) => ` · ${n} provider${n === 1 ? '' : 's'}`;
 // Vendor is plain text; skip it when the family name already starts with it ("Mistral / Magistral …").
@@ -123,8 +125,9 @@ const rowAttrs = (x: Listing, g: Group) => ({
   'data-m-row': '',
   'data-key': x.key,
   'data-prov': x.p.id,
-  'data-caps': x.caps.join(' '),
+  'data-caps': x.caps.map(c => c.key).filter(k => (FILTER_CAPS as string[]).includes(k)).join(' '),
   'data-pub': String(x.pub),
+  'data-long': String(x.long),
   'data-search': [x.m.id, x.m.name, x.p.name, x.p.id, x.f?.name, x.f?.category].filter(Boolean).join(' ').toLowerCase(),
   'data-group': g.key,
 });
@@ -138,6 +141,8 @@ const NCOL = 7;
 const AUTO_NOTE = 'new models grouped by vendor';
 
 const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
+// Families with their own landing page (enough providers or listings; see lib/families.ts).
+const familyPageIds = new Set(familyPages(activeProviders).map(f => f.family.id));
 ---
 
 <Layout
@@ -175,12 +180,12 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
       <option value="">All providers</option>
       {listedProviders.map(p => <option value={p.id}>{p.name}</option>)}
     </select>
-    <span class="count" id="m-count" aria-live="polite"></span>
+    <span class="count" id="m-count" aria-live="polite"><span class="num">{total}</span> {total === 1 ? 'listing' : 'listings'}</span>
   </div>
   <p class="caption m-caption">
-    Families with published limits come first, highest TPM on top. New models outside a known family
-    are grouped by vendor after the named families. A dash means the provider does not publish that value;
-    it never means unlimited.
+    Families with published limits first, highest TPM on top; new models outside a known family are grouped by
+    vendor. <span class="m-key">—</span> = not disclosed by the provider (never unlimited). Capabilities come from
+    the provider's catalog; a <span class="tag tag-o tag-hint">dashed</span> label is only suggested by the model name.
   </p>
 
   <div class="empty" id="m-empty" hidden>
@@ -211,7 +216,9 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                   {g.f ? (
                     <>
                       {vendorOf(g.f) && <span class="m-gh-soft">{vendorOf(g.f)} · </span>}
-                      <span class="m-gh-name">{g.f.name}</span>
+                      {familyPageIds.has(g.f.id)
+                        ? <a class="m-gh-name m-gh-link" href={familyPath(g.f.id)}>{g.f.name}</a>
+                        : <span class="m-gh-name">{g.f.name}</span>}
                       {g.f.auto && <span class="m-gh-soft"> · {AUTO_NOTE}</span>}
                       <span class="m-gh-soft" data-m-nprov>{nprovText(g.nprov)}</span>
                     </>
@@ -240,7 +247,7 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                     <td class="r">{x.rpm != null ? <span class="num">{formatCount(x.rpm)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
                     <td class="r">{x.tpm != null ? <span class="num">{formatCount(x.tpm)}</span> : <NotPublished variant="dash" note={limitTip(x)} />}</td>
                     <td class="r">{t ? <span class="num" title={t.title}>{t.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
-                    <td><span class="m-caps">{x.caps.map(c => <span class="tag tag-o">{c}</span>)}</span></td>
+                    <td><span class="m-caps">{x.caps.map(c => <button {...capChip(c)}>{CAPABILITY_SHORT[c.key]}</button>)}</span></td>
                     <td class="r"><a class="lnk m-nowrap" href={useHref(x)} aria-label={`Use ${x.m.id} from ${x.p.name} in Quick start`}>Use →</a></td>
                   </tr>
                 );
@@ -267,7 +274,9 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
               {g.f ? (
                 <>
                   {vendorOf(g.f) && <span class="m-gh-soft">{vendorOf(g.f)} · </span>}
-                  <span class="m-gh-name">{g.f.name}</span>
+                  {familyPageIds.has(g.f.id)
+                    ? <a class="m-gh-name m-gh-link" href={familyPath(g.f.id)}>{g.f.name}</a>
+                    : <span class="m-gh-name">{g.f.name}</span>}
                   {g.f.auto && <span class="m-gh-soft"> · {AUTO_NOTE}</span>}
                   <span class="m-gh-soft" data-m-nprov>{nprovText(g.nprov)}</span>
                 </>
@@ -292,10 +301,10 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
                       <span class="m-prov"><StatusSlot providerId={x.p.id} liveOnly /><a class="lnk" href={`/providers/${x.p.id}/`}>{x.p.name}</a></span>
                       {x.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.rpm)}</span> RPM</span></>}
                       {x.tpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(x.tpm)}</span> TPM</span></>}
-                      {x.pub && (x.tpm == null || x.rpm == null) && <><span class="sep" aria-hidden="true">·</span><span>{x.rpm == null ? 'RPM' : 'TPM'} not published</span></>}
-                      {!x.pub && <><span class="sep" aria-hidden="true">·</span><span>Limits not published</span></>}
+                      {x.pub && (x.tpm == null || x.rpm == null) && <><span class="sep" aria-hidden="true">·</span><span>{x.rpm == null ? 'RPM' : 'TPM'} not disclosed</span></>}
+                      {!x.pub && <><span class="sep" aria-hidden="true">·</span><span>Limits not disclosed</span></>}
                       {t && <><span class="sep" aria-hidden="true">·</span><span><span class="num" title={t.title}>{t.text}</span> context</span></>}
-                      {x.caps.length > 0 && <><span class="sep" aria-hidden="true">·</span><span class="m-caps">{x.caps.map(c => <span class="tag tag-o">{c}</span>)}</span></>}
+                      {x.caps.length > 0 && <><span class="sep" aria-hidden="true">·</span><span class="m-caps">{x.caps.map(c => <button {...capChip(c)}>{CAPABILITY_SHORT[c.key]}</button>)}</span></>}
                     </div>
                   </div>
                 );
@@ -314,31 +323,38 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
 </Layout>
 
 <style>
-  .m-caption { margin-bottom: 12px; max-width: 72ch; }
-  .m-tbl tr.grp .m-gh-name, .m-list .m-gh-name { color: var(--text-secondary); }
+  .m-caption { margin: -4px 0 12px; max-width: 80ch; }
+  .m-key { color: var(--text-secondary); }
+  .m-tbl tr.grp .m-gh-name, .m-list .m-gh-name { color: var(--text-primary); }
   /* Group labels are real headings for crawlers and screen readers: a rowgroup <th> on desktop and an
-     <h2> on mobile. Both keep the look of the old <td> / <div> label. */
-  .m-tbl tr.grp th.m-gh { background: var(--bg-surface); border-bottom-color: var(--border-default); font: 600 12px/16px var(--font-ui); color: var(--text-muted); height: 32px; padding-block: 6px; white-space: normal; }
+     <h2> on mobile. Both match the global group-row band (.tbl tr.grp). */
+  .m-tbl tr.grp th.m-gh { background: var(--bg-surface); border-top: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); font: 600 var(--fs-caption)/16px var(--font-ui); color: var(--text-secondary); height: 30px; padding: 6px 12px; text-align: left; white-space: normal; }
+  .m-tbl thead + tbody tr.grp th.m-gh { border-top: 0; }
+  .m-tbl tbody tr.grp:hover th { background: var(--bg-surface); }
   .m-list h2.sticky-h { margin-block: 0; text-wrap: initial; }
   /* Mobile row status dots sit in the gutter left of the provider name, out of the flow (like
      .slot:not([data-live-only]) in global.css): the name never moves, live or not. The liveOnly notice above
      keeps the global display:none when status is not live, as designed (no empty gap). */
-  .m-prov :global(.slot) { position: absolute; left: -11px; top: 50%; height: 8px; margin-top: -4px; }
+  .m-prov :global(.slot) { position: absolute; left: -12px; top: 50%; height: 8px; margin-top: -4px; }
   .m-gh-soft { font-weight: 400; color: var(--text-muted); }
+  .m-gh-link { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+  .m-gh-link:hover { color: var(--brand); text-decoration-color: var(--brand); }
   .m-pcell { gap: 8px; }
   .m-nowrap { white-space: nowrap; }
   .m-caps { display: inline-flex; flex-wrap: wrap; gap: 4px; }
   .m-prov { position: relative; display: inline-flex; align-items: center; }
   .m-grp + .m-grp { margin-top: 8px; }
   .m-fold { margin: 4px 0 8px; }
-  .m-tbl tbody tr[data-m-more-row] td { padding-block: 10px; }
+  .m-tbl tbody tr[data-m-more-row] td { padding-block: 8px; }
 </style>
 
 <script>
   import { setChip, chipEnabled } from '../../components/ui';
 
-  type Filters = { q: string; vision: boolean; reasoning: boolean; code: boolean; pub: boolean; prov: string };
-  interface Item { key: string; search: string; caps: string[]; pub: boolean; prov: string }
+  type Toggle = 'vision' | 'reasoning' | 'coding' | 'long' | 'pub';
+  type Filters = Record<Toggle, boolean> & { q: string; prov: string };
+  interface Item { key: string; search: string; caps: string[]; pub: boolean; long: boolean; prov: string }
+  const TOGGLES: Toggle[] = ['vision', 'reasoning', 'coding', 'long', 'pub'];
 
   const results = document.getElementById('m-results');
   const empty = document.getElementById('m-empty');
@@ -353,18 +369,44 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
     search: el.dataset.search ?? '',
     caps: (el.dataset.caps ?? '').split(' ').filter(Boolean),
     pub: el.dataset.pub === 'true',
+    long: el.dataset.long === 'true',
     prov: el.dataset.prov ?? '',
   }));
 
-  const f: Filters = { q: (search?.value ?? '').trim().toLowerCase(), vision: false, reasoning: false, code: false, pub: false, prov: provSelect?.value ?? '' };
+  // Deep links from the home page and elsewhere: ?cap=vision,reasoning&long=1&pub=1&provider=groq
+  const params = new URL(location.href).searchParams;
+  const caps = new Set((params.get('cap') ?? '').split(',').map(s => s.trim()));
+  const f: Filters = {
+    q: (search?.value ?? '').trim().toLowerCase(),
+    vision: caps.has('vision'), reasoning: caps.has('reasoning'), coding: caps.has('coding'),
+    long: params.get('long') === '1', pub: params.get('pub') === '1',
+    prov: params.get('provider') ?? provSelect?.value ?? '',
+  };
+  if (provSelect) {
+    if (!Array.from(provSelect.options).some(o => o.value === f.prov)) f.prov = '';
+    provSelect.value = f.prov;
+  }
   const open = new Set<string>();
+
+  function writeUrl() {
+    try {
+      const url = new URL(location.href);
+      const set = (k: string, v: string) => { if (v) url.searchParams.set(k, v); else url.searchParams.delete(k); };
+      set('cap', (['vision', 'reasoning', 'coding'] as Toggle[]).filter(k => f[k]).join(','));
+      set('long', f.long ? '1' : '');
+      set('pub', f.pub ? '1' : '');
+      set('provider', f.prov);
+      history.replaceState(history.state, '', url);
+    } catch { /* ignore */ }
+  }
 
   const matches = (x: Item, o: Partial<Filters> = {}) => {
     const s = { ...f, ...o };
     if (s.q && !x.search.includes(s.q)) return false;
     if (s.vision && !x.caps.includes('vision')) return false;
     if (s.reasoning && !x.caps.includes('reasoning')) return false;
-    if (s.code && !x.caps.includes('code')) return false;
+    if (s.coding && !x.caps.includes('coding')) return false;
+    if (s.long && !x.long) return false;
     if (s.pub && !x.pub) return false;
     if (s.prov && x.prov !== s.prov) return false;
     return true;
@@ -380,16 +422,17 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
 
   function apply() {
     const shown = new Set(items.filter(x => matches(x)).map(x => x.key));
-    const filtered = shown.size !== items.length || !!(f.q || f.vision || f.reasoning || f.code || f.pub || f.prov);
+    const filtered = shown.size !== items.length || !!(f.q || TOGGLES.some(k => f[k]) || f.prov);
 
     for (const chip of chips) {
-      const name = chip.dataset.chip as 'vision' | 'reasoning' | 'code' | 'pub';
+      const name = chip.dataset.chip as Toggle;
       setChip(chip, { count: countWith({ [name]: true }), pressed: f[name], hideIfTotal: shown.size });
     }
 
     if (countEl) {
+      // Always show the result count (toolbar convention): "42 listings", or "12 of 42 listings" when filtered.
       if (filtered) countEl.replaceChildren(numSpan(shown.size), ' of ', numSpan(items.length), ' listings');
-      else countEl.replaceChildren();
+      else countEl.replaceChildren(numSpan(items.length), items.length === 1 ? ' listing' : ' listings');
     }
 
     const none = shown.size === 0;
@@ -443,12 +486,13 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
   document.getElementById('m-chips')?.addEventListener('click', event => {
     const chip = (event.target as Element).closest<HTMLButtonElement>('[data-chip]');
     if (!chip || !chipEnabled(chip)) return;
-    const name = chip.dataset.chip as 'vision' | 'reasoning' | 'code' | 'pub';
+    const name = chip.dataset.chip as Toggle;
     f[name] = !f[name];
+    writeUrl();
     apply();
   });
 
-  provSelect?.addEventListener('change', () => { f.prov = provSelect.value; apply(); });
+  provSelect?.addEventListener('change', () => { f.prov = provSelect.value; writeUrl(); apply(); });
 
   document.addEventListener('click', event => {
     const btn = (event.target as Element | null)?.closest?.('[data-m-toggle]') as HTMLButtonElement | null;
@@ -460,9 +504,10 @@ const topFamilies = mainGroups.slice(0, 4).map(g => g.f!.name).join(', ');
   });
 
   document.getElementById('m-clear')?.addEventListener('click', () => {
-    f.vision = f.reasoning = f.code = f.pub = false;
+    for (const k of TOGGLES) f[k] = false;
     f.prov = '';
     if (provSelect) provSelect.value = '';
+    writeUrl();
     if (search && search.value) {
       search.value = '';
       // The SearchInput clear button rewrites ?q= and fires search-change, which re-applies.

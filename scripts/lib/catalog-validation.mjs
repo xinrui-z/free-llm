@@ -16,9 +16,20 @@ const future = (value, ms) => validDate(value) && value > isoDay(ms + DAY);
 
 // Text the site renders; numbers or objects here crash or garble pages.
 const PROVIDER_TEXT = ['description', 'context_window', 'quota_note', 'catalog_note', 'archive_reason', 'pricing_note'];
-const MODEL_TEXT = ['context_window', 'description'];
+const MODEL_TEXT = ['context_window', 'description', 'max_output_tokens'];
 export const STALE_REVIEW_DAYS = 90;
 export const PRICE_EXPIRY_WARNING_DAYS = 30;
+
+// Structured free-tier limits (optional `limits` array). Each entry is one published number with the scope it
+// applies to. An unknown value is left out entirely; it is never written as 0 or as a huge number.
+//   scope "provider": one value for every free-tier account and model.
+//   scope "account":  per account / organization / project; may differ by account tier.
+//   scope "model":    a separate counter for each listed model (optionally only the IDs in `models`).
+//   scope "key":      per API key.
+export const LIMIT_METRICS = Object.freeze(['rpm', 'tpm', 'rpd', 'tpd', 'requests_per_month', 'tokens_per_month', 'concurrent_requests']);
+export const LIMIT_SCOPES = Object.freeze(['provider', 'account', 'model', 'key']);
+// Model capability flags a maintainer may record from the provider's documentation (true or false only).
+export const CAPABILITY_FLAGS = Object.freeze(['reasoning', 'tool_calling', 'structured_output']);
 
 /** Sorts providers by `_order.json` IDs; unlisted providers follow alphabetically. Returns a new array. */
 export function sortProviders(providers, order = []) {
@@ -91,6 +102,13 @@ export function validateProvider(p, expectedId, options) {
       for (const field of ['rpm', 'tpm']) if (m[field] != null) require(nonnegative(m[field]), `${m.id}: ${field} must be nonnegative or null`);
       for (const field of MODEL_TEXT) if (m[field] != null) require(typeof m[field] === 'string', `${m.id}: ${field} must be a string`);
       if (m.modalities != null) require(strings(m.modalities), `${m.id}: modalities must be an array of strings`);
+      if (m.capabilities != null) {
+        require(object(m.capabilities), `${m.id}: capabilities must be an object`);
+        if (object(m.capabilities)) for (const [flag, value] of Object.entries(m.capabilities)) {
+          require(CAPABILITY_FLAGS.includes(flag), `${m.id}: unknown capability ${flag}`);
+          require(typeof value === 'boolean', `${m.id}: capability ${flag} must be true or false (omit it when unknown)`);
+        }
+      }
       if (m.pricing != null) {
         const price = m.pricing;
         require(object(price) && nonnegative(price.input_per_million) && nonnegative(price.output_per_million) && /^[A-Z]{3}$/.test(price.currency), `${m.id}: invalid per-million-token pricing`);
@@ -119,6 +137,25 @@ export function validateProvider(p, expectedId, options) {
     for (const s of Array.isArray(p.sources) ? p.sources : []) {
       require(object(s) && httpsURL(s.url) && typeof s.label === 'string' && s.label.trim() && validDate(s.checked_at), 'sources need an HTTPS URL, label and checked_at date');
       if (object(s)) notFuture(s.checked_at, `source ${s.url} checked_at`);
+    }
+  }
+  if (p.limits !== undefined) {
+    require(Array.isArray(p.limits) && p.limits.length > 0, 'limits must be a nonempty array when present');
+    const seenLimits = new Set();
+    for (const l of Array.isArray(p.limits) ? p.limits : []) {
+      if (!object(l)) { errors.push('limits entries must be objects'); continue; }
+      require(LIMIT_METRICS.includes(l.metric), `limits: metric must be one of ${LIMIT_METRICS.join(', ')}`);
+      require(nonnegative(l.value), `limits: ${l.metric} value must be a published nonnegative number (omit unknown limits)`);
+      require(LIMIT_SCOPES.includes(l.scope), `limits: ${l.metric} scope must be one of ${LIMIT_SCOPES.join(', ')}`);
+      require(httpsURL(l.source_url) && validDate(l.checked_at), `limits: ${l.metric} needs an HTTPS source_url and checked_at date`);
+      if (validDate(l.checked_at)) notFuture(l.checked_at, `limits: ${l.metric} checked_at`);
+      if (l.note != null) require(typeof l.note === 'string', `limits: ${l.metric} note must be a string`);
+      // Like model_order, IDs no longer listed are tolerated (the site ignores them), so catalog sync removing a
+      // model can never block on a hand-maintained limit.
+      if (l.models != null) require(strings(l.models) && l.models.length > 0, `limits: ${l.metric} models must be a nonempty array of model IDs`);
+      const key = `${l.metric}|${l.scope}|${strings(l.models) ? [...l.models].sort().join(',') : '*'}`;
+      require(!seenLimits.has(key), `limits: duplicate ${l.metric} for scope ${l.scope}`);
+      seenLimits.add(key);
     }
   }
   return errors;

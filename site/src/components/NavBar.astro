@@ -1,31 +1,66 @@
 ---
-// Sticky top nav. Providers is active on / and /providers/*. Below 640px: row 1 = brand + GitHub,
-// row 2 = the links (incl. Paid rates) in one horizontally scrollable row with a right fade.
+// Sticky top nav: one flat level, in the order a developer moves through the data —
+// find a provider, compare models, compare paid rates, generate a config, see what changed.
+// Providers is active on / and /providers/*. Below 640px: row 1 = brand + theme + GitHub,
+// row 2 = the links in one horizontally scrollable row with a right fade.
 import Icon from './Icon.astro';
 const path = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const links = [
   { href: '/', label: 'Providers', active: path === '/' || path === '/providers' || path.startsWith('/providers/') },
   { href: '/models/', label: 'Models', active: path === '/models' || path.startsWith('/models/') },
+  { href: '/pricing/', label: 'Paid rates', active: path === '/pricing' || path.startsWith('/pricing/') },
   { href: '/configs/', label: 'Tools', active: path === '/configs' || path.startsWith('/configs/') },
   { href: '/changelog/', label: 'Changelog', active: path === '/changelog' || path.startsWith('/changelog/') },
 ];
-const paidActive = path === '/pricing' || path.startsWith('/pricing/');
 ---
 <header class="nav" id="navbar">
   <div class="nav-in max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
     <a class="brand-link" href="/" aria-label="Free LLM APIs, all providers">
-      <img src="/logo.svg" alt="" width="24" height="24" />
+      <img src="/logo.svg" alt="" width="20" height="20" />
       <span>Free LLM APIs</span>
     </a>
     <nav class="nav-links" aria-label="Main">
       {links.map(l => <a href={l.href} aria-current={l.active ? 'page' : undefined}>{l.label}</a>)}
-      <a href="/pricing/" class="m-only" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
     </nav>
     <div class="nav-right">
-      <a href="/pricing/" class="paid-link" aria-current={paidActive ? 'page' : undefined}>Paid rates</a>
+      <button type="button" class="theme-btn" id="theme-toggle" aria-label="Switch to light theme" title="Switch theme">
+        <span class="theme-ic theme-ic-sun"><Icon name="sun" size={16} /></span>
+        <span class="theme-ic theme-ic-moon"><Icon name="moon" size={16} /></span>
+      </button>
       <a class="gh" href="https://github.com/xinrui-z/free-llm" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
-        <Icon name="github" size={18} />
+        <Icon name="github" size={16} />
       </a>
     </div>
   </div>
 </header>
+
+<style>
+  /* The icon shows the theme you switch TO: a sun in dark mode, a moon in light mode. */
+  .theme-ic { display: inline-flex; }
+  .theme-ic-moon { display: none; }
+  :global(:root[data-theme="light"]) .theme-ic-sun { display: none; }
+  :global(:root[data-theme="light"]) .theme-ic-moon { display: inline-flex; }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme="dark"])) .theme-ic-sun { display: none; }
+    :global(:root:not([data-theme="dark"])) .theme-ic-moon { display: inline-flex; }
+  }
+</style>
+
+<script>
+  // Toggle between light and dark; the choice is saved per browser (a convenience only: without storage
+  // the OS preference applies). The inline script in Layout.astro applies it before first paint.
+  const button = document.getElementById('theme-toggle');
+  const media = matchMedia('(prefers-color-scheme: light)');
+  const current = () => document.documentElement.dataset.theme ?? (media.matches ? 'light' : 'dark');
+  const label = () => button?.setAttribute('aria-label', `Switch to ${current() === 'light' ? 'dark' : 'light'} theme`);
+  label();
+  // Without a saved choice the page follows the OS; keep the button's name in step when that changes.
+  media.addEventListener('change', label);
+  button?.addEventListener('click', () => {
+    const next = current() === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', next === 'light' ? '#FFFFFF' : '#0B0C0E'));
+    try { localStorage.setItem('theme', next); } catch { /* storage blocked: theme lasts for this page */ }
+    label();
+  });
+</script>

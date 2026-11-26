@@ -26,6 +26,8 @@ export interface Item {
   tag: string;
   /** Show the 6px red dot in the tag (archive events only). */
   archivedTag: boolean;
+  /** Health events (outage / degraded / recovery) render as a status pill in that tone; catalog events are neutral tags. */
+  tone: 'ok' | 'warn' | 'err' | null;
   title: TextPart[];
   /** " · Provider archived 2026-11-16" on historical entries of archived providers. */
   suffix: string | null;
@@ -61,6 +63,9 @@ const LABEL: Record<ChangeType, string> = {
   [REVIEW]: 'Documentation review',
 };
 const TAG: Record<string, string> = { [REVIEW]: 'Reviewed' };
+// Status semantics apply only to health events (MASTER.md "Status labels"); every other kind is a neutral tag.
+const TONE: Record<string, Item['tone']> = { outage: 'err', degraded: 'warn', recovery: 'ok' };
+export const toneOf = (kind: string): Item['tone'] => (Object.hasOwn(TONE, kind) ? TONE[kind] : null);
 const MODELS_SHOWN = 3;
 const REVIEW_NOTE = 'Model IDs, limits and source links re-checked against official docs. A documentation review does not replace live API probes.';
 
@@ -133,6 +138,7 @@ function entryItem(e: ChangeEntry, kind: string, providers: ProviderIndex, index
     kind,
     tag: tagLabel(kind),
     archivedTag: kind === 'provider_removed',
+    tone: toneOf(kind),
     title: linkTitle(e, providers),
     suffix: old ? `· Provider archived ${p!.archivedOn}` : null,
     old,
@@ -147,7 +153,7 @@ function reviewItem(date: string, es: ChangeEntry[], providers: ProviderIndex): 
     if (i) title.push({ text: ', ' });
     title.push({ text: providerName(e, providers), href: href(e.provider_id, providers) });
   });
-  return { key: `${date}-${REVIEW}`, kind: REVIEW, tag: tagLabel(REVIEW), archivedTag: false, title, suffix: null, old: false, detail: REVIEW_NOTE, models: null };
+  return { key: `${date}-${REVIEW}`, kind: REVIEW, tag: tagLabel(REVIEW), archivedTag: false, tone: null, title, suffix: null, old: false, detail: REVIEW_NOTE, models: null };
 }
 
 export function buildView(entries: ChangeEntry[], providers: ProviderIndex): View {

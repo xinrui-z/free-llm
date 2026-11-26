@@ -1,0 +1,221 @@
+---
+// /models/<family>/ — "Where can I call <family> models for free?" One table of real provider offerings of one
+// model family, from the same catalog as /models. Pages exist only for families with enough data (lib/families.ts);
+// every value follows the Not disclosed convention. Works in both catalog modes like providers/[id].astro.
+import Layout from '../../layouts/Layout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import StatusNotice from '../../components/StatusNotice.astro';
+import NotPublished from '../../components/NotPublished.astro';
+import CopyButton from '../../components/CopyButton.astro';
+import ProviderLogo from '../../components/ProviderLogo.astro';
+import StatusSlot from '../../components/StatusSlot.astro';
+import fallbackProviders, { type Provider } from '../../data/providers';
+import { getProviders } from '../../lib/providers';
+import { siteURL } from '../../lib/site-url';
+import { accessLine, accessShort, clampText, formatCount, formatDate, formatTokens, limitsOf, NO_CONTEXT_NOTE } from '../../lib/format';
+import { CAPABILITY_SHORT, capabilityChip, inputModalities, modelCapabilities } from '../../lib/capabilities';
+import { familyPages, familyPath } from '../../lib/families';
+
+export function getStaticPaths() {
+  return familyPages(fallbackProviders).map(f => ({ params: { family: f.family.id } }));
+}
+
+const providers = getProviders(Astro.locals) as Provider[];
+const page = familyPages(providers).find(f => f.family.id === Astro.params.family);
+// Like provider pages: a family that exists in the bundled snapshot but vanished only because live providers
+// were dropped by validation (or the catalog is unavailable) is a temporary 503, never a confirmed 404.
+const catalog = Astro.locals.catalog;
+const transient = catalog?.unavailable || (!!catalog?.dropped?.length && familyPages(fallbackProviders).some(f => f.family.id === Astro.params.family));
+if (!page) return transient
+  ? new Response('Live catalog unavailable. Please try again shortly.', { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  : new Response(null, { status: 404 });
+
+const { family, entries } = page;
+const developer = family.category && family.category !== family.name ? family.category : '';
+const rows = entries.flatMap(({ provider, models }) => models.map(m => ({ p: provider, m, L: limitsOf(m) })));
+const verified = entries.map(e => formatDate(e.provider.last_verified)).filter((d): d is string => !!d).sort();
+const others = familyPages(providers).filter(f => f.family.id !== family.id);
+const capChip = capabilityChip;
+const useHref = (p: Provider, id: string) => `/providers/${encodeURIComponent(p.id)}/?model=${encodeURIComponent(id)}#quick-start`;
+
+const title = `Free ${family.name} API: ${rows.length} free models on ${entries.length} ${entries.length === 1 ? 'provider' : 'providers'}`;
+const description = clampText(`Where to call ${family.name}${developer ? ` (${developer})` : ''} models on a recurring free API tier: ${entries.map(e => e.provider.name).join(', ')}. Model IDs, context windows and the rate limits each provider discloses.`);
+const url = siteURL(Astro.site, familyPath(family.id));
+---
+
+<Layout
+  title={title.length <= 60 ? title : `Free ${family.name} API · Free LLM APIs`}
+  description={description}
+  jsonLd={{
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `Free ${family.name} API`,
+    description,
+    url,
+    ...(verified.length ? { dateModified: verified[verified.length - 1] } : {}),
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: entries.length,
+      itemListElement: entries.map((e, i) => ({ '@type': 'ListItem', position: i + 1, name: e.provider.name, url: siteURL(Astro.site, `/providers/${encodeURIComponent(e.provider.id)}/`) })),
+    },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteURL(Astro.site) },
+        { '@type': 'ListItem', position: 2, name: 'Models', item: siteURL(Astro.site, '/models/') },
+        { '@type': 'ListItem', position: 3, name: family.name, item: url },
+      ],
+    },
+  }}
+>
+  <nav class="crumb fam-crumb" aria-label="Breadcrumb"><a href="/models/">Models</a><span aria-hidden="true">/</span><span>{family.name}</span></nav>
+  <PageHeader
+    title={`Free ${family.name} API`}
+    lead={`${family.description}${developer && !family.description.toLowerCase().includes(developer.toLowerCase()) ? ` from ${developer}` : ''}, served on a recurring free tier by the providers below. Each row is one provider's own model ID and limits.`}
+  >
+    <Fragment slot="meta">
+      <span class="num">{formatCount(rows.length)}</span> free {rows.length === 1 ? 'listing' : 'listings'} · <span class="num">{formatCount(entries.length)}</span> {entries.length === 1 ? 'provider' : 'providers'}
+      {verified.length > 0 && <> · policies verified <span class="date">{verified[0]}</span>{verified[0] !== verified[verified.length - 1] && <> to <span class="date">{verified[verified.length - 1]}</span></>}</>}
+    </Fragment>
+  </PageHeader>
+  <StatusNotice liveOnly />
+
+  <section class="sect fam-first" aria-labelledby="fp-h">
+    <div class="sect-head">
+      <h2 class="h2" id="fp-h">Providers</h2>
+      <span class="caption">Published limits first (TPM, then RPM); same rule as the directory.</span>
+    </div>
+    <div class="tblwrap only-md">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th scope="col">Provider</th>
+            <th scope="col" class="r">{family.name} models</th>
+            <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>
+            <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>
+            <th scope="col">Access</th>
+            <th scope="col">Verified</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(({ provider: p, models }) => {
+            const L = limitsOf(p);
+            return (
+              <tr class="row" data-href={`/providers/${p.id}/`}>
+                <td><div class="pcell"><StatusSlot providerId={p.id} /><ProviderLogo provider={p} size={20} /><a class="pname" href={`/providers/${p.id}/`}>{p.name}</a></div></td>
+                <td class="r"><span class="num">{formatCount(models.length)}</span></td>
+                <td class="r">{L.rpm != null ? <span class="num">{formatCount(L.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>
+                <td class="r">{L.tpm != null ? <span class="num">{formatCount(L.tpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>
+                <td><span class="fam-acc" title={accessLine(p)}>{accessShort(p)}</span></td>
+                <td>{formatDate(p.last_verified) ? <span class="date sec">{formatDate(p.last_verified)}</span> : <span class="vs vs-unknown">Unknown</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <div class="only-sm srows">
+      {entries.map(({ provider: p, models }) => {
+        const L = limitsOf(p);
+        return (
+          <div class="srow">
+            <div class="idline"><a class="lnk fam-pname" href={`/providers/${p.id}/`}>{p.name}</a></div>
+            <div class="facts">
+              <span><span class="num">{formatCount(models.length)}</span> {family.name} {models.length === 1 ? 'model' : 'models'}</span>
+              <span class="sep" aria-hidden="true">·</span>
+              {L.published
+                ? <span>{[L.rpm != null && `${formatCount(L.rpm)} RPM`, L.tpm != null && `${formatCount(L.tpm)} TPM`].filter(Boolean).join(' · ')}</span>
+                : <span>Limits not disclosed</span>}
+              <span class="sep" aria-hidden="true">·</span>
+              <span>{accessShort(p)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+
+  <section class="sect" aria-labelledby="fm-h">
+    <div class="sect-head">
+      <h2 class="h2" id="fm-h">{family.name} models by provider</h2>
+      <span class="caption">A dash means the provider does not disclose that value. Dashed capability labels come from the model name only.</span>
+    </div>
+    <div class="tblwrap only-md">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th scope="col">Model ID</th>
+            <th scope="col">Provider</th>
+            <th scope="col" class="r">Context</th>
+            <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>
+            <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>
+            <th scope="col">Input</th>
+            <th scope="col">Capabilities</th>
+            <th scope="col"><span class="sr-only">Use</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ p, m, L }) => {
+            const ctx = formatTokens(m.context_window);
+            const mods = inputModalities(m);
+            return (
+              <tr data-fam-row data-provider={p.id}>
+                <td><div class="idcell"><span class="mono">{m.id}</span><CopyButton value={m.id} label={`model ID ${m.id}`} /></div></td>
+                <td><div class="pcell fam-pcell"><ProviderLogo provider={p} size={16} /><a class="lnk fam-nowrap" href={`/providers/${p.id}/`}>{p.name}</a></div></td>
+                <td class="r">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
+                <td class="r">{L.rpm != null ? <span class="num">{formatCount(L.rpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>
+                <td class="r">{L.tpm != null ? <span class="num">{formatCount(L.tpm)}</span> : <NotPublished variant="dash" note={p.quota_note} />}</td>
+                <td>{mods ? <span class="fam-tags">{mods.map(x => <span class="tag tag-o">{x}</span>)}</span> : <NotPublished variant="dash" note="The catalog lists no input modalities for this model." />}</td>
+                <td><span class="fam-tags">{modelCapabilities(m).filter(c => c.key !== 'vision').map(c => <button {...capChip(c)}>{CAPABILITY_SHORT[c.key]}</button>)}</span></td>
+                <td class="r"><a class="lnk fam-nowrap" href={useHref(p, m.id)} aria-label={`Use ${m.id} from ${p.name} in Quick start`}>Use →</a></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+    <div class="only-sm srows">
+      {rows.map(({ p, m, L }) => {
+        const ctx = formatTokens(m.context_window);
+        const caps = modelCapabilities(m);
+        return (
+          <div class="srow" data-fam-row-sm data-provider={p.id}>
+            <div class="idline">
+              <span class="mono">{m.id}</span>
+              <CopyButton value={m.id} label={`model ID ${m.id}`} />
+              <span class="use"><a class="lnk fam-nowrap" href={useHref(p, m.id)} aria-label={`Use ${m.id} from ${p.name} in Quick start`}>Use →</a></span>
+            </div>
+            <div class="facts">
+              <a class="lnk" href={`/providers/${p.id}/`}>{p.name}</a>
+              {ctx && <><span class="sep" aria-hidden="true">·</span><span><span class="num" title={ctx.title}>{ctx.text}</span> context</span></>}
+              {L.rpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(L.rpm)}</span> RPM</span></>}
+              {L.tpm != null && <><span class="sep" aria-hidden="true">·</span><span><span class="num">{formatCount(L.tpm)}</span> TPM</span></>}
+              {!L.published && <><span class="sep" aria-hidden="true">·</span><span>Limits not disclosed</span></>}
+              {caps.length > 0 && <><span class="sep" aria-hidden="true">·</span><span class="fam-tags">{caps.map(c => <button {...capChip(c)}>{CAPABILITY_SHORT[c.key]}</button>)}</span></>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+    <p class="caption fam-note">Models are grouped by their ID; offerings with different IDs are listed separately even when the names look alike, because providers can serve different versions, quantizations or context limits.</p>
+  </section>
+
+  {others.length > 0 && (
+    <section class="sect" aria-labelledby="fo-h">
+      <h2 class="h3" id="fo-h">Other model families</h2>
+      <p class="fam-others">{others.map((f, i) => <>{i > 0 && ' · '}<a class="lnk" href={familyPath(f.family.id)}>{f.family.name}</a> <span class="muted">({f.listings})</span></>)}</p>
+    </section>
+  )}
+</Layout>
+
+<style>
+  .fam-crumb { display: flex; gap: 6px; }
+  .fam-first { margin-top: 8px; }
+  .fam-nowrap { white-space: nowrap; }
+  .fam-pname { font-weight: 500; color: var(--text-primary); }
+  .fam-pcell { gap: 8px; }
+  .fam-acc { font-size: var(--fs-caption); color: var(--text-secondary); cursor: help; }
+  .fam-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+  .fam-note { margin-top: 8px; max-width: 80ch; }
+  .fam-others { margin-top: 6px; line-height: 24px; font-size: var(--fs-data); }
+</style>

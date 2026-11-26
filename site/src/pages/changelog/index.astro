@@ -19,6 +19,7 @@ for (const p of providers) {
   providerIndex[p.id] = { name: p.name, archived, archivedOn: archived ? archiveDate(p, entries) : null };
 }
 const view = buildView(entries, providerIndex);
+const TONE_DOT = { ok: 'd-active', warn: 'd-degraded', err: 'd-dead' } as const;
 ---
 
 <Layout
@@ -40,7 +41,7 @@ const view = buildView(entries, providerIndex);
   }}
 >
   <PageHeader title="Changelog" lead="Changes to the provider and model catalog. Limits are re-verified by hand against official docs.">
-    <Fragment slot="meta"><span class="num" id="cl-total">{view.total}</span> <span id="cl-total-word">{view.total === 1 ? 'entry' : 'entries'}</span><span id="cl-last-wrap" hidden={!view.last}> · last change <span class="date" id="cl-last">{view.last}</span></span></Fragment>
+    <Fragment slot="meta"><span class="num" id="cl-total">{view.total}</span> <span id="cl-total-word">{view.total === 1 ? 'entry' : 'entries'}</span><span id="cl-last-wrap" hidden={!view.last}> · last change <span class="date" id="cl-last">{view.last}</span></span> · <a class="lnk" href="/changelog.json">JSON feed</a></Fragment>
   </PageHeader>
 
   <div id="changelog" data-providers={JSON.stringify(providerIndex)} data-signature={view.signature}>
@@ -58,7 +59,7 @@ const view = buildView(entries, providerIndex);
           <div class="chg-list">
             {day.items.map(item => (
               <div class:list={['chg', 'changelog-entry', { old: item.old }]} data-kind={item.kind}>
-                <span class="tag">{item.archivedTag && <span class="dot dot-sm d-dead" aria-hidden="true"></span>}{item.tag}</span>
+                <span class:list={item.tone ? ['pill', `pill-${item.tone}`] : ['tag']}>{item.tone && <span class:list={['dot', TONE_DOT[item.tone]]} aria-hidden="true"></span>}{item.archivedTag && <span class="dot dot-sm d-unknown" aria-hidden="true"></span>}{item.tag}</span>
                 <div class="min0">
                   <div class="chg-t">{item.title.map(part => part.href ? <a href={part.href}>{part.text}</a> : part.text)}{item.suffix && <> <span class="chg-suffix">{item.suffix}</span></>}</div>
                   {item.detail && <div class="chg-d">{item.detail}</div>}
@@ -74,12 +75,9 @@ const view = buildView(entries, providerIndex);
     </div>
     <p class="empty" id="cl-empty" hidden={view.total > 0}>No changes recorded yet.</p>
   </div>
-
-  <p class="caption cl-feed">Machine-readable feed: <a class="lnk mono" href="/changelog.json">/changelog.json</a></p>
 </Layout>
 
 <style>
-  .cl-feed { margin-top: 12px; padding-bottom: 8px; }
   #cl-toolbar[hidden], #cl-empty[hidden], #cl-last-wrap[hidden] { display: none; }
 </style>
 
@@ -97,6 +95,7 @@ const view = buildView(entries, providerIndex);
   import { buildView, type ChangeEntry, type Item, type ProviderIndex, type View } from './_changelog-view';
 
   const root = document.getElementById('changelog')!;
+  const TONE_DOT = { ok: 'd-active', warn: 'd-degraded', err: 'd-dead' } as const;
   const list = document.getElementById('changelog-list')!;
   const chips = document.getElementById('cl-chips')!;
   let providers: ProviderIndex = {};
@@ -143,8 +142,9 @@ const view = buildView(entries, providerIndex);
   function itemEl(item: Item) {
     const row = el('div', `chg changelog-entry${item.old ? ' old' : ''}`);
     row.dataset.kind = item.kind;
-    const tag = el('span', 'tag');
-    if (item.archivedTag) { const d = el('span', 'dot dot-sm d-dead'); d.setAttribute('aria-hidden', 'true'); tag.append(d); }
+    const tag = el('span', item.tone ? `pill pill-${item.tone}` : 'tag');
+    if (item.tone) { const d = el('span', `dot ${TONE_DOT[item.tone]}`); d.setAttribute('aria-hidden', 'true'); tag.append(d); }
+    if (item.archivedTag) { const d = el('span', 'dot dot-sm d-unknown'); d.setAttribute('aria-hidden', 'true'); tag.append(d); }
     tag.append(item.tag);
     const body = el('div', 'min0');
     const title = el('div', 'chg-t');

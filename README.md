@@ -20,10 +20,11 @@ Each provider page shows current status, response latency, RPM / TPM limits, mod
 
 | Page | Description |
 |------|-------------|
-| `/` | Provider directory: quickest first calls, then every free provider with search, filters and sort, plus recent changes |
+| `/` | Provider directory: rule-based "Explore" table (most free models, published rate limits, coding, long context, vision, reasoning, OpenAI-compatible, live availability), then every free provider with search, filters and sort, plus recent changes |
 | `/providers` | Redirects to `/`, keeping the query string (301 in dynamic mode; JS or meta refresh in static mode) |
-| `/providers/{id}` | Detail: models, rate limits, sources, code examples and daily probe history |
-| `/models` | Browse model families and published free quotas |
+| `/providers/{id}` | Detail: limits by metric and scope (RPM, TPM, RPD, TPD …), models, sources, code examples and daily probe history |
+| `/models` | Browse model families and published free quotas; filters for vision, reasoning, coding, 256K+ context and published limits (deep-linkable: `?cap=vision,reasoning&long=1&pub=1&provider=groq`) |
+| `/models/{family}` | One model family (e.g. `/models/glm/`) across providers; only for families with 2+ providers or 3+ free listings |
 | `/pricing` | Compare sourced per-token prices with verification dates, grouped by currency |
 | `/configs` | Tools: LiteLLM config for the providers you pick, and the values to paste into Open WebUI, LobeChat and Cursor |
 | `/changelog` | Provider status changes and model updates |
@@ -51,8 +52,9 @@ Evidence rules:
 
 - `sources` is optional: an array of official HTTPS URLs with a label and `checked_at` date, kept for maintainers (not shown on the site). When present it must be nonempty and valid.
 - Missing, blank or boolean prices never count as zero. A model API's `:free`/`-free` suffix alone is not evidence; automated free classification also requires explicit zero billing values.
-- A `null` RPM/TPM means unpublished or account-dependent, never unlimited. Daily caps (RPD, TPD) and monthly credit or token budgets go in `quota_note`; never derive a TPM from them.
-- Catalog `active` means listed, not operational. Health checks sample specific models with the monitoring account; missing or stale observations and account/quota errors (401/402/403/429) are `unknown`, not outages. Daily history records the worst result each day; the percentage is healthy days / observed days, not a time-based uptime SLA.
+- A `null` RPM/TPM means unpublished or account-dependent, never unlimited; the site shows it as "Not disclosed". Daily caps (RPD, TPD) and monthly budgets go in `quota_note`, and, when the official page states a number, also in `limits` with their scope; never derive a TPM from them.
+- Model capabilities come only from catalog data (`modalities`, or a documented `capabilities` flag). A capability suggested only by a model name ("-thinking", "coder") is shown as a dashed "name hint" chip; family-level tags never mark a model as capable. Missing modalities are "Not disclosed", never assumed to be text.
+- Catalog `active` means listed, not operational. Health checks sample specific models with the monitoring account; missing or stale observations and account/quota errors (401/402/403/429) are `unknown`, not outages. The site labels fresh probe errors as "Rate limited" (429), "Auth failed" (401/403) or "Model unavailable" (404) instead of "down", and providers absent from a fresh snapshot as "Not monitored". Daily history records the worst result each day; the percentage is healthy days / observed days, not a time-based uptime SLA.
 
 ---
 
@@ -95,7 +97,11 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
       "id": "model-id-1",           // model ID used in API requests
       "name": "Model Name",
       "context_window": "128K",     // optional string
-      "modalities": ["text"],       // text | vision | code | embedding
+      "max_output_tokens": "8K",    // optional string: documented maximum completion length
+      "modalities": ["text"],       // text | vision | code | embedding; omit when unknown (never assumed)
+      "capabilities": {             // optional; documented flags only, true or false; omit unknown ones
+        "reasoning": true, "tool_calling": true, "structured_output": false
+      },
       "rpm": 20,                    // nonnegative number or null
       "tpm": 20000,                 // nonnegative number or null
       "status": "active",           // active | deprecated
@@ -112,6 +118,12 @@ The authoritative rules are in [`scripts/lib/catalog-validation.mjs`](scripts/li
   "paid_models": [],                // optional, same shape; curated paid comparison, IDs must not repeat models
   "sources": [                      // optional; nonempty when present
     { "label": "Official free tier", "url": "https://example.com/pricing", "checked_at": "2026-11-16" }
+  ],
+  "limits": [                       // optional: one entry per published number, with its scope
+    // metric: rpm | tpm | rpd | tpd | requests_per_month | tokens_per_month | concurrent_requests
+    // scope:  provider (one value for the whole free tier) | account | model (per-model counter) | key
+    // value must be a published number: leave unknown limits out (never 0, never a large placeholder)
+    { "metric": "rpd", "value": 1000, "scope": "model", "note": "Free plan", "source_url": "https://example.com/limits", "checked_at": "2026-11-16" }
   ],
   "last_verified": "2026-11-16",    // YYYY-MM-DD: date the policy claims were reviewed
   "catalog_checked_at": "2026-11-16", // optional; written by automated catalog sync

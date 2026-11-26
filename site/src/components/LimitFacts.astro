@@ -3,7 +3,7 @@
 //   inline  — ".facts" line for rows/cards: "30 RPM · 8,000 TPM · 3 models · 128K context" (safe inside <a>)
 //   compact — 3-cell grid for pick cards: Requests/min · Tokens/min · Max context
 //   large   — 4-cell grid for the provider page: Requests/min · Tokens/min · Max context · Free models
-// Missing values follow the Not published convention; nothing is ever filled in.
+// Missing values follow the Not disclosed convention; nothing is ever filled in.
 import NotPublished from './NotPublished.astro';
 import { formatCount, formatTokens, limitsOf, maxContext, NO_CONTEXT_NOTE } from '../lib/format';
 interface Props {
@@ -21,11 +21,11 @@ const rpm = formatCount(L.rpm), tpm = formatCount(L.tpm);
   <div class:list={['facts', className]}>
     {L.published ? (
       <>
-        {rpm ? <span><span class="num">{rpm}</span> RPM</span> : <span class="muted">RPM not published</span>}
+        {rpm ? <span><span class="num">{rpm}</span> RPM</span> : <span class="muted">RPM not disclosed</span>}
         <span class="sep" aria-hidden="true">·</span>
-        {tpm ? <span><span class="num">{tpm}</span> TPM</span> : <span class="muted">TPM not published</span>}
+        {tpm ? <span><span class="num">{tpm}</span> TPM</span> : <span class="muted">TPM not disclosed</span>}
       </>
-    ) : <span class="muted">Limits not published</span>}
+    ) : <span class="muted">Limits not disclosed</span>}
     <span class="sep" aria-hidden="true">·</span>
     <span><span class="num">{formatCount(models)}</span> {models === 1 ? 'model' : 'models'}</span>
     {ctx && <><span class="sep" aria-hidden="true">·</span><span><span class="num" title={ctx.title}>{ctx.text}</span> context</span></>}
@@ -38,7 +38,7 @@ const rpm = formatCount(L.rpm), tpm = formatCount(L.tpm);
         <div><span class="lf-l">Tokens/min</span><span class="lf-v">{tpm ? <span class="num">{tpm}</span> : <NotPublished note={L.note} />}</span></div>
       </>
     ) : (
-      <div class="span2"><span class="lf-l">Request limits</span><span class="lf-v"><NotPublished note={L.note} label={size === 'large' ? 'Not published by the provider' : 'Not published · see provider terms'} /></span></div>
+      <div class="span2"><span class="lf-l">Request limits</span><span class="lf-v"><NotPublished note={L.note} label={size === 'large' ? 'Not disclosed by the provider' : 'Not disclosed · see provider terms'} /></span></div>
     )}
     <div><span class="lf-l">Max context</span><span class="lf-v">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished note={NO_CONTEXT_NOTE} />}</span></div>
     {size === 'large' && <div><span class="lf-l">Free models</span><span class="lf-v"><span class="num">{formatCount(models)}</span></span></div>}

@@ -9,6 +9,67 @@ export interface ProbeResult {
   fresh_ms?: number;
   history_90d?: HealthStatus[];
   coverage?: { total: number; checked: number; healthy: number };
+  /** False when a usable snapshot has no entry at all for this provider (it is not probed). */
+  monitored?: boolean;
+}
+
+/**
+ * What a probe result means for a reader, derived only from the checker's own status and error text.
+ * HTTP 429 (or a rate-limit message) is "rate_limited", never an outage: it reflects the monitoring account's
+ * quota, not the service. Auth errors and missing models are likewise not outages. Anything unrecognised stays
+ * "unknown"; nothing is guessed.
+ */
+export type ProbeDetail = 'operational' | 'degraded' | 'rate_limited' | 'auth_failed' | 'model_unavailable' | 'service_unavailable' | 'unknown' | 'not_monitored';
+export const DETAIL_WORDS: Record<ProbeDetail, string> = {
+  operational: 'Operational',
+  degraded: 'Degraded',
+  rate_limited: 'Rate limited',
+  auth_failed: 'Auth failed',
+  model_unavailable: 'Model unavailable',
+  service_unavailable: 'Service unavailable',
+  unknown: 'Unknown',
+  not_monitored: 'Not monitored',
+};
+export const DETAIL_NOTES: Record<ProbeDetail, string> = {
+  operational: 'The latest scheduled probe succeeded.',
+  degraded: 'The latest probes succeeded only partly or slowly.',
+  rate_limited: "The monitoring account hit a rate limit or quota (HTTP 429/402). This is not an outage; your own account's limits apply to you.",
+  auth_failed: "The monitoring account's key was rejected (HTTP 401/403). This says nothing about the service for other accounts.",
+  model_unavailable: 'The probed model was not found or not served (HTTP 404). Other models may still work.',
+  service_unavailable: 'Probes failed with server errors or timeouts within the freshness window.',
+  unknown: 'No usable probe result within the freshness window.',
+  not_monitored: 'This provider is not probed by the monitoring account.',
+};
+/** Details that describe the monitoring account's access, never the service's health. */
+export const NOT_AN_OUTAGE: readonly ProbeDetail[] = ['rate_limited', 'auth_failed', 'model_unavailable'];
+
+export function probeDetail(p: { status?: HealthStatus; error?: string | null; monitored?: boolean } | undefined): ProbeDetail {
+  if (!p || p.monitored === false || p.error === 'not_monitored') return 'not_monitored';
+  const error = typeof p.error === 'string' ? p.error : '';
+  // The checker's own short codes ("quota", "auth") as well as raw HTTP text.
+  if (/^quota$|\b429\b|rate[\s_-]?limit|too many requests/i.test(error)) return 'rate_limited';
+  if (/^auth$|\b40[13]\b|unauthori[sz]ed|forbidden|invalid[\s_-]?(api[\s_-]?)?key|authentication/i.test(error)) return 'auth_failed';
+  if (/^(model_)?not_found$|\b404\b|model[\s_-]?not[\s_-]?found|no such model|model[\s_-]?(is[\s_-]?)?(unavailable|not[\s_-]?supported|does not exist)/i.test(error)) return 'model_unavailable';
+  if (p.status === 'active') return 'operational';
+  if (p.status === 'degraded') return 'degraded';
+  if (p.status === 'dead') return 'service_unavailable';
+  return 'unknown';
+}
+
+/**
+ * The checker reports errors per model, not per provider. When a provider's own entry carries no error, the
+ * newest fresh model probe error of that provider explains an "unknown" provider status (e.g. "quota").
+ * Only errors from probes inside the freshness window are used (normalizeStatus marks older ones
+ * "not_checked_recently"); housekeeping codes such as "stale" or "not_checked" explain nothing.
+ */
+const NO_EXPLANATION = new Set(['stale', 'not_checked', 'not_checked_recently', 'not_monitored']);
+export function providerProbeError(p: ProbeResult, models: ModelProbe[] = []): string | undefined {
+  if (p.error) return p.error;
+  if (p.status !== 'unknown') return undefined;
+  const latest = models
+    .filter(m => m.provider_id === p.id && m.error && !NO_EXPLANATION.has(m.error) && m.checked_at)
+    .sort((a, b) => Date.parse(b.checked_at!) - Date.parse(a.checked_at!))[0];
+  return latest?.error;
 }
 export interface ModelProbe {
   provider_id: string;
@@ -52,12 +113,19 @@ export function normalizeStatus(input: unknown, ids: string[], now = Date.now())
     const p = entry(id), window = windows.get(id)!;
     const probeTime = p?.checked_at === undefined ? checked : Date.parse(p.checked_at);
     const probeFresh = fresh && recent(probeTime, window);
-    const status = probeFresh && HEALTH_STATUSES.includes(p?.status) ? p.status as HealthStatus : 'unknown';
+    const error = probeFresh && typeof p?.error === 'string' ? p.error : undefined;
+    const reported = probeFresh && HEALTH_STATUSES.includes(p?.status) ? p.status as HealthStatus : 'unknown';
+    // Quota, auth and missing-model errors describe the monitoring account, not the service: never count them
+    // as degraded or down (counts, dot colours and the "Issues" filter all read `status`).
+    const status = reported !== 'active' && error && NOT_AN_OUTAGE.includes(probeDetail({ status: reported, error })) ? 'unknown' : reported;
     return {
       id, status,
+      // A previously normalised snapshot keeps its flag (the client re-normalises after a failed poll).
+      monitored: !fresh || (!!p && p.monitored !== false),
       latency_ms: status !== 'unknown' && typeof p?.latency_ms === 'number' && Number.isFinite(p.latency_ms) && p.latency_ms >= 0 ? p.latency_ms : null,
       checked_at: probeFresh ? new Date(probeTime).toISOString() : undefined,
-      error: typeof p?.error === 'string' ? p.error : undefined,
+      // An error from a probe outside the freshness window says nothing about now.
+      error,
       fresh_ms: window,
       coverage: p?.coverage && ['total','checked','healthy'].every(k => Number.isInteger(p.coverage[k]) && p.coverage[k] >= 0) && p.coverage.healthy <= p.coverage.checked && p.coverage.checked <= p.coverage.total
         ? { total: p.coverage.total, checked: probeFresh ? p.coverage.checked : 0, healthy: probeFresh ? p.coverage.healthy : 0 } : undefined,
@@ -103,5 +171,5 @@ export function compareQuota(a: number | null | undefined, b: number | null | un
 }
 
 export function formatQuota(value: number | null | undefined) {
-  return value == null ? 'Not published' : `${value.toLocaleString('en-US')}/d`;
+  return value == null ? 'Not disclosed' : `${value.toLocaleString('en-US')}/d`;
 }

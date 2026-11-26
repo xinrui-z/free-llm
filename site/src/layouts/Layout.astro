@@ -41,7 +41,7 @@ const catalogNotice = !catalog?.unavailable ? null
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -70,22 +70,33 @@ const catalogNotice = !catalog?.unavailable ? null
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageURL} />
 
-    <!-- Theme -->
-    <meta name="theme-color" content="#0F172A" />
-    <meta name="color-scheme" content="dark" />
+    <!-- Theme: dark by default, light from the OS preference or a saved choice. Set before paint (no flash). -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0C0E" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+    <meta name="color-scheme" content="dark light" />
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t;
+          // A chosen theme overrides the OS preference for the browser bar colour too.
+          document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', t === 'light' ? '#FFFFFF' : '#0B0C0E'));
+        }
+      } catch {}
+    </script>
 
     <!-- JSON-LD Structured Data -->
     {jsonLd && (
       <script type="application/ld+json" set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')} />
     )}
   </head>
-  <body class="min-h-screen bg-[#0F172A] text-slate-100">
-    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-md focus:bg-[#1E293B] focus:px-3 focus:py-2 focus:text-sm">Skip to content</a>
+  <body class="min-h-screen">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-md focus:px-3 focus:py-2 focus:text-sm skip-link">Skip to content</a>
     <NavBar />
     <main id="main" tabindex="-1" class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
       {catalogNotice && (
-        <p role="status" class="mt-4 flex items-start gap-2 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-[13px] leading-[18px] text-slate-300">
-          <span class="dot d-unknown mt-[5px]" aria-hidden="true"></span><span>{catalogNotice}</span>
+        <p role="status" class="catalog-notice">
+          <span class="dot d-unknown" aria-hidden="true"></span><span>{catalogNotice}</span>
         </p>
       )}
       <slot />
@@ -104,9 +115,9 @@ const catalogNotice = !catalog?.unavailable ? null
           <ul>
             <li><a class="lnk" href="/">Providers</a></li>
             <li><a class="lnk" href="/models/">Models</a></li>
+            <li><a class="lnk" href="/pricing/">Paid rates</a></li>
             <li><a class="lnk" href="/configs/">Tools</a></li>
             <li><a class="lnk" href="/changelog/">Changelog</a></li>
-            <li><a class="lnk" href="/pricing/">Paid rates</a></li>
           </ul>
         </nav>
         <div>

@@ -119,3 +119,19 @@ test('the provider page and Tools name the API key variable from the public id, 
   expect(Array.isArray(entries)&&entries.length>0).toBe(true);
   expect(entries.map((e:{date:string})=>e.date)).toEqual(entries.map((e:{date:string})=>e.date).sort().reverse());
 });
+test('family pages and the on-demand sitemap follow the live catalog; fields the public DTO lacks read as not disclosed',async({page,request})=>{
+  const family=await page.goto('/models/glm/');
+  expect(family?.status()).toBe(200);
+  expect(family?.headers()['x-catalog-source']).toBe('live');
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Free GLM API');
+  const sitemap=await (await request.get('/sitemap-providers.xml')).text();
+  expect(sitemap).toContain('/providers/groq/');
+  expect(sitemap).toContain('/models/glm/');
+  // The public DTO has no `limits` yet (tests/public-catalog-fields.mjs), so the live page keeps the headline
+  // RPM/TPM and does not claim daily limits are undisclosed (they are in the provider's terms).
+  await page.goto('/providers/groq');
+  await expect(page.locator('.pp-limits tr[data-limit="rpm"]')).toContainText('30');
+  await expect(page.locator('.pp-limits tr[data-limit="rpd"]')).toHaveCount(0);
+  // A provider absent from a fresh status snapshot is "Not monitored", not down.
+  await expect(page.locator('[data-status-notice] [data-sn-text]')).toContainText('Not monitored');
+});

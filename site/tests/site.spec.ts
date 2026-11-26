@@ -56,8 +56,8 @@ test('the old /providers URL redirects to the directory and keeps the query', as
 test('model page reads live status and labels unpublished quotas honestly', async ({page}) => {
   await mock(page, 'dead');
   await page.goto('/models');
-  await expect(page.locator('.m-tbl [data-status-dot="groq"] .dot').first()).toHaveAttribute('title', 'Health: Down');
-  await expect(page.getByRole('button', { name: /^Not published\./ }).first()).toBeVisible();
+  await expect(page.locator('.m-tbl [data-status-dot="groq"] .dot').first()).toHaveAttribute('title', 'Health: Service unavailable');
+  await expect(page.getByRole('button', { name: /^Not disclosed\./ }).first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText('∞');
   await expect(page.locator('.m-tbl, .m-list')).not.toContainText([/unlimited/i, /unlimited/i]);
 });
@@ -188,20 +188,43 @@ test('archived services remain discoverable but are excluded from free recommend
   expect(alternatives.length).toBeGreaterThan(0);
   for (const id of alternatives) expect(active.map(p => p.id)).toContain(id);
 });
-test('quickest first call picks only active providers, published limits first', async ({page}) => {
+test('explore table ranks only by stated rules and never recommends archived providers', async ({page}) => {
   await mock(page);
   await page.goto('/');
-  const picks = await page.locator('[data-pick]').evaluateAll(cards => cards.map(c => (c as HTMLElement).dataset.pick!));
-  expect(picks.length).toBeGreaterThan(0);
-  expect(picks.length).toBeLessThanOrEqual(3);
-  const archivedIds = archived.map(p => p.id);
-  for (const id of picks) expect(archivedIds).not.toContain(id);
-  for (const id of picks) expect(active.map(p => p.id)).toContain(id);
-  // Providers that publish a request limit come before those that publish none.
-  const published = (id: string) => { const p = catalog.find(x => x.id === id); return p.rpm != null || p.tpm != null; };
-  const flags = picks.map(published);
-  expect(flags).toEqual([...flags].sort((a, b) => Number(b) - Number(a)));
-  expect(picks[0]).toBe('groq');
+  const table = page.locator('.ex-tbl');
+  for (const key of ['most-models', 'rate-limits', 'coding', 'long-context', 'vision', 'reasoning', 'openai-compatible']) {
+    await expect(table.locator(`tr[data-explore="${key}"]`)).toHaveCount(1);
+    await expect(table.locator(`tr[data-explore="${key}"] .ex-rule`)).not.toBeEmpty();
+  }
+  // No subjective superlatives in labels or rules.
+  await expect(table).not.toContainText(/\b(best|fastest|most reliable)\b/i);
+  // Archived providers never appear as leaders.
+  const leaders = await table.locator('.ex-lead a').evaluateAll(links => links.map(a => (a as HTMLAnchorElement).pathname.split('/').filter(Boolean).pop()));
+  for (const id of leaders) expect(archived.map(p => p.id)).not.toContain(id);
+  // Rate limits: providers that publish a limit are ranked by TPM then RPM, so Groq (8,000 TPM) leads.
+  const rate = table.locator('tr[data-explore="rate-limits"] .ex-lead li').first();
+  await expect(rate).toContainText('Groq');
+  await expect(rate).toContainText('8,000 TPM');
+  // Availability is live-only and counts providers whose fresh probe succeeded.
+  await expect(page.locator('html')).toHaveAttribute('data-live', 'live');
+  await expect(table.locator('tr[data-explore="availability"] [data-explore-live-count]')).toHaveText(String(active.length));
+  // Deep links apply their filter.
+  await table.locator('tr[data-explore="vision"] a.ex-name').click();
+  await expect(page).toHaveURL(/\/models\/\?cap=vision$/);
+  await expect(page.locator('[data-chip="vision"]')).toHaveAttribute('aria-pressed', 'true');
+  for (const caps of await page.locator('.m-tbl [data-m-row]:visible').evaluateAll(rows => rows.map(r => (r as HTMLElement).dataset.caps ?? ''))) {
+    expect(caps.split(' ')).toContain('vision');
+  }
+});
+test('model capabilities come from the catalog; name-only hints are marked as such', async ({page}) => {
+  await mock(page);
+  await page.goto('/models?q=glm-z1-flash');
+  const row = page.locator('.m-tbl tr[data-m-row]:visible', { hasText: 'glm-z1-flash' });
+  // GLM-Z1-Flash: reasoning is only suggested by the name, so the chip is a dashed hint.
+  await expect(row.locator('.tag-hint')).toHaveText('reasoning');
+  // Family tags (e.g. Gemini "thinking") no longer make every family member a reasoning model.
+  await page.goto('/models?q=gemini-3.1-flash-lite');
+  await expect(page.locator('.m-tbl tr[data-m-row]:visible', { hasText: 'gemini-3.1-flash-lite' }).locator('.m-caps')).not.toContainText('reasoning');
 });
 test('provider page ?model= selects the quick start model', async ({page}) => {
   await mock(page);
@@ -217,6 +240,61 @@ test('provider page ?model= selects the quick start model', async ({page}) => {
   await page.goto('/providers/groq?model=not-a-model');
   await expect(page.locator('#qs-model')).toHaveValue(active.find(p => p.id === 'groq').top_models[0]);
   await expect(page.locator('#qs-code-curl')).not.toContainText('not-a-model');
+});
+test('model family pages list each provider offering separately, from catalog data only', async ({page}) => {
+  await mock(page);
+  await page.goto('/models/glm/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Free GLM API');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/models\/glm\/$/);
+  type M = { id: string; status?: string };
+  const glm = active.flatMap(p => (p.models as M[]).filter(m => m.status !== 'deprecated' && /(?:^|[^a-z])(?:chat)?glm(?![a-z])/i.test(m.id)).map(m => `${p.id}:${m.id}`));
+  await expect(page.locator('[data-fam-row]')).toHaveCount(glm.length);
+  await expect(page.locator('[data-fam-row][data-provider="bigmodel"]').first()).toBeVisible();
+  // The models page links the family heading to its page.
+  await page.goto('/models');
+  await expect(page.locator('.m-tbl a.m-gh-link[href="/models/glm/"]')).toHaveCount(1);
+  // Families without enough data get no page.
+  const res = await page.goto('/models/no-such-family/');
+  expect(res?.status()).toBe(404);
+});
+test('provider pages show limits by metric and scope, with undisclosed metrics labelled', async ({page}) => {
+  await page.route('https://status.test/**', route => route.abort());
+  await page.goto('/providers/groq/');
+  const limits = page.locator('.pp-limits');
+  await expect(limits.locator('tr[data-limit="rpd"]')).toContainText('1,000');
+  await expect(limits.locator('tr[data-limit="rpd"]')).toContainText('Per model');
+  await page.goto('/providers/bigmodel/');
+  await expect(page.locator('.pp-limits tr[data-limit="rpm"]')).toContainText('Not disclosed');
+  await expect(page.locator('.pp-limits')).not.toContainText(/unlimited|∞/i);
+});
+test('theme toggle switches between light and dark and is remembered', async ({page}) => {
+  await page.route('https://status.test/**', route => route.abort());
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(await bg()).toBe('rgb(11, 12, 14)');
+  await page.locator('#theme-toggle').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await bg()).toBe('rgb(255, 255, 255)');
+  await page.goto('/models');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.evaluate(() => localStorage.removeItem('theme'));
+  await page.goto('/');
+  expect(await bg()).toBe('rgb(255, 255, 255)');
+});
+test('Tools states its support per tool and never offers setup for unsupported combinations', async ({page}) => {
+  await mock(page);
+  await page.goto('/configs');
+  const compat = page.locator('#t-compat');
+  await expect(compat.locator('tr', { hasText: 'LiteLLM' })).toContainText('Config generated');
+  await expect(compat.locator('tr', { hasText: 'Claude Code' })).toContainText('Not supported');
+  await expect(page.locator('[data-tool="claude-code"]')).toHaveCount(0);
+  // Tools whose file format is unverified get values only: switching to one hides the generated YAML.
+  await page.locator('[data-tool="continue"]').click();
+  await expect(page.locator('#t-panel-litellm')).toBeHidden();
+  await expect(page.locator('[data-manual-for="continue"]')).toContainText('No Continue config file is generated here yet');
+  await expect(page.locator('main')).not.toContainText(/sk-[A-Za-z0-9]{8,}/);
 });
 test('Tools YAML only includes the selected providers', async ({page}) => {
   await mock(page);
@@ -297,14 +375,14 @@ test('API key variable names come from the provider id in static mode', async ({
 test('mobile pages stay within the viewport and pricing sorts by keyboard', async ({page}, testInfo) => {
   await mock(page);
   await page.setViewportSize({width:390,height:844});
-  for (const path of ['/', '/models', '/providers', '/providers/groq', '/providers/github-models', '/pricing', '/configs', '/changelog']) {
+  for (const path of ['/', '/models', '/models/glm/', '/providers', '/providers/groq', '/providers/github-models', '/pricing', '/configs', '/changelog']) {
     await page.goto(path);
     const dimensions = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: window.innerWidth }));
     expect(dimensions.page, `${path} should fit the mobile viewport`).toBeLessThanOrEqual(dimensions.viewport);
   }
-  // "Not published" explanations open a tooltip that must stay inside the viewport too.
-  await page.goto('/');
-  const triggers = await page.locator('button.np:visible, button.dash:visible').all();
+  // "Not disclosed" explanations open a tooltip that must stay inside the viewport too.
+  await page.goto('/providers/bigmodel/');
+  const triggers = await page.locator('button.np:visible, button.dash:visible, .pp-scope:visible').all();
   expect(triggers.length).toBeGreaterThanOrEqual(1);
   for (const trigger of triggers) {
     await trigger.focus();

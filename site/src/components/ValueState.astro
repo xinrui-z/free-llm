@@ -1,0 +1,23 @@
+---
+// Unknown / Unavailable / Unlimited. The fourth state, "Not disclosed", is <NotPublished/>.
+// Each reads differently (MASTER.md "Value states"): Unknown is italic muted, Unavailable is struck-through
+// muted, Unlimited is plain primary text. With a note it is a <button> with a tooltip (ui.ts handles
+// [data-tip]), so NEVER place a noted ValueState inside an <a>; without a note it is a plain <span>.
+// "unlimited" must only be used when the provider's documentation says so, never for a missing value.
+import { VALUE_STATES, type ValueStateKind } from '../lib/format';
+interface Props {
+  kind: ValueStateKind;
+  /** Why this state applies; shown as a tooltip. Omit for a plain span. */
+  note?: string | null;
+  /** Visible text (default: the state's label). */
+  label?: string;
+  class?: string;
+}
+const { kind, note, label, class: className } = Astro.props;
+const state = VALUE_STATES[kind];
+const text = label ?? state.label;
+const cls = ['vs', kind === 'unavailable' ? 'vs-unavail' : `vs-${kind}`, className];
+---
+{note
+  ? <button type="button" class:list={cls} data-tip={note} data-value-state={kind} aria-label={`${text}. ${note}`}>{text}</button>
+  : <span class:list={cls} data-value-state={kind}>{text}</span>}

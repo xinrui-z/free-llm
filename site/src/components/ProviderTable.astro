@@ -4,12 +4,14 @@
 // (see arrangeProviderTable in ./provider-table.ts). Pass active providers in catalog order.
 // Default arrangement = sort "tpm": group 1 "Published rate limit" (any RPM or TPM; TPM desc, then RPM desc), group 2
 // "Limits set per account or model" (catalog order). Latency column is live-only (status-client fills it).
+// Sortable headers (button[data-pt-sort]) mirror the page's sort <select>; the page script keeps
+// th[data-pt-sort-col] aria-sort in step. Each key has one fixed direction (see provider-table.ts).
 import Icon from './Icon.astro';
 import NotPublished from './NotPublished.astro';
 import ProviderLogo from './ProviderLogo.astro';
 import ProviderRow from './ProviderRow.astro';
 import StatusSlot from './StatusSlot.astro';
-import { accessShort, formatCount, formatDate, formatTokens, hasVision, limitsOf, maxContext, NO_CONTEXT_NOTE } from '../lib/format';
+import { accessLine, accessShort, formatCount, formatDate, formatTokens, hasVision, limitsOf, maxContext, NO_CONTEXT_NOTE } from '../lib/format';
 import { GROUPS, compareByTpm } from './provider-table';
 import type { Provider } from '../data/providers';
 interface Props {
@@ -46,14 +48,14 @@ const NCOL = 9;
     <table class="tbl">
       <thead>
         <tr>
-          <th scope="col">Provider</th>
+          <th scope="col" data-pt-sort-col="name"><button type="button" class="th-sort" data-pt-sort="name" title="Sort by name">Provider</button></th>
           <th scope="col" class="r"><abbr title="Requests per minute">RPM</abbr></th>
-          <th scope="col" class="r"><abbr title="Tokens per minute">TPM</abbr></th>
-          <th scope="col" class="r">Context</th>
-          <th scope="col" class="r">Models</th>
+          <th scope="col" class="r" data-pt-sort-col="tpm" aria-sort="descending"><button type="button" class="th-sort" data-pt-sort="tpm" title="Sort by published rate limit (TPM, then RPM)"><abbr title="Tokens per minute">TPM</abbr></button></th>
+          <th scope="col" class="r">Max context</th>
+          <th scope="col" class="r" data-pt-sort-col="models"><button type="button" class="th-sort" data-pt-sort="models" title="Sort by number of free models">Models</button></th>
           <th scope="col">Access</th>
           <th scope="col">Verified</th>
-          <th scope="col" class="r" data-live-only="latency">Latency</th>
+          <th scope="col" class="r" data-live-only="latency" data-pt-sort-col="latency"><button type="button" class="th-sort" data-pt-sort="latency" title="Sort by last probe latency">Latency</button></th>
           <th scope="col"><span class="sr-only">Open</span></th>
         </tr>
       </thead>
@@ -88,8 +90,8 @@ const NCOL = 9;
                       </>}
                   <td class="r">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
                   <td class="r"><span class="num">{formatCount(p.models.length)}</span></td>
-                  <td><span class="muted text-xs">{accessShort(p)}</span></td>
-                  <td><span class="date muted text-xs">{formatDate(p.last_verified) ?? '—'}</span></td>
+                  <td><span class="access-c" title={accessLine(p)}>{accessShort(p)}</span></td>
+                  <td>{formatDate(p.last_verified) ? <span class="date sec">{formatDate(p.last_verified)}</span> : <span class="vs vs-unknown">Unknown</span>}</td>
                   <td class="r" data-live-only="latency"><span data-live-latency={p.id}></span></td>
                   <td class="r w-8"><Icon name="chev" size={16} class="chev" /></td>
                 </tr>
@@ -113,3 +115,9 @@ const NCOL = 9;
     </div>
   </div>
 </div>
+
+<style>
+  .access-c { font-size: var(--fs-caption); color: var(--text-secondary); cursor: help; }
+  /* The live status dot sits 11px left of the logo (global .slot); give the first column room so it clears the border. */
+  .provider-table .tbl tr > :first-child { padding-left: 24px; }
+</style>
