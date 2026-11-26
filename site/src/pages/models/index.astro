@@ -182,11 +182,6 @@ const familyPageIds = new Set(familyPages(activeProviders).map(f => f.family.id)
     </select>
     <span class="count" id="m-count" aria-live="polite"><span class="num">{total}</span> {total === 1 ? 'listing' : 'listings'}</span>
   </div>
-  <p class="caption m-caption">
-    Families with published limits first, highest TPM on top; new models outside a known family are grouped by
-    vendor. <span class="m-key">—</span> = not disclosed by the provider (never unlimited). Capabilities come from
-    the provider's catalog; a <span class="tag tag-o tag-hint">dashed</span> label is only suggested by the model name.
-  </p>
 
   <div class="empty" id="m-empty" hidden>
     <p id="m-empty-text">No model matches these filters. Try a family name like gemma, glm or qwen.</p>
@@ -319,11 +314,18 @@ const familyPageIds = new Set(familyPages(activeProviders).map(f => f.family.id)
         );
       })}
     </div>
+    <!-- Table footnote: how to read the values and the order. Below the results, like any data-table legend. -->
+    <ul class="m-legend" aria-label="How to read this table">
+      <li><span class="m-key" aria-hidden="true">—</span>Not disclosed by the provider (never unlimited)</li>
+      <li><span class="tag tag-o tag-hint" aria-hidden="true">reasoning</span>Suggested by the model name only; not in the provider's catalog</li>
+      <li>Order: families with published limits first, highest TPM on top; models outside a known family are grouped by vendor</li>
+    </ul>
   </div>
 </Layout>
 
 <style>
-  .m-caption { margin: -4px 0 12px; max-width: 80ch; }
+  .m-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 10px 0 0; padding: 0; list-style: none; font-size: var(--fs-caption); line-height: 16px; color: var(--text-muted); }
+  .m-legend li { display: inline-flex; align-items: center; gap: 6px; }
   .m-key { color: var(--text-secondary); }
   .m-tbl tr.grp .m-gh-name, .m-list .m-gh-name { color: var(--text-primary); }
   /* Group labels are real headings for crawlers and screen readers: a rowgroup <th> on desktop and an
