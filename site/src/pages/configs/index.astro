@@ -86,13 +86,55 @@ const MANUAL = [
       'Add a model ID below as a custom model and verify it. Custom endpoints depend on your Cursor plan.',
     ],
   },
+  {
+    id: 'cline', name: 'Cline', docs: 'https://docs.cline.bot/provider-config/openai-compatible', docsLabel: 'Cline OpenAI Compatible docs',
+    steps: [
+      'Open Cline settings (⚙️) and set API Provider to “OpenAI Compatible”.',
+      'Paste the Base URL below and your API Key for that provider.',
+      'Enter one of the model IDs below as the Model, then click Verify.',
+    ],
+  },
+  // Tools whose exact settings or config-file syntax this site has not verified yet: only the values are
+  // offered, with generic steps, so no file is generated that merely looks valid.
+  ...([
+    ['roo-code', 'Roo Code', 'https://docs.roocode.com'],
+    ['cherry-studio', 'Cherry Studio', 'https://docs.cherry-ai.com'],
+    ['continue', 'Continue', 'https://docs.continue.dev/customize/model-providers/top-level/openai'],
+    ['opencode', 'OpenCode', 'https://opencode.ai/docs/providers/'],
+  ] as const).map(([id, name, docs]) => ({
+    id, name, docs, docsLabel: `${name} docs`,
+    steps: [
+      `In ${name}, add a model provider of the OpenAI-compatible type.`,
+      'Paste the Base URL and your API key for that provider, then add one of the model IDs below.',
+      `Field names and file formats differ by ${name} version; follow the ${name} docs for where they go. No config file is generated here until its format is verified.`,
+    ],
+  })),
 ];
 const TOOLS = [{ id: 'litellm', name: 'LiteLLM proxy', rec: true }, ...MANUAL.map(t => ({ id: t.id, name: t.name, rec: false }))];
+
+// Compatibility as this page supports it today. "Values" = paste Base URL, model ID and key by hand.
+const COMPAT: { name: string; support: 'generated' | 'values' | 'unsupported'; note: string; tool?: string }[] = [
+  { name: 'LiteLLM', support: 'generated', note: 'config.yaml generated for the providers you select (OpenAI-compatible routes).', tool: 'litellm' },
+  { name: 'Open WebUI', support: 'values', note: 'OpenAI API connection per provider.', tool: 'openwebui' },
+  { name: 'LobeChat', support: 'values', note: 'Custom OpenAI-compatible provider.', tool: 'lobechat' },
+  { name: 'Cursor', support: 'values', note: 'Override OpenAI Base URL; availability depends on your Cursor plan.', tool: 'cursor' },
+  { name: 'Cline', support: 'values', note: 'Settings panel only (API Provider “OpenAI Compatible”); checked against the Cline docs 2026-11-26.', tool: 'cline' },
+  { name: 'Roo Code', support: 'values', note: 'OpenAI-compatible provider; settings not yet verified here.', tool: 'roo-code' },
+  { name: 'Cherry Studio', support: 'values', note: 'OpenAI-type provider; settings not yet verified here.', tool: 'cherry-studio' },
+  { name: 'Continue', support: 'values', note: 'config.yaml uses provider: openai with apiBase; the docs page does not show how to reference a key from the environment, so no file is generated.', tool: 'continue' },
+  { name: 'OpenCode', support: 'values', note: 'The current provider config format changed and is not yet verified end to end here, so no file is generated.', tool: 'opencode' },
+  { name: 'Claude Code', support: 'unsupported', note: 'Speaks the Anthropic Messages API. No provider in this catalog documents an Anthropic-compatible endpoint, so no setup is offered.' },
+];
+const SUPPORT_LABEL = { generated: 'Config generated', values: 'Manual values', unsupported: 'Not supported' } as const;
+// Support semantics (MASTER.md status labels): generated = ready to use, values = works with manual setup,
+// unsupported = no setup offered.
+const SUPPORT_PILL = { generated: 'pill-ok', values: 'pill-outline', unsupported: 'pill-neutral' } as const;
+const UNVERIFIED_FORMATS = new Set(['roo-code', 'cherry-studio', 'continue', 'opencode']);
 ---
 
 <Layout
-  title="Use Free LLM APIs in LiteLLM, Open WebUI, LobeChat, Cursor"
-  description={`Get a LiteLLM proxy config for ${active.length} active free LLM API providers, or the base URLs, model IDs and key names for Open WebUI, LobeChat and Cursor.`}
+  title="Use Free LLM APIs in LiteLLM, Open WebUI, Cursor and more"
+  description={`Get a LiteLLM proxy config for ${active.length} active free LLM API providers, or the base URLs, model IDs and key names for Open WebUI, LobeChat, Cursor, Cline, Roo Code, Continue and other OpenAI-compatible tools.`}
   jsonLd={{
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -122,9 +164,8 @@ const TOOLS = [{ id: 'litellm', name: 'LiteLLM proxy', rec: true }, ...MANUAL.ma
           <h2 class="h2" id="t1-h">Providers</h2>
           <span class="caption" id="t-selcount" aria-live="polite"><span class="num">{active.length}</span> of <span class="num">{active.length}</span> selected</span>
           <span class="t-allnone">
-            <button type="button" class="lnk" id="t-all">All</button>
-            <span class="muted" aria-hidden="true">·</span>
-            <button type="button" class="lnk" id="t-none">None</button>
+            <button type="button" class="btn btn-sm" id="t-all">Select all</button>
+            <button type="button" class="btn btn-sm" id="t-none">Clear</button>
           </span>
         </div>
         <div class="pgrid" role="group" aria-labelledby="t1-h">
@@ -180,7 +221,7 @@ const TOOLS = [{ id: 'litellm', name: 'LiteLLM proxy', rec: true }, ...MANUAL.ma
         <div class="panel" id="t-panel-manual" data-tool-panel="manual" role="region" aria-label="Manual setup" hidden>
           {MANUAL.map(t => (
             <div class="tools-manual" data-manual-for={t.id} hidden>
-              <div class="tools-manual-h"><span class="tag">Manual setup</span><span class="caption">{t.name} doesn’t import a file. Paste these values for each provider.</span></div>
+              <div class="tools-manual-h"><span class="pill pill-outline">Manual setup</span><span class="caption">{UNVERIFIED_FORMATS.has(t.id) ? `No ${t.name} config file is generated here yet. Paste these values for each provider.` : `${t.name} doesn’t import a file. Paste these values for each provider.`}</span></div>
               <ol class="steps">{t.steps.map(s => <li>{s}</li>)}</ol>
               <p class="caption">Docs: <a class="lnk" href={t.docs} target="_blank" rel="noopener noreferrer">{t.docsLabel} ↗</a></p>
             </div>
@@ -223,27 +264,50 @@ const TOOLS = [{ id: 'litellm', name: 'LiteLLM proxy', rec: true }, ...MANUAL.ma
         </div>
         <p class="muted tools-keys-empty" id="t-keys-empty" hidden>No providers selected.</p>
       </section>
+
+      <section class="sect" aria-labelledby="t4-h">
+        <div class="sect-head">
+          <h2 class="h2" id="t4-h">Tool compatibility</h2>
+          <span class="caption">What this page offers for each tool. Generated configs use environment variables, never real keys.</span>
+        </div>
+        <div class="tblwrap">
+          <table class="tbl" id="t-compat">
+            <thead><tr><th scope="col">Tool</th><th scope="col">Support here</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              {COMPAT.map(c => (
+                <tr data-compat={c.support}>
+                  <th scope="row" class="t-compat-name">{c.tool ? <a class="lnk" href={c.tool === 'litellm' ? '/configs/' : `/configs/?tool=${c.tool}`}>{c.name}</a> : c.name}</th>
+                  <td><span class:list={['pill', SUPPORT_PILL[c.support]]}>{SUPPORT_LABEL[c.support]}</span></td>
+                  <td class="t-compat-note">{c.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   )}
 </Layout>
 
 <style>
-  .tools-first { margin-top: 16px; }
+  .tools-first { margin-top: 8px; }
   .tools-second { margin-top: 28px; }
-  .t-allnone { margin-left: auto; display: inline-flex; gap: 6px; align-items: baseline; font-size: 13px; }
-  .t-allnone button { cursor: pointer; }
+  .t-allnone { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; align-self: center; }
   .tools-empty { border: 0; }
   .tools-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .tools-sub { margin-bottom: 8px; }
-  .tools-note { margin-top: 8px; }
-  .tools-manual { display: grid; gap: 12px; }
-  .tools-manual-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tools-nm { font-size: 14px; }
-  .tools-ids { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .tools-sub { margin-bottom: 6px; }
+  .tools-note { margin-top: 6px; }
+  .tools-manual { display: grid; gap: 10px; }
+  .tools-manual-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tools-nm { font-size: var(--fs-body); }
+  .tools-ids { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
   .tools-kname { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tools-getkey { font-size: 13px; white-space: nowrap; }
-  .tools-keys-empty { font-size: 14px; }
+  .tools-getkey { font-size: var(--fs-data); white-space: nowrap; }
+  .tools-keys-empty { font-size: var(--fs-data); }
   @media (max-width: 639px) { .tools-keylink { grid-row: 1; grid-column: 2; } }
+  #t-compat tbody th { font-weight: 500; text-align: left; background: transparent; padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; color: var(--text-primary); }
+  #t-compat tbody tr:last-child th { border-bottom: 0; }
+  .t-compat-note { color: var(--text-secondary); min-width: 240px; }
 </style>
 
 <script>

@@ -1,12 +1,24 @@
 // Shared display helpers for every public page. Pages must format limits, context windows, prices,
 // latency and dates through these functions so the same value reads the same everywhere.
-// Honesty rules: null/undefined RPM/TPM means "not published" (never "unlimited", never a number);
+// Honesty rules: null/undefined RPM/TPM means "not disclosed" (never "unlimited", never a number);
 // a missing or blank price is never 0; helpers return null for missing values so the caller renders
 // <NotPublished/> (or a muted dash) instead of inventing one.
 
-export const NOT_PUBLISHED = 'Not published';
-export const NOT_PUBLISHED_NOTE = 'The provider does not publish this value.';
+export const NOT_PUBLISHED = 'Not disclosed';
+export const NOT_PUBLISHED_NOTE = 'The provider does not disclose this value.';
 export const NO_CONTEXT_NOTE = 'No context window in the official catalog.';
+
+// The four value states (design-system MASTER.md "Value states"). Never interchangeable:
+//   Not disclosed — the provider does not publish the value (NOT_PUBLISHED above, <NotPublished/>).
+//   Unknown       — we have no current observation (no fresh probe, missing data on our side).
+//   Unavailable   — the data source, or the thing itself, cannot be reached right now.
+//   Unlimited     — the provider explicitly documents no limit. Never inferred from null or a missing value.
+export const VALUE_STATES = {
+  unknown: { label: 'Unknown', note: 'No current observation is available for this value.' },
+  unavailable: { label: 'Unavailable', note: 'The data source cannot be reached right now.' },
+  unlimited: { label: 'Unlimited', note: 'The provider documents no limit for this value.' },
+} as const;
+export type ValueStateKind = keyof typeof VALUE_STATES;
 
 // Convert a context-window label like "128K" / "1M" / "131,072" (or a plain
 // number) into tokens so columns can sort numerically. Returns -1 when the

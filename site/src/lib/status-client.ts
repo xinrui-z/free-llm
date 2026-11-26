@@ -1,8 +1,12 @@
 // Progressive live status. Pages render complete without the status API; everything below only
 // fills in hooks once a snapshot arrives. All API text is written with textContent (never innerHTML).
 // Contract: /tmp/site-redesign/foundation.md ("Live status").
-import { normalizeStatus, type HealthStatus, type StatusSnapshot } from './status';
+import { DETAIL_NOTES, DETAIL_WORDS, normalizeStatus, probeDetail, providerProbeError, type HealthStatus, type ProbeResult, type StatusSnapshot } from './status';
 import { formatLatency, formatRelative } from './format';
+
+/** Reader-facing detail of a provider: its own error, else the newest fresh error of one of its models. */
+const providerDetail = (p: ProbeResult | undefined, data: StatusSnapshot | undefined) =>
+  p ? probeDetail({ ...p, error: providerProbeError(p, data?.models) }) : probeDetail(undefined);
 
 /** live: fresh snapshot. stale: the API answered but its newest check is too old. unavailable: no usable answer. */
 export type LiveState = 'live' | 'stale' | 'unavailable';
@@ -18,8 +22,8 @@ export interface StatusInfo {
   hasLatency: boolean;
 }
 
-export const STATUS_WORDS: Record<HealthStatus, string> = { active: 'Operational', degraded: 'Degraded', dead: 'Down', unknown: 'Unknown' };
-const COUNT_WORDS: Record<HealthStatus, string> = { active: 'up', degraded: 'degraded', dead: 'down', unknown: 'unknown' };
+export const STATUS_WORDS: Record<HealthStatus, string> = { active: 'Operational', degraded: 'Degraded', dead: 'Service unavailable', unknown: 'Unknown' };
+const COUNT_WORDS: Record<HealthStatus, string> = { active: 'up', degraded: 'degraded', dead: 'unavailable', unknown: 'unknown' };
 const ORDER: HealthStatus[] = ['active', 'degraded', 'dead', 'unknown'];
 const UNAVAILABLE_TEXT = 'Live health checks are unavailable. Showing documented limits from official sources.';
 
@@ -59,9 +63,9 @@ export function statusDot(status: HealthStatus, opts: { pulse?: boolean; title?:
 }
 
 /** Dot + word ("Operational"); the "unknown" word uses --status-unknown-text, the dot stays gray. */
-export function statusWord(status: HealthStatus) {
+export function statusWord(status: HealthStatus, label = STATUS_WORDS[status]) {
   const word = el('span', `live-word${status === 'unknown' ? ' st-unknown' : ''}`);
-  word.append(statusDot(status), document.createTextNode(STATUS_WORDS[status]));
+  word.append(statusDot(status), document.createTextNode(label));
   return word;
 }
 
@@ -77,12 +81,16 @@ function renderNotice(node: HTMLElement, data: StatusSnapshot | undefined) {
   if (info.state === 'live' && data) {
     if (providerId) {
       const status = p?.status ?? 'unknown';
+      const detail = providerDetail(p, data);
       dotSlot?.append(statusDot(status, { pulse: true }));
-      const word = el('span', status === 'unknown' ? 'st-unknown' : '', STATUS_WORDS[status]);
+      const word = el('span', status === 'unknown' ? 'st-unknown' : '', DETAIL_WORDS[detail]);
+      word.title = DETAIL_NOTES[detail];
       const latency = formatLatency(p?.latency_ms);
-      const detail = status === 'unknown' ? `no successful probe in the last ${windowLabel(p?.fresh_ms)}`
+      const note = detail === 'not_monitored' ? 'this provider is not probed'
+        : detail === 'unknown' ? `no successful probe in the last ${windowLabel(p?.fresh_ms)}`
+        : status === 'unknown' ? DETAIL_NOTES[detail].replace(/\.$/, '').replace(/^./, c => c.toLowerCase())
         : latency ? 'last probe ' : 'last probe failed';
-      text.replaceChildren('Health checks · ', word, ` · ${detail}`);
+      text.replaceChildren('Health checks · ', word, ` · ${note}`);
       if (status !== 'unknown' && latency) text.append(el('span', 'num', latency));
       const at = formatRelative(p?.checked_at ?? data.last_checked);
       if (right && at) right.textContent = `checked ${at}`;
@@ -119,21 +127,25 @@ function render(data: StatusSnapshot) {
   document.querySelectorAll<HTMLElement>('[data-status-notice]').forEach(node => renderNotice(node, data));
   for (const p of data.providers) {
     const id = CSS.escape(p.id);
-    const word = STATUS_WORDS[p.status];
+    const detail = providerDetail(p, data);
+    const word = DETAIL_WORDS[detail];
+    const lastError = providerProbeError(p, data.models);
     document.querySelectorAll<HTMLElement>(`[data-status-dot="${id}"]`).forEach(node => {
       node.replaceChildren(...(live ? [statusDot(p.status, { title: `Health: ${word}` })] : []));
     });
     document.querySelectorAll<HTMLElement>(`[data-live-status="${id}"]`).forEach(node => {
-      node.replaceChildren(...(live ? [statusWord(p.status)] : []));
-      if (live && p.error) node.title = `Last probe: ${p.error}`; else node.removeAttribute('title');
+      node.replaceChildren(...(live ? [statusWord(p.status, word)] : []));
+      if (live) node.title = `${DETAIL_NOTES[detail]}${lastError ? ` Last probe: ${lastError}` : ''}`; else node.removeAttribute('title');
     });
     document.querySelectorAll<HTMLElement>(`[data-live-latency="${id}"]`).forEach(node => {
       const latency = live ? formatLatency(p.latency_ms) : null;
       if (latency) node.replaceChildren(el('span', 'num', latency));
       else if (live) {
-        const dash = el('span', 'dash', '—');
-        dash.title = `No successful probe in the last ${windowLabel(p.fresh_ms)}`;
-        node.replaceChildren(dash);
+        // No successful probe in the freshness window: our observation is missing, so this is "Unknown"
+        // (MASTER.md value states), never "Not disclosed" or a bare dash.
+        const unknown = el('span', 'vs vs-unknown', 'Unknown');
+        unknown.title = `No successful probe in the last ${windowLabel(p.fresh_ms)}`;
+        node.replaceChildren(unknown);
       } else node.replaceChildren();
     });
     document.querySelectorAll<HTMLElement>(`[data-provider-id="${id}"]`).forEach(node => {
@@ -150,8 +162,9 @@ function render(data: StatusSnapshot) {
     if (!live) { node.replaceChildren(); return; }
     const m = data.models?.find(m => m.provider_id === node.dataset.modelProvider && m.model_id === node.dataset.modelId);
     const status = m?.status ?? 'unknown';
-    const title = m?.error === 'not_monitored' ? 'This model is not monitored'
-      : status !== 'unknown' ? `Health: ${STATUS_WORDS[status]}${m?.checked_at ? ` · checked ${formatRelative(m.checked_at) ?? ''}` : ''}`
+    const detail = m ? probeDetail({ status: m.status, error: m.error === 'not_checked_recently' ? undefined : m.error }) : 'unknown';
+    const title = detail === 'not_monitored' ? 'This model is not monitored'
+      : status !== 'unknown' || detail !== 'unknown' ? `Health: ${DETAIL_WORDS[detail]}${m?.checked_at ? ` · checked ${formatRelative(m.checked_at) ?? ''}` : ''}`
       : 'Not checked recently';
     node.replaceChildren(statusDot(status, { title }));
   });

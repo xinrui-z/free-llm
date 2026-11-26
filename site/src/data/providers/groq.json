@@ -95,5 +95,39 @@
       "url": "https://console.groq.com/docs/rate-limits",
       "checked_at": "2026-11-16"
     }
+  ],
+  "limits": [
+    {
+      "metric": "rpm",
+      "value": 30,
+      "scope": "model",
+      "note": "Free plan, per model, counted per organization.",
+      "source_url": "https://console.groq.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "tpm",
+      "value": 8000,
+      "scope": "model",
+      "note": "Free plan, per model, counted per organization.",
+      "source_url": "https://console.groq.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "rpd",
+      "value": 1000,
+      "scope": "model",
+      "note": "Free plan, per model, counted per organization.",
+      "source_url": "https://console.groq.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "tpd",
+      "value": 200000,
+      "scope": "model",
+      "note": "Free plan, per model, counted per organization.",
+      "source_url": "https://console.groq.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    }
   ]
 }

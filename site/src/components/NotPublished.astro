@@ -1,19 +1,19 @@
 ---
-// The "not published" convention. Muted Inter 12px with a dotted underline; hover, focus or tap shows a
+// The "not disclosed" convention. Muted Inter 12px with a dotted underline; hover, focus or tap shows a
 // tooltip with the first sentence of the provider note (ui.ts handles [data-tip]). It is a <button>, so
 // NEVER place it inside an <a> (cards use plain muted text + .qnote instead).
-// variant "dash": a muted "—" for a single missing cell next to published ones (e.g. Cohere TPM).
+// variant "dash": a muted "—" for a single missing cell next to disclosed ones (e.g. Cohere TPM).
 import { NOT_PUBLISHED, NOT_PUBLISHED_NOTE, firstSentence } from '../lib/format';
 interface Props {
   /** Provider/model note; only its first sentence is shown. */
   note?: string | null;
-  /** Visible text (default "Not published"). Ignored for variant "dash". */
+  /** Visible text (default "Not disclosed"). Ignored for variant "dash". */
   label?: string;
   variant?: 'text' | 'dash';
   class?: string;
 }
 const { note, label = NOT_PUBLISHED, variant = 'text', class: className } = Astro.props;
-const tip = firstSentence(note) || (variant === 'dash' ? 'Not published by provider' : NOT_PUBLISHED_NOTE);
+const tip = firstSentence(note) || (variant === 'dash' ? 'Not disclosed by the provider' : NOT_PUBLISHED_NOTE);
 ---
 <button
   type="button"

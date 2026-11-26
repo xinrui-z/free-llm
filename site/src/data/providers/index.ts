@@ -20,7 +20,11 @@ export interface ProviderModel {
   id: string;
   name: string;
   context_window?: string;
+  // Largest completion length the provider documents for this model ("8K", "65536"). Absent = not disclosed.
+  max_output_tokens?: string;
   modalities?: string[];
+  // Documented capability flags only (true / false). Absent = not disclosed; never inferred from names.
+  capabilities?: { reasoning?: boolean; tool_calling?: boolean; structured_output?: boolean };
   rpm?: number | null;
   tpm?: number | null;
   status?: string;
@@ -29,6 +33,18 @@ export interface ProviderModel {
   // or compute-time billing — see the provider's `pricing_note`).
   pricing?: ModelPricing | null;
   [key: string]: unknown;
+}
+
+/** One published free-tier limit with its scope (see LIMIT_SCOPES in scripts/lib/catalog-validation.mjs). */
+export interface ProviderLimit {
+  metric: 'rpm' | 'tpm' | 'rpd' | 'tpd' | 'requests_per_month' | 'tokens_per_month' | 'concurrent_requests';
+  value: number;
+  scope: 'provider' | 'account' | 'model' | 'key';
+  /** Only these model IDs (scope "model"); absent = every listed model. */
+  models?: string[];
+  note?: string;
+  source_url: string;
+  checked_at: string;
 }
 
 export interface Provider {
@@ -64,6 +80,8 @@ export interface Provider {
   quota_note?: string;
   catalog_note?: string;
   sources?: { label: string; url: string; checked_at: string }[];
+  // Structured free-tier limits with scope; optional. rpm/tpm above stay the provider-wide headline values.
+  limits?: ProviderLimit[];
   geo_restrictions?: string[] | null;
   api_key_env?: string | null;
   // Human-readable caveat for providers whose paid tier doesn't fit a clean

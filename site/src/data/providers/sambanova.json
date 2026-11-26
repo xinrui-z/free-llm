@@ -82,6 +82,32 @@
       "checked_at": "2026-11-24"
     }
   ],
+  "limits": [
+    {
+      "metric": "rpm",
+      "value": 20,
+      "scope": "model",
+      "note": "Free tier, per listed model.",
+      "source_url": "https://docs.sambanova.ai/docs/en/models/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "rpd",
+      "value": 20,
+      "scope": "model",
+      "note": "Free tier, per listed model.",
+      "source_url": "https://docs.sambanova.ai/docs/en/models/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "tpd",
+      "value": 200000,
+      "scope": "model",
+      "note": "Free tier, per listed model.",
+      "source_url": "https://docs.sambanova.ai/docs/en/models/rate-limits",
+      "checked_at": "2026-11-16"
+    }
+  ],
   "paid_models": [
     {
       "id": "GLM-5.3",

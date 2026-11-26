@@ -152,8 +152,8 @@ const SORTS = [
   ['model-desc', 'Model ID, Z to A'],
 ] as const;
 const sortHeaders = [
-  { key: 'input', label: 'Input /1M', right: true },
-  { key: 'output', label: 'Output /1M', right: true },
+  { key: 'input', label: 'Input / 1M tokens', right: true },
+  { key: 'output', label: 'Output / 1M tokens', right: true },
   { key: 'context', label: 'Context', right: true },
 ];
 ---
@@ -216,7 +216,7 @@ const sortHeaders = [
             {s.autoSynced
               ? <span class="muted" title={s.pageSynced ? pageTip : autoTip}>· {s.pageSynced ? 'Synced daily from pricing page' : 'Synced from live API'}{s.changed && <> · changed <span class="date">{s.changed}</span></>}</span>
               : <span class="muted">· Manual · checked <span class="date">{s.lastChecked ?? 'unknown'}</span></span>}
-            {s.stale && <span class="tag tag-o pr-stale">May be outdated</span>}
+            {s.stale && <span class="pill pill-warn pr-stale">May be outdated</span>}
           </button>
         ))}
       </div>
@@ -271,7 +271,7 @@ const sortHeaders = [
               <td>
                 <div class="pr-id">
                   <span class="mono" title={r.model.id}>{r.shortId}</span>
-                  {r.validUntil && <button type="button" class="tag tag-o pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo</button>}
+                  {r.validUntil && <button type="button" class="pill pill-accent pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo to <span class="date">{r.validUntil}</span></button>}
                 </div>
               </td>
               <td>
@@ -291,10 +291,11 @@ const sortHeaders = [
               <td class="r">{ctx ? <span class="num" title={ctx.title}>{ctx.text}</span> : <NotPublished variant="dash" note={NO_CONTEXT_NOTE} />}</td>
               <td class="pr-date">
                 <div class="pr-date-cell">
-                  {r.checkedAt ? <span class="date" title={checkedLabel(r)}>{r.checkedAt}</span> : <span class="muted">Unknown</span>}
+                  {r.checkedAt ? <span class="date" title={checkedLabel(r)}>{r.checkedAt}</span> : <span class="vs vs-unknown" title="No check date recorded">Unknown</span>}
                   {r.autoSynced
-                    ? <span class="tag tag-o" title={isPricePageSynced(r.provider) ? pageTip : autoTip}>Auto-synced</span>
-                    : isRowStale(r) && <span class="tag tag-o pr-stale" title={staleTip(r)}>May be outdated</span>}
+                    ? <span class="pill pill-ok" title={isPricePageSynced(r.provider) ? pageTip : autoTip}>Auto-synced</span>
+                    : isRowStale(r) ? <span class="pill pill-warn pr-stale" title={staleTip(r)}>May be outdated</span>
+                    : <span class="pill pill-outline" title="Entered by hand from the official pricing page">Manual</span>}
                 </div>
               </td>
               <td class="r pr-src">
@@ -316,7 +317,7 @@ const sortHeaders = [
         <div class:list={['srow', { 'pr-arch': r.archived }]} {...rowData(r, i)} hidden={r.archived}>
           <div class="idline">
             <span class="mono" title={r.model.id}>{r.shortId}</span>
-            {r.validUntil && <button type="button" class="tag tag-o pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo</button>}
+            {r.validUntil && <button type="button" class="pill pill-accent pr-promo" data-tip={promoTip(r.validUntil)} aria-label={promoTip(r.validUntil)}>Promo to <span class="date">{r.validUntil}</span></button>}
           </div>
           <div class="facts">
             <a class="sec pr-pname" href={`/providers/${r.provider.id}/`}>{r.provider.name}</a>
@@ -334,7 +335,7 @@ const sortHeaders = [
             {' · '}{r.source
               ? <a class="lnk" href={r.source} target="_blank" rel="noopener noreferrer" title={sourceTitle(r)}>{checkedLabel(r)} ↗</a>
               : <span>{checkedLabel(r)}</span>}
-            {isRowStale(r) && <> <span class="tag tag-o pr-stale" title={staleTip(r)}>May be outdated</span></>}
+            {isRowStale(r) && <> <span class="pill pill-warn pr-stale" title={staleTip(r)}>May be outdated</span></>}
           </div>
         </div>
       );
@@ -370,7 +371,7 @@ const sortHeaders = [
 </Layout>
 
 <style>
-  .pr-how { margin-top: 16px; max-width: 48rem; }
+  .pr-how { margin-top: 10px; max-width: 46rem; }
   .pr-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .pr-id .mono { font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
   .tbl tr.arch .pr-id .mono { color: var(--text-muted); }
@@ -379,26 +380,28 @@ const sortHeaders = [
   .pr-pname:hover { color: var(--brand); }
   .tbl tr.arch .pr-pname { color: var(--text-muted); }
   .pr-promo { cursor: help; flex-shrink: 0; }
+  .pr-promo .date { font-size: inherit; }
   .pr-src { width: 40px; }
   .pr-date { white-space: nowrap; }
   .pr-date-cell { display: flex; align-items: center; gap: 8px; }
-  .pr-date .date { font-size: 12px; color: var(--text-muted); }
-  .pr-stale { color: var(--status-degraded); border-color: var(--degraded-border); cursor: help; }
-  .pr-sources { margin-bottom: 16px; }
-  .pr-src-h { margin-bottom: 8px; }
-  .pr-src-chip { gap: 6px; font-size: 12px; }
-  .pr-src-chip .pr-src-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .pr-src-chip .num, .pr-src-chip .date { font-size: 12px; color: var(--text-muted); }
+  .pr-date .date { font-size: var(--fs-caption); color: var(--text-secondary); }
+  .pr-stale { cursor: help; }
+  .pr-sources { margin-bottom: 12px; }
+  .pr-src-h { margin-bottom: 6px; }
+  .pr-src-chip { gap: 6px; font-size: var(--fs-caption); }
+  .pr-src-chip .pr-src-name { font-size: var(--fs-data); font-weight: 500; color: var(--text-primary); }
+  .pr-src-chip .num, .pr-src-chip .date { font-size: var(--fs-caption); color: var(--text-muted); }
   .pr-src-chip[aria-pressed="true"] .pr-src-name, .pr-src-chip[aria-pressed="true"] .muted, .pr-src-chip[aria-pressed="true"] .num, .pr-src-chip[aria-pressed="true"] .date { color: var(--brand); }
-  .pr-src a { display: inline-flex; padding: 4px; color: var(--text-muted); }
-  .pr-src a:hover { color: var(--brand); }
+  .pr-src a { display: inline-flex; padding: 4px; border-radius: var(--r-sm); color: var(--text-muted); }
+  .pr-src a:hover { color: var(--brand); background: var(--bg-elevated); }
+  /* Sortable headers: the button fills the cell so the whole header is the hit area. */
   .tbl th[data-sort-key] { padding: 0; }
   .tbl th.r .pr-sort { justify-content: flex-end; width: 100%; }
-  .pr-sort { display: inline-flex; align-items: center; gap: 4px; padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
-  .pr-sort:hover, th[aria-sort="ascending"] .pr-sort, th[aria-sort="descending"] .pr-sort { color: var(--text-secondary); }
+  .pr-sort { display: inline-flex; align-items: center; gap: 4px; padding: 8px 12px; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+  .pr-sort:hover, th[aria-sort="ascending"] .pr-sort, th[aria-sort="descending"] .pr-sort { color: var(--text-primary); }
   .pr-arrow:empty { display: none; }
   .pr-arch .idline .mono, .pr-arch .facts .sec { color: var(--text-muted); }
-  .pr-ns-list { display: grid; gap: 8px; margin-top: 8px; max-width: 48rem; }
+  .pr-ns-list { display: grid; gap: 6px; margin-top: 8px; max-width: 46rem; font-size: var(--fs-data); }
   .pr-ns-name { font-weight: 500; color: var(--text-primary); }
   .pr-ns-name:hover { color: var(--brand); }
   @media (max-width: 767px) { #pr-toolbar .select { flex: 1 1 140px; } }

@@ -1,21 +1,19 @@
 ---
 // "/" — the single provider directory (replaces the old home table and /providers).
-// Order: PageHeader, StatusNotice, Quickest first call, All free providers (toolbar + ProviderTable),
-// Archived providers (collapsed), Recent changes. Renders complete without JS or the status API;
+// Order: PageHeader, StatusNotice, All free providers (toolbar + ProviderTable) — the directory is the first
+// thing below the header so search is one keystroke away — then Explore (rule-based dimensions), Archived
+// providers (collapsed), Recent changes. Renders complete without JS or the status API;
 // the client script only filters/sorts the SSR rows and swaps in the changelog API's entries.
 import Layout from '../layouts/Layout.astro';
 import PageHeader from '../components/PageHeader.astro';
 import StatusNotice from '../components/StatusNotice.astro';
-import StatusSlot from '../components/StatusSlot.astro';
-import ProviderLogo from '../components/ProviderLogo.astro';
-import LimitFacts from '../components/LimitFacts.astro';
-import CopyField from '../components/CopyField.astro';
 import ProviderTable from '../components/ProviderTable.astro';
 import SearchInput from '../components/SearchInput.astro';
 import Chip from '../components/Chip.astro';
 import Fold from '../components/Fold.astro';
-import { compareByTpm, SORT_CAPTIONS } from '../components/provider-table';
-import { accessLine, archiveDate, formatCount, formatDate, hasVision, limitsOf } from '../lib/format';
+import { SORT_CAPTIONS } from '../components/provider-table';
+import { archiveDate, formatCount, formatDate, hasVision, limitsOf } from '../lib/format';
+import { exploreRows } from '../lib/explore';
 import { siteURL } from '../lib/site-url';
 import { getProviders } from '../lib/providers';
 import changelog from '../data/changelog.json';
@@ -26,14 +24,9 @@ const catalog = getProviders(Astro.locals);
 const active = catalog.filter(p => p.status === 'active');
 const archived = catalog.filter(p => p.status === 'archived');
 
-// Quickest first call: active providers with any published request limit first (tokens per minute, then requests per minute),
-// then catalog order. Archived providers are never candidates.
-const picks = active
-  .map((p, order) => ({ p, order, L: limitsOf(p) }))
-  .sort((a, b) => Number(b.L.published) - Number(a.L.published)
-    || (a.L.published ? compareByTpm({ tpm: a.L.tpm, rpm: a.L.rpm, order: a.order }, { tpm: b.L.tpm, rpm: b.L.rpm, order: b.order }) : a.order - b.order))
-  .slice(0, 3)
-  .map(x => x.p);
+// Explore: one row per developer need, each computed by the rule printed next to it (lib/explore.ts).
+// Archived providers are never candidates.
+const explore = exploreRows(active);
 
 const verified = active.map(p => formatDate(p.last_verified)).filter((d): d is string => !!d).sort();
 const firstVerified = verified[0];
@@ -99,37 +92,7 @@ const home = siteURL(Astro.site);
 
   <StatusNotice />
 
-  {picks.length > 0 && (
-    <section class="sect" aria-labelledby="picks-h">
-      <div class="sect-head">
-        <h2 class="h2" id="picks-h">Quickest first call</h2>
-        <span class="caption">Chosen by rule: providers with a published request limit first (tokens per minute, then requests per minute), then catalog order.</span>
-      </div>
-      <div class="picks">
-        {picks.map(p => {
-          const key = p.signup_url || p.website_url;
-          return (
-            <article class="pick" aria-labelledby={`pick-${p.id}`} data-pick={p.id}>
-              <div class="pick-h">
-                <StatusSlot providerId={p.id} />
-                <ProviderLogo provider={p} size={24} />
-                <a id={`pick-${p.id}`} href={`/providers/${p.id}/`}>{p.name}</a>
-              </div>
-              <LimitFacts provider={p} size="compact" />
-              <div class="access">{accessLine(p)} · <span class="num">{formatCount(p.models.length)}</span> free {p.models.length === 1 ? 'model' : 'models'}</div>
-              <CopyField label="Base URL" value={p.base_url} id={`pk-${p.id}`} toast="Base URL copied" />
-              <div class="pick-acts">
-                {key && <a class="btn btn-p" href={key} target="_blank" rel="noopener noreferrer">Get API key ↗</a>}
-                <a class="btn btn-t" href={`/providers/${p.id}/#quick-start`}>Quick start →</a>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  )}
-
-  <section class="sect" aria-labelledby="dir-h">
+  <section class="sect dir-sect" aria-labelledby="dir-h">
     <div class="sect-head">
       <h2 class="h2" id="dir-h">All free providers</h2>
       <span class="caption" id="dir-caption">{SORT_CAPTIONS.tpm}</span>
@@ -159,6 +122,47 @@ const home = siteURL(Astro.site);
       <button class="btn" type="button" id="dir-empty-clear">Clear filters</button>
     </div>
   </section>
+
+  {active.length > 0 && (
+    <section class="sect" aria-labelledby="ex-h">
+      <div class="sect-head">
+        <h2 class="h2" id="ex-h">Explore by what you need</h2>
+        <span class="caption">Each row is computed by the rule shown. Values a provider does not publish are never counted or ranked.</span>
+      </div>
+      <div class="tblwrap ex-wrap">
+        <table class="tbl ex-tbl">
+          <thead>
+            <tr>
+              <th scope="col">Dimension and rule</th>
+              <th scope="col" class="r">Matches</th>
+              <th scope="col">First by rule</th>
+              <th scope="col"><span class="sr-only">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {explore.map(r => (
+              <tr data-explore={r.key} data-live-only={r.live ? '' : undefined}>
+                <th scope="row" class="ex-dim">
+                  <a class="ex-name" href={r.href}>{r.label}</a>
+                  <span class="ex-rule">{r.rule}</span>
+                </th>
+                <td class="r ex-count">
+                  {r.count != null ? <span class="num">{formatCount(r.count)}</span> : <span class="num" data-explore-live-count>—</span>}
+                  <span class="ex-unit">{r.unit}</span>
+                </td>
+                <td class="ex-lead">
+                  {r.leaders.length
+                    ? <ol>{r.leaders.map(l => <li><a class="lnk" href={l.href}>{l.label}</a> <span class="num">{l.value}</span></li>)}</ol>
+                    : <span class="muted">{r.live ? 'Use the Up filter above' : 'Not ranked'}</span>}
+                </td>
+                <td class="r"><a class="lnk ex-go" href={r.href} aria-label={`View ${r.label}`}>View →</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
 
   {archived.length > 0 && (
     <section class="sect" aria-label="Archived providers">
@@ -193,7 +197,7 @@ const home = siteURL(Astro.site);
           <div class="chg-list">
             {day.items.map(item => (
               <div class="chg" data-kind={item.type}>
-                <span class="tag">{item.archived && <span class="dot dot-sm d-dead" aria-hidden="true"></span>}{item.tag}</span>
+                <span class="tag">{item.archived && <span class="dot dot-sm d-unknown" aria-hidden="true"></span>}{item.tag}</span>
                 <div class="chg-t">{item.parts.map(part => typeof part === 'string' ? part : part.href ? <a href={part.href}>{part.name}</a> : part.name)}</div>
               </div>
             ))}
@@ -205,9 +209,35 @@ const home = siteURL(Astro.site);
 </Layout>
 
 <style>
-  .access :global(.num) { color: inherit; font-size: 12px; }
   .meta-a { color: inherit; }
   .meta-a:hover { color: var(--brand); }
+  .ex-tbl th, .ex-tbl td { vertical-align: top; }
+  .ex-tbl tbody th { font-weight: 400; text-align: left; white-space: normal; background: transparent; padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); }
+  .ex-tbl tbody tr:last-child th { border-bottom: 0; }
+  .ex-dim { min-width: 240px; max-width: 420px; }
+  .ex-name { display: block; font-weight: 500; color: var(--text-primary); }
+  .ex-name:hover { color: var(--brand); }
+  .ex-rule { display: block; margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--text-muted); }
+  .ex-count { white-space: nowrap; }
+  .ex-unit { display: block; font-size: 12px; color: var(--text-muted); }
+  .ex-lead ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .ex-lead li { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; font-size: 13px; min-width: 0; }
+  .ex-lead li .lnk { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ex-lead li .num { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+  .ex-go { white-space: nowrap; font-size: 13px; }
+  /* Below md the table becomes stacked rows: dimension, then matches and leaders. */
+  @media (max-width: 767px) {
+    .ex-wrap { border: 0; overflow: visible; }
+    .ex-tbl thead { display: none; }
+    .ex-tbl, .ex-tbl tbody, .ex-tbl tr { display: block; width: 100%; }
+    .ex-tbl tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+    .ex-tbl tbody th, .ex-tbl td { display: block; padding: 0; border: 0; }
+    .ex-dim { grid-column: 1 / -1; min-width: 0; max-width: none; }
+    .ex-count { text-align: left; }
+    .ex-count .ex-unit { display: inline; margin-left: 4px; }
+    .ex-lead { grid-column: 1 / -1; }
+    .ex-tbl td:last-child { grid-row: 2; grid-column: 2; }
+  }
 </style>
 
 <script>
@@ -229,8 +259,13 @@ const home = siteURL(Astro.site);
   const emptyText = document.getElementById('dir-empty-text');
   const emptyClear = document.getElementById('dir-empty-clear');
 
-  const f: Filters = { q: (new URL(location.href).searchParams.get('q') ?? '').trim(), pub: false, vision: false, oai: false, st: '' };
-  let sort: ProviderSort = 'tpm';
+  // Deep links (from the Explore table and elsewhere): ?q=, ?sort=models|name|tpm, ?pub=1, ?vision=1, ?oai=1, ?st=up|issues.
+  const params = new URL(location.href).searchParams;
+  const f: Filters = { q: (params.get('q') ?? '').trim(), pub: params.get('pub') === '1', vision: params.get('vision') === '1', oai: params.get('oai') === '1', st: '' };
+  const SORTS: ProviderSort[] = ['tpm', 'name', 'models'];
+  let sort: ProviderSort = SORTS.includes(params.get('sort') as ProviderSort) ? params.get('sort') as ProviderSort : 'tpm';
+  // A status filter only applies once a fresh monitoring snapshot arrives.
+  let wantSt: StatusFilter = params.get('st') === 'up' || params.get('st') === 'issues' ? params.get('st') as StatusFilter : '';
   const isLive = () => getStatusInfo().state === 'live';
 
   // The desktop rows carry every data-* hook; the mobile cards are a copy of the same data.
@@ -286,6 +321,9 @@ const home = siteURL(Astro.site);
   function update() {
     if (!table) return;
     if (!isLive()) f.st = '';
+    else if (wantSt) { f.st = wantSt; wantSt = ''; }
+    // The deep-link filter applies only to the first live snapshot; any later user action cancels it.
+    if (getStatusInfo().attempted) wantSt = '';
     syncLatencyOption();
     const all = rows();
     const total = countWith({});
@@ -296,6 +334,10 @@ const home = siteURL(Astro.site);
     const visible = arrangeProviderTable(table, { match: row => matches(row, f), sort });
     setCount(visible, all.length);
     if (caption) caption.textContent = SORT_CAPTIONS[sort];
+    table.querySelectorAll<HTMLElement>('th[data-pt-sort-col]').forEach(th => {
+      if (th.dataset.ptSortCol === sort) th.setAttribute('aria-sort', sort === 'name' || sort === 'latency' ? 'ascending' : 'descending');
+      else th.removeAttribute('aria-sort');
+    });
     table.hidden = visible === 0;
     if (empty && emptyText && emptyClear) {
       empty.hidden = visible !== 0;
@@ -311,6 +353,14 @@ const home = siteURL(Astro.site);
     update();
   });
   select?.addEventListener('change', () => { sort = (select.value as ProviderSort) || 'tpm'; update(); });
+  // Column headers set the same sort as the select (one fixed direction per key).
+  table?.addEventListener('click', event => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>('button[data-pt-sort]');
+    const next = button?.dataset.ptSort as ProviderSort | undefined;
+    if (!next || !SORTS.concat('latency').includes(next)) return;
+    sort = next;
+    update();
+  });
   window.addEventListener('search-change', event => {
     const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
     if (detail?.id !== 'dir-q') return;
@@ -326,7 +376,12 @@ const home = siteURL(Astro.site);
     f.st = '';
     update();
   });
-  onStatus(() => update());
+  onStatus((data, info) => {
+    // Explore: "API availability" counts providers whose latest probe is fresh and healthy.
+    const n = info.state === 'live' ? data.providers.filter(p => p.status === 'active').length : null;
+    document.querySelectorAll<HTMLElement>('[data-explore-live-count]').forEach(node => { node.textContent = n == null ? '—' : String(n); });
+    update();
+  });
   update();
 
   // /#archived (meta line link, old links) opens the collapsed list.
@@ -355,7 +410,7 @@ const home = siteURL(Astro.site);
         const row = node('div', 'chg');
         row.dataset.kind = item.type;
         const tag = node('span', 'tag');
-        if (item.archived) { const dot = node('span', 'dot dot-sm d-dead'); dot.setAttribute('aria-hidden', 'true'); tag.append(dot); }
+        if (item.archived) { const dot = node('span', 'dot dot-sm d-unknown'); dot.setAttribute('aria-hidden', 'true'); tag.append(dot); }
         tag.append(item.tag);
         const text = node('div', 'chg-t');
         for (const part of item.parts) {

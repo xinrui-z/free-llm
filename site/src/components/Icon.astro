@@ -1,6 +1,6 @@
 ---
 // Inline stroke icons used across the site. Decorative: always aria-hidden; label the parent control.
-export type IconName = 'copy' | 'search' | 'chev' | 'check' | 'info' | 'ext' | 'download' | 'x' | 'github' | 'back';
+export type IconName = 'copy' | 'search' | 'chev' | 'check' | 'info' | 'ext' | 'download' | 'x' | 'github' | 'back' | 'sun' | 'moon';
 interface Props { name: IconName; size?: number; class?: string }
 const { name, size = 14, class: className } = Astro.props;
 ---
@@ -17,5 +17,7 @@ const { name, size = 14, class: className } = Astro.props;
     {name === 'ext' && <path d="M7 17 17 7M8 7h9v9" />}
     {name === 'download' && <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></>}
     {name === 'x' && <path d="M18 6 6 18M6 6l12 12" />}
+    {name === 'sun' && <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>}
+    {name === 'moon' && <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />}
   </svg>
 )}

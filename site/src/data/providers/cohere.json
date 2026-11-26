@@ -146,5 +146,23 @@
       "url": "https://cohere.com/pricing",
       "checked_at": "2026-11-24"
     }
+  ],
+  "limits": [
+    {
+      "metric": "rpm",
+      "value": 20,
+      "scope": "key",
+      "note": "Chat endpoint, evaluation (trial) key.",
+      "source_url": "https://docs.cohere.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    },
+    {
+      "metric": "requests_per_month",
+      "value": 1000,
+      "scope": "key",
+      "note": "Monthly call cap of an evaluation (trial) key.",
+      "source_url": "https://docs.cohere.com/docs/rate-limits",
+      "checked_at": "2026-11-16"
+    }
   ]
 }

@@ -20,10 +20,11 @@
 
 | 页面 | 说明 |
 |------|------|
-| `/` | 服务商目录：先给出最快能调通的几家，再列出全部免费服务商（支持搜索、筛选和排序），以及最近变更 |
+| `/` | 服务商目录：先是按规则计算的“探索”表（免费模型最多、已公布限额最高、编程、长上下文、视觉、推理、OpenAI 兼容、实时可用性），再列出全部免费服务商（支持搜索、筛选和排序），以及最近变更 |
 | `/providers` | 跳转到 `/` 并保留查询参数（动态模式返回 301；静态模式用 JS 或 meta refresh 跳转） |
-| `/providers/{id}` | 详情页：模型列表、速率限制、资料来源、代码示例、每日探测历史 |
-| `/models` | 按模型家族浏览免费服务商与已公布额度 |
+| `/providers/{id}` | 详情页：按指标和适用范围列出的限额（RPM、TPM、RPD、TPD 等）、模型列表、资料来源、代码示例、每日探测历史 |
+| `/models` | 按模型家族浏览免费服务商与已公布额度；可按视觉、推理、编程、256K+ 上下文和已公布限额筛选（支持深链：`?cap=vision,reasoning&long=1&pub=1&provider=groq`） |
+| `/models/{family}` | 单个模型家族（如 `/models/glm/`）在各服务商上的免费服务；只为有 2 家以上服务商或 3 条以上免费记录的家族生成 |
 | `/pricing` | 对比有官方来源和核实日期的 token 价格，按币种分组 |
 | `/configs` | Tools：为选中的服务商生成 LiteLLM 配置，并给出填进 Open WebUI、LobeChat、Cursor 的参数 |
 | `/changelog` | 服务商状态变更与模型更新记录 |
@@ -51,8 +52,9 @@
 
 - `sources` 为可选字段：官方 HTTPS 链接、说明文字和 `checked_at` 日期，供维护者留档，站点上不显示。填写时必须非空且合法。
 - 缺失、空白或布尔类型的价格一律不视为 0。模型 API 中 `:free`/`-free` 后缀本身不构成证据；自动判定免费还需要明确的零计费值。
-- RPM/TPM 为 `null` 表示未公布或取决于账号，不代表无限。每日上限（RPD、TPD）和按月的额度或 token 预算写进 `quota_note`，不要据此换算出 TPM。
-- 目录中的 `active` 只表示收录，不代表可用。健康检查用监测账号抽样探测指定模型；无数据、数据过期和账号/额度错误（401/402/403/429）记为 `unknown`，不等同于宕机。每日历史显示当日最差结果，百分比是正常天数 / 已监测天数，不是按时间计算的 SLA。
+- RPM/TPM 为 `null` 表示未公布或取决于账号，不代表无限，站点显示为 “Not disclosed”。每日上限（RPD、TPD）和按月的额度或 token 预算写进 `quota_note`；官方页面给出明确数字时，同时写进带适用范围的 `limits`。不要据此换算出 TPM。
+- 模型能力只来自目录数据（`modalities`，或有文档依据的 `capabilities` 标记）。仅从模型名称推测的能力（如 “-thinking”“coder”）显示为虚线的“名称提示”标签；模型家族标签不会让某个模型被标记为具备该能力。缺失的 modalities 显示为 “Not disclosed”，不会默认当作 text。
+- 目录中的 `active` 只表示收录，不代表可用。健康检查用监测账号抽样探测指定模型；无数据、数据过期和账号/额度错误（401/402/403/429）记为 `unknown`，不等同于宕机。站点把最新探测的错误分别标为 “Rate limited”（429）、“Auth failed”（401/403）、“Model unavailable”（404），而不是“宕机”；在最新快照里没有出现的服务商标为 “Not monitored”。每日历史显示当日最差结果，百分比是正常天数 / 已监测天数，不是按时间计算的 SLA。
 
 ---
 
@@ -95,7 +97,11 @@
       "id": "model-id-1",           // API 请求中使用的模型 ID
       "name": "Model Name",
       "context_window": "128K",     // 可选字符串
-      "modalities": ["text"],       // text | vision | code | embedding
+      "max_output_tokens": "8K",    // 可选字符串：官方公布的最大输出长度
+      "modalities": ["text"],       // text | vision | code | embedding；未知时不填（不会默认）
+      "capabilities": {             // 可选；只填有文档依据的 true / false，未知的不填
+        "reasoning": true, "tool_calling": true, "structured_output": false
+      },
       "rpm": 20,                    // 非负数或 null
       "tpm": 20000,                 // 非负数或 null
       "status": "active",           // active | deprecated
@@ -112,6 +118,12 @@
   "paid_models": [],                // 可选，结构同上；用于付费价格对比，ID 不能与 models 重复
   "sources": [                      // 可选；填写时不能为空
     { "label": "Official free tier", "url": "https://example.com/pricing", "checked_at": "2026-11-16" }
+  ],
+  "limits": [                       // 可选：每个已公布的数字一条，并注明适用范围
+    // metric：rpm | tpm | rpd | tpd | requests_per_month | tokens_per_month | concurrent_requests
+    // scope： provider（整个免费层统一）| account（按账号/组织）| model（每个模型单独计数）| key（按 API Key）
+    // value 必须是官方公布的数字；未知的限额不要填（不能写 0 或很大的占位数）
+    { "metric": "rpd", "value": 1000, "scope": "model", "note": "Free plan", "source_url": "https://example.com/limits", "checked_at": "2026-11-16" }
   ],
   "last_verified": "2026-11-16",    // YYYY-MM-DD：人工核实政策的日期
   "catalog_checked_at": "2026-11-16", // 可选，由自动同步写入

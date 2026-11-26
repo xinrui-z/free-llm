@@ -7,8 +7,8 @@ export const GROUPS = {
   unpublished: {
     key: 'unpublished',
     label: 'Limits set per account or model',
-    help: "These providers don't publish fixed RPM or TPM limits.",
-    helpMd: 'Hover or focus “Not published” for their terms.',
+    help: "These providers don't disclose fixed RPM or TPM limits.",
+    helpMd: 'Hover or focus “Not disclosed” for their terms.',
     helpSm: "Each card shows the provider's own note.",
   },
 } as const;
