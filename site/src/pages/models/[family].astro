@@ -73,10 +73,6 @@ const url = siteURL(Astro.site, familyPath(family.id));
     title={`Free ${family.name} API`}
     lead={`${family.description}${developer && !family.description.toLowerCase().includes(developer.toLowerCase()) ? ` from ${developer}` : ''}, served on a recurring free tier by the providers below. Each row is one provider's own model ID and limits.`}
   >
-    <Fragment slot="meta">
-      <span class="num">{formatCount(rows.length)}</span> free {rows.length === 1 ? 'listing' : 'listings'} · <span class="num">{formatCount(entries.length)}</span> {entries.length === 1 ? 'provider' : 'providers'}
-      {verified.length > 0 && <> · policies verified <span class="date">{verified[0]}</span>{verified[0] !== verified[verified.length - 1] && <> to <span class="date">{verified[verified.length - 1]}</span></>}</>}
-    </Fragment>
   </PageHeader>
   <StatusNotice liveOnly />
 

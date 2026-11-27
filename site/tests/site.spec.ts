@@ -95,7 +95,6 @@ test('pricing shows where each price comes from and how fresh it is', async ({pa
   await mock(page);
   await page.goto('/pricing');
   await expect(page.locator('.ph .lead')).toContainText('Paid reference prices for when free quotas run out');
-  await expect(page.locator('#pricing-freshness')).toContainText(/Price(s checked| dates from) \d{4}-\d{2}-\d{2}/);
   // Each row names its provenance in the Price date column: Auto-synced, Manual, or May be outdated.
   const manualStale = await page.locator('#pricing-table [data-pr-row][data-stale="true"]:not([data-archived="true"])').count();
   if (manualStale > 0) {

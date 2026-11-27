@@ -29,7 +29,6 @@ const archived = catalog.filter(p => p.status === 'archived');
 const explore = exploreRows(active);
 
 const verified = active.map(p => formatDate(p.last_verified)).filter((d): d is string => !!d).sort();
-const firstVerified = verified[0];
 const lastVerified = verified[verified.length - 1];
 
 const total = active.length;
@@ -81,13 +80,6 @@ const home = siteURL(Astro.site);
     title="Free LLM APIs you can call today"
     lead="Providers with a recurring free tier. Limits come from each provider's official documentation."
   >
-    <Fragment slot="meta">
-      <span class="num">{formatCount(total)}</span> {total === 1 ? 'provider' : 'providers'}
-      {archived.length > 0 && <> · <a class="meta-a" href="#archived"><span class="num">{formatCount(archived.length)}</span> archived</a></>}
-      {firstVerified && (firstVerified === lastVerified
-        ? <> · limits verified <span class="date">{firstVerified}</span></>
-        : <> · limits verified <span class="date">{firstVerified}</span> to <span class="date">{lastVerified}</span></>)}
-    </Fragment>
   </PageHeader>
 
   <StatusNotice />
@@ -209,8 +201,6 @@ const home = siteURL(Astro.site);
 </Layout>
 
 <style>
-  .meta-a { color: inherit; }
-  .meta-a:hover { color: var(--brand); }
   .ex-tbl th, .ex-tbl td { vertical-align: top; }
   .ex-tbl tbody th { font-weight: 400; text-align: left; white-space: normal; background: transparent; padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); }
   .ex-tbl tbody tr:last-child th { border-bottom: 0; }

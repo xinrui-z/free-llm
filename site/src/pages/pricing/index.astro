@@ -8,7 +8,7 @@ import NotPublished from '../../components/NotPublished.astro';
 import Icon from '../../components/Icon.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-import { contextToNumber, dateRange, daysSince, formatRate, formatTokens, isPricePageSynced, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
+import { contextToNumber, daysSince, formatRate, formatTokens, isPricePageSynced, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
 import type { Provider, ProviderModel } from '../../data/providers';
 
 const providers = getProviders(Astro.locals) as Provider[];
@@ -83,13 +83,10 @@ const notShownActive = notShown.filter(p => p.status !== 'archived').length;
 const STALE_DAYS = 30;
 const now = new Date();
 const isRowStale = (r: PriceRow) => !r.autoSynced && isStale(r.checkedAt, now, STALE_DAYS);
-// Rows carry different dates, so the header shows their range rather than one "last updated" date that
-// would imply the whole table was refreshed then. Archived providers' prices are historical: they count
-// only when no active provider has a price.
+// Newest price date, for the page's structured data (dateModified). Archived providers' prices are
+// historical: they count only when no active provider has a price.
 const datedRows = activeRows > 0 ? rows.filter(r => !r.archived) : rows;
-const priceDates = dateRange(datedRows.map(r => r.checkedAt));
 const pricesLastUpdated = latestDate(datedRows.map(r => r.checkedAt));
-const staleActive = rows.filter(r => !r.archived && isRowStale(r)).length;
 
 // Active free providers with no per-token price and no pricing note (typically newly onboarded free tiers)
 // never appear in the table; say so instead of letting them look forgotten.
@@ -163,15 +160,6 @@ const sortHeaders = [
     title="Paid rates after the free tier"
     lead="Paid reference prices for when free quotas run out: what the same providers charge per 1M tokens."
   >
-    <Fragment slot="meta">
-      <span id="pricing-freshness">{priceDates
-        ? (priceDates.oldest === priceDates.newest
-          ? <>Prices checked <span class="date">{priceDates.newest}</span></>
-          : <>Price dates from <span class="date">{priceDates.oldest}</span> to <span class="date">{priceDates.newest}</span> (newest)</>)
-        : <>Price dates unknown</>}</span>
-      {staleActive > 0 && <> · <span class="num">{staleActive}</span> may be outdated</>}
-      {' '}· Standard text rates from official pages · <a class="lnk" href="#pr-method">How prices are compared</a>
-    </Fragment>
   </PageHeader>
 
   <div class="toolbar" id="pr-toolbar">
@@ -298,40 +286,45 @@ const sortHeaders = [
     <button class="btn" type="button" id="pr-clear" hidden={rows.length === 0}>Clear filters</button>
   </div>
 
-  <section class="sect" id="pr-method" aria-labelledby="pr-method-h">
-    <h2 class="h3" id="pr-method-h">How prices are compared</h2>
-    <div class="pr-method">
-      <p>Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
-      <p>Auto-synced prices are read automatically, either from the provider's live API on each catalog sync or once a day from its official pricing page, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
-      <p>Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
-    </div>
-  </section>
-
-  {(notShown.length > 0 || unpricedFree.length > 0) && (
-    <section class="sect" id="pr-not-shown" aria-labelledby="pr-ns-h" hidden={notShownActive === 0 && unpricedFree.length === 0}>
-      <h2 class="h3" id="pr-ns-h">Not shown: no per-token rate</h2>
-      <div class="pr-ns-list">
-        {unpricedFree.length > 0 && (
-          <p class="sec" id="pr-unpriced">
-            Free providers without published per-token prices:{' '}
-            {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a></>)}.
-            {' '}Their free quotas are on each provider page.
-          </p>
-        )}
-        {notShown.map(p => (
-          <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
-            <a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a>
-            {p.status === 'archived' && <> <span class="tag">Archived</span></>}
-            {' '}— {p.pricing_note}
-          </p>
-        ))}
+  <!-- Reference notes below the table: one collapsed row per topic, full width. -->
+  <div class="sect pr-notes">
+    <details class="fold" id="pr-method">
+      <summary><span>How prices are compared</span></summary>
+      <div class="fold-body pr-method">
+        <p>Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
+        <p>Auto-synced prices are read automatically, either from the provider's live API on each catalog sync or once a day from its official pricing page, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
+        <p>Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
       </div>
-    </section>
-  )}
+    </details>
+
+    {(notShown.length > 0 || unpricedFree.length > 0) && (
+      <details class="fold" id="pr-not-shown" hidden={notShownActive === 0 && unpricedFree.length === 0}>
+        <summary><span>Not shown: no per-token rate <span class="muted">(<span class="num" id="pr-ns-count">{notShownActive + unpricedFree.length}</span> {notShownActive + unpricedFree.length === 1 ? 'provider' : 'providers'})</span></span></summary>
+        <div class="fold-body pr-ns-list">
+          {unpricedFree.length > 0 && (
+            <p class="sec" id="pr-unpriced" data-n={unpricedFree.length}>
+              Free providers without published per-token prices:{' '}
+              {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a></>)}.
+              {' '}Their free quotas are on each provider page.
+            </p>
+          )}
+          {notShown.map(p => (
+            <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
+              <a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a>
+              {p.status === 'archived' && <> <span class="tag">Archived</span></>}
+              {' '}— {p.pricing_note}
+            </p>
+          ))}
+        </div>
+      </details>
+    )}
+  </div>
 </Layout>
 
 <style>
-  .pr-method { display: grid; gap: 8px; margin-top: 6px; max-width: 46rem; font-size: var(--fs-data); line-height: 20px; color: var(--text-secondary); }
+  .pr-notes { display: grid; gap: 8px; }
+  .pr-method { gap: 8px; font-size: var(--fs-data); line-height: 20px; color: var(--text-secondary); }
+  .pr-method p, .pr-ns-list p { margin: 0; }
   .pr-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .pr-id .mono { font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
   .tbl tr.arch .pr-id .mono { color: var(--text-muted); }
@@ -355,7 +348,7 @@ const sortHeaders = [
   .pr-sort:hover, th[aria-sort="ascending"] .pr-sort, th[aria-sort="descending"] .pr-sort { color: var(--text-primary); }
   .pr-arrow:empty { display: none; }
   .pr-arch .idline .mono, .pr-arch .facts .sec { color: var(--text-muted); }
-  .pr-ns-list { display: grid; gap: 6px; margin-top: 8px; max-width: 46rem; font-size: var(--fs-data); }
+  .pr-ns-list { gap: 8px; font-size: var(--fs-data); line-height: 20px; }
   .pr-ns-name { font-weight: 500; color: var(--text-primary); }
   .pr-ns-name:hover { color: var(--brand); }
   @media (max-width: 767px) { #pr-toolbar .select { flex: 1 1 140px; } }
@@ -464,20 +457,32 @@ const sortHeaders = [
     if (list) list.hidden = visible === 0;
     if (none) emptyText.textContent = state.q ? `No priced model matches “${state.q}”.` : 'No priced model matches these filters.';
 
-
     if (notShown) {
       // The unpriced-free-providers line is about the whole directory; hide it while one provider is picked.
       const unpriced = document.getElementById('pr-unpriced');
       if (unpriced) unpriced.hidden = !!state.provider;
-      let shown = unpriced && !state.provider ? 1 : 0;
+      let shown = unpriced && !state.provider ? Number(unpriced.dataset.n) || 0 : 0;
       notShown.querySelectorAll<HTMLElement>('[data-ns-provider]').forEach(p => {
         const ok = (!state.provider || p.dataset.nsProvider === state.provider) && (p.dataset.archived !== 'true' || showArchived());
         p.hidden = !ok;
         if (ok) shown++;
       });
       notShown.hidden = shown === 0;
+      // Summary count follows the providers actually listed inside.
+      const n = document.getElementById('pr-ns-count');
+      if (n) {
+        n.textContent = String(shown);
+        if (n.nextSibling) n.nextSibling.textContent = shown === 1 ? ' provider)' : ' providers)';
+      }
     }
   }
+
+  // The header's "How prices are compared" link opens the collapsed note it points to.
+  const method = document.getElementById('pr-method') as HTMLDetailsElement | null;
+  const openMethod = () => { if (method && location.hash === '#pr-method') method.open = true; };
+  window.addEventListener('hashchange', openMethod);
+  document.querySelector('a[href="#pr-method"]')?.addEventListener('click', () => { if (method) method.open = true; });
+  openMethod();
 
   window.addEventListener('search-change', event => {
     const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
