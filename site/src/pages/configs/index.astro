@@ -24,7 +24,6 @@ const catalogDates = active
 const lastUpdated = catalogDates.length
   ? formatDate(new Date(Math.max(...catalogDates.map(d => Date.parse(d)))).toISOString())
   : null;
-const catalogRevision = Astro.locals.catalog?.origin === 'live' ? Astro.locals.catalog.revision : null;
 
 // Same variable name as the provider page: derived from the public id (lib/format.ts), never from
 // api_key_env, which is the checker's secret binding name and not part of the public catalog.
@@ -151,7 +150,6 @@ const UNVERIFIED_FORMATS = new Set(['roo-code', 'cherry-studio', 'continue', 'op
   }}
 >
   <PageHeader title="Use free models in your tools" lead="Pick providers, then copy a ready LiteLLM config or the values to paste into your app.">
-    <Fragment slot="meta"><span class="num">{active.length}</span> {active.length === 1 ? 'provider' : 'providers'} · catalog {lastUpdated ? <span class="date"><time datetime={lastUpdated}>{lastUpdated}</time></span> : 'date unknown'}{catalogRevision && <> · rev <span class="mono">{catalogRevision.slice(0, 12)}</span></>}</Fragment>
   </PageHeader>
 
   {active.length === 0 ? (

@@ -3,13 +3,12 @@ import Layout from '../../layouts/Layout.astro';
 import PageHeader from '../../components/PageHeader.astro';
 import SearchInput from '../../components/SearchInput.astro';
 import Chip from '../../components/Chip.astro';
-import Fold from '../../components/Fold.astro';
 import ProviderLogo from '../../components/ProviderLogo.astro';
 import NotPublished from '../../components/NotPublished.astro';
 import Icon from '../../components/Icon.astro';
 import { siteURL } from '../../lib/site-url';
 import { getProviders } from '../../lib/providers';
-import { contextToNumber, dateRange, daysSince, formatRate, formatTokens, isAutoSyncedPricing, isPricePageSynced, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
+import { contextToNumber, daysSince, formatRate, formatTokens, isPricePageSynced, isStale, latestDate, liveCatalogSource, NO_CONTEXT_NOTE } from '../../lib/format';
 import type { Provider, ProviderModel } from '../../data/providers';
 
 const providers = getProviders(Astro.locals) as Provider[];
@@ -84,31 +83,11 @@ const notShownActive = notShown.filter(p => p.status !== 'archived').length;
 const STALE_DAYS = 30;
 const now = new Date();
 const isRowStale = (r: PriceRow) => !r.autoSynced && isStale(r.checkedAt, now, STALE_DAYS);
-// Rows carry different dates, so the header shows their range rather than one "last updated" date that
-// would imply the whole table was refreshed then. Archived providers' prices are historical: they count
-// only when no active provider has a price.
+// Newest price date, for the page's structured data (dateModified). Archived providers' prices are
+// historical: they count only when no active provider has a price.
 const datedRows = activeRows > 0 ? rows.filter(r => !r.archived) : rows;
-const priceDates = dateRange(datedRows.map(r => r.checkedAt));
 const pricesLastUpdated = latestDate(datedRows.map(r => r.checkedAt));
-const staleActive = rows.filter(r => !r.archived && isRowStale(r)).length;
 
-// One provenance summary per priced provider, in the provider select's order. A provider is auto-synced
-// when its catalog comes from the sync job (liveCatalogSource) and none of its prices were entered by hand.
-const sourceSummaries = pricedProviders.map(p => {
-  const own = rows.filter(r => r.provider.id === p.id);
-  const manual = own.filter(r => !r.autoSynced);
-  return {
-    p,
-    archived: p.status === 'archived',
-    count: own.length,
-    autoSynced: (isAutoSyncedPricing(p) || isPricePageSynced(p)) && manual.length === 0,
-    pageSynced: isPricePageSynced(p),
-    // Date the live catalog (or, for pricing-page providers, the newest price) last changed. Not re-stamped on quiet syncs.
-    changed: isPricePageSynced(p) ? latestDate(own.map(r => r.checkedAt)) : liveCatalogSource(p)?.checkedAt ?? null,
-    lastChecked: latestDate(manual.map(r => r.checkedAt)),
-    stale: manual.some(isRowStale),
-  };
-});
 // Active free providers with no per-token price and no pricing note (typically newly onboarded free tiers)
 // never appear in the table; say so instead of letting them look forgotten.
 const unpricedFree = providers.filter(p => p.status === 'active' && !rows.some(r => r.provider.id === p.id) && !(typeof p.pricing_note === 'string' && p.pricing_note.trim()))
@@ -181,47 +160,7 @@ const sortHeaders = [
     title="Paid rates after the free tier"
     lead="Paid reference prices for when free quotas run out: what the same providers charge per 1M tokens."
   >
-    <Fragment slot="meta">
-      <span id="pricing-freshness">{priceDates
-        ? (priceDates.oldest === priceDates.newest
-          ? <>Prices checked <span class="date">{priceDates.newest}</span></>
-          : <>Price dates from <span class="date">{priceDates.oldest}</span> to <span class="date">{priceDates.newest}</span> (newest)</>)
-        : <>Price dates unknown</>}</span>
-      {staleActive > 0 && <> · <span class="num">{staleActive}</span> may be outdated</>}
-      {' '}· Standard text rates from official pages; promotions and tiers vary.
-    </Fragment>
-    <Fold summary="How prices are compared" class="pr-how">
-      <p class="sec">Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
-      <p class="sec">Auto-synced prices are read automatically, either from the provider's live API on each catalog sync or once a day from its official pricing page, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
-      <p class="sec">Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
-    </Fold>
   </PageHeader>
-
-  {sourceSummaries.length > 0 && (
-    <section class="pr-sources" aria-labelledby="pr-src-h">
-      <h2 class="caption pr-src-h" id="pr-src-h">Price sources by provider</h2>
-      <div class="chips" id="pr-src-chips">
-        {sourceSummaries.map(s => (
-          <button
-            type="button"
-            class="chip pr-src-chip"
-            data-src-provider={s.p.id}
-            data-archived={s.archived ? 'true' : 'false'}
-            aria-pressed="false"
-            hidden={s.archived}
-            title={`Show only ${s.p.name} prices (press again to show all)`}
-          >
-            <span class="pr-src-name">{s.p.name}</span>
-            <span class="muted"><span class="num">{s.count}</span> {s.count === 1 ? 'price' : 'prices'}</span>
-            {s.autoSynced
-              ? <span class="muted" title={s.pageSynced ? pageTip : autoTip}>· {s.pageSynced ? 'Synced daily from pricing page' : 'Synced from live API'}{s.changed && <> · changed <span class="date">{s.changed}</span></>}</span>
-              : <span class="muted">· Manual · checked <span class="date">{s.lastChecked ?? 'unknown'}</span></span>}
-            {s.stale && <span class="pill pill-warn pr-stale">May be outdated</span>}
-          </button>
-        ))}
-      </div>
-    </section>
-  )}
 
   <div class="toolbar" id="pr-toolbar">
     <SearchInput id="pr-q" label="Search models" placeholder="Model ID or provider" param="q" />
@@ -347,31 +286,45 @@ const sortHeaders = [
     <button class="btn" type="button" id="pr-clear" hidden={rows.length === 0}>Clear filters</button>
   </div>
 
-  {(notShown.length > 0 || unpricedFree.length > 0) && (
-    <section class="sect" id="pr-not-shown" aria-labelledby="pr-ns-h" hidden={notShownActive === 0 && unpricedFree.length === 0}>
-      <h2 class="h3" id="pr-ns-h">Not shown: no per-token rate</h2>
-      <div class="pr-ns-list">
-        {unpricedFree.length > 0 && (
-          <p class="sec" id="pr-unpriced">
-            Free providers without published per-token prices:{' '}
-            {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a></>)}.
-            {' '}Their free quotas are on each provider page.
-          </p>
-        )}
-        {notShown.map(p => (
-          <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
-            <a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a>
-            {p.status === 'archived' && <> <span class="tag">Archived</span></>}
-            {' '}— {p.pricing_note}
-          </p>
-        ))}
+  <!-- Reference notes below the table: one collapsed row per topic, full width. -->
+  <div class="sect pr-notes">
+    <details class="fold" id="pr-method">
+      <summary><span>How prices are compared</span></summary>
+      <div class="fold-body pr-method">
+        <p>Prices are the standard per-token rates for text input and output from each provider's official pricing page or API. Cached-input, batch, off-peak and volume discounts are not included. Promotional prices are marked and show their end date.</p>
+        <p>Auto-synced prices are read automatically, either from the provider's live API on each catalog sync or once a day from its official pricing page, and their date shows when the price last changed. Manually maintained prices are updated only when someone re-checks the provider's pricing page; those checked more than {STALE_DAYS} days ago are marked "May be outdated". Always verify on the provider's site before budgeting.</p>
+        <p>Only providers that still offer a free tier are listed by default. Archived providers no longer have a recurring free tier; turn on "Include archived providers" to compare their rates.{currencies.length > 1 && ` Prices in different currencies (${currencies.join(', ')}) are listed separately and never ranked against each other.`}</p>
       </div>
-    </section>
-  )}
+    </details>
+
+    {(notShown.length > 0 || unpricedFree.length > 0) && (
+      <details class="fold" id="pr-not-shown" hidden={notShownActive === 0 && unpricedFree.length === 0}>
+        <summary><span>Not shown: no per-token rate <span class="muted">(<span class="num" id="pr-ns-count">{notShownActive + unpricedFree.length}</span> {notShownActive + unpricedFree.length === 1 ? 'provider' : 'providers'})</span></span></summary>
+        <div class="fold-body pr-ns-list">
+          {unpricedFree.length > 0 && (
+            <p class="sec" id="pr-unpriced" data-n={unpricedFree.length}>
+              Free providers without published per-token prices:{' '}
+              {unpricedFree.map((p, i) => <>{i > 0 && ', '}<a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a></>)}.
+              {' '}Their free quotas are on each provider page.
+            </p>
+          )}
+          {notShown.map(p => (
+            <p class="sec" data-ns-provider={p.id} data-archived={p.status === 'archived' ? 'true' : 'false'} hidden={p.status === 'archived'}>
+              <a class="pr-ns-name" href={`/providers/${p.id}/`}>{p.name}</a>
+              {p.status === 'archived' && <> <span class="tag">Archived</span></>}
+              {' '}— {p.pricing_note}
+            </p>
+          ))}
+        </div>
+      </details>
+    )}
+  </div>
 </Layout>
 
 <style>
-  .pr-how { margin-top: 10px; max-width: 46rem; }
+  .pr-notes { display: grid; gap: 8px; }
+  .pr-method { gap: 8px; font-size: var(--fs-data); line-height: 20px; color: var(--text-secondary); }
+  .pr-method p, .pr-ns-list p { margin: 0; }
   .pr-id { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .pr-id .mono { font-size: 12.5px; color: var(--text-primary); overflow-wrap: anywhere; }
   .tbl tr.arch .pr-id .mono { color: var(--text-muted); }
@@ -386,12 +339,6 @@ const sortHeaders = [
   .pr-date-cell { display: flex; align-items: center; gap: 8px; }
   .pr-date .date { font-size: var(--fs-caption); color: var(--text-secondary); }
   .pr-stale { cursor: help; }
-  .pr-sources { margin-bottom: 12px; }
-  .pr-src-h { margin-bottom: 6px; }
-  .pr-src-chip { gap: 6px; font-size: var(--fs-caption); }
-  .pr-src-chip .pr-src-name { font-size: var(--fs-data); font-weight: 500; color: var(--text-primary); }
-  .pr-src-chip .num, .pr-src-chip .date { font-size: var(--fs-caption); color: var(--text-muted); }
-  .pr-src-chip[aria-pressed="true"] .pr-src-name, .pr-src-chip[aria-pressed="true"] .muted, .pr-src-chip[aria-pressed="true"] .num, .pr-src-chip[aria-pressed="true"] .date { color: var(--brand); }
   .pr-src a { display: inline-flex; padding: 4px; border-radius: var(--r-sm); color: var(--text-muted); }
   .pr-src a:hover { color: var(--brand); background: var(--bg-elevated); }
   /* Sortable headers: the button fills the cell so the whole header is the hit area. */
@@ -401,7 +348,7 @@ const sortHeaders = [
   .pr-sort:hover, th[aria-sort="ascending"] .pr-sort, th[aria-sort="descending"] .pr-sort { color: var(--text-primary); }
   .pr-arrow:empty { display: none; }
   .pr-arch .idline .mono, .pr-arch .facts .sec { color: var(--text-muted); }
-  .pr-ns-list { display: grid; gap: 6px; margin-top: 8px; max-width: 46rem; font-size: var(--fs-data); }
+  .pr-ns-list { gap: 8px; font-size: var(--fs-data); line-height: 20px; }
   .pr-ns-name { font-weight: 500; color: var(--text-primary); }
   .pr-ns-name:hover { color: var(--brand); }
   @media (max-width: 767px) { #pr-toolbar .select { flex: 1 1 140px; } }
@@ -426,7 +373,6 @@ const sortHeaders = [
   const emptyText = document.getElementById('pr-empty-text')!;
   const notShown = document.getElementById('pr-not-shown');
   const searchInput = document.getElementById('pr-q') as HTMLInputElement | null;
-  const srcChips = Array.from(document.querySelectorAll<HTMLButtonElement>('#pr-src-chips [data-src-provider]'));
   const tableRows = tbody ? Array.from(tbody.querySelectorAll<HTMLElement>('[data-pr-row]')) : [];
   const listRows = list ? Array.from(list.querySelectorAll<HTMLElement>('[data-pr-row]')) : [];
 
@@ -511,24 +457,32 @@ const sortHeaders = [
     if (list) list.hidden = visible === 0;
     if (none) emptyText.textContent = state.q ? `No priced model matches “${state.q}”.` : 'No priced model matches these filters.';
 
-    for (const chip of srcChips) {
-      chip.setAttribute('aria-pressed', String(chip.dataset.srcProvider === state.provider));
-      chip.hidden = chip.dataset.archived === 'true' && !showArchived();
-    }
-
     if (notShown) {
       // The unpriced-free-providers line is about the whole directory; hide it while one provider is picked.
       const unpriced = document.getElementById('pr-unpriced');
       if (unpriced) unpriced.hidden = !!state.provider;
-      let shown = unpriced && !state.provider ? 1 : 0;
+      let shown = unpriced && !state.provider ? Number(unpriced.dataset.n) || 0 : 0;
       notShown.querySelectorAll<HTMLElement>('[data-ns-provider]').forEach(p => {
         const ok = (!state.provider || p.dataset.nsProvider === state.provider) && (p.dataset.archived !== 'true' || showArchived());
         p.hidden = !ok;
         if (ok) shown++;
       });
       notShown.hidden = shown === 0;
+      // Summary count follows the providers actually listed inside.
+      const n = document.getElementById('pr-ns-count');
+      if (n) {
+        n.textContent = String(shown);
+        if (n.nextSibling) n.nextSibling.textContent = shown === 1 ? ' provider)' : ' providers)';
+      }
     }
   }
+
+  // The header's "How prices are compared" link opens the collapsed note it points to.
+  const method = document.getElementById('pr-method') as HTMLDetailsElement | null;
+  const openMethod = () => { if (method && location.hash === '#pr-method') method.open = true; };
+  window.addEventListener('hashchange', openMethod);
+  document.querySelector('a[href="#pr-method"]')?.addEventListener('click', () => { if (method) method.open = true; });
+  openMethod();
 
   window.addEventListener('search-change', event => {
     const detail = (event as CustomEvent<{ id: string; value: string }>).detail;
@@ -536,13 +490,6 @@ const sortHeaders = [
     state.q = detail.value.toLowerCase();
     update();
   });
-  srcChips.forEach(chip => chip.addEventListener('click', () => {
-    const id = chip.dataset.srcProvider ?? '';
-    state.provider = state.provider === id ? '' : id;
-    providerSel.value = state.provider;
-    writeUrl();
-    update();
-  }));
   providerSel.addEventListener('change', () => { state.provider = providerSel.value; writeUrl(); update(); });
   sortSel.addEventListener('change', () => { state.sort = sortSel.value; writeUrl(); update(); });
   archChip?.addEventListener('click', () => {

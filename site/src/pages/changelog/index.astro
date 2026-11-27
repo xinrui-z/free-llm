@@ -41,7 +41,6 @@ const TONE_DOT = { ok: 'd-active', warn: 'd-degraded', err: 'd-dead' } as const;
   }}
 >
   <PageHeader title="Changelog" lead="Changes to the provider and model catalog. Limits are re-verified by hand against official docs.">
-    <Fragment slot="meta"><span class="num" id="cl-total">{view.total}</span> <span id="cl-total-word">{view.total === 1 ? 'entry' : 'entries'}</span><span id="cl-last-wrap" hidden={!view.last}> · last change <span class="date" id="cl-last">{view.last}</span></span> · <a class="lnk" href="/changelog.json">JSON feed</a></Fragment>
   </PageHeader>
 
   <div id="changelog" data-providers={JSON.stringify(providerIndex)} data-signature={view.signature}>
@@ -78,7 +77,7 @@ const TONE_DOT = { ok: 'd-active', warn: 'd-degraded', err: 'd-dead' } as const;
 </Layout>
 
 <style>
-  #cl-toolbar[hidden], #cl-empty[hidden], #cl-last-wrap[hidden] { display: none; }
+  #cl-toolbar[hidden], #cl-empty[hidden] { display: none; }
 </style>
 
 <style is:global>
@@ -171,10 +170,6 @@ const TONE_DOT = { ok: 'd-active', warn: 'd-degraded', err: 'd-dead' } as const;
     return row;
   }
   function render(view: View) {
-    document.getElementById('cl-total')!.textContent = String(view.total);
-    document.getElementById('cl-total-word')!.textContent = view.total === 1 ? 'entry' : 'entries';
-    document.getElementById('cl-last')!.textContent = view.last ?? '';
-    document.getElementById('cl-last-wrap')!.hidden = !view.last;
     document.getElementById('cl-toolbar')!.hidden = view.total === 0;
     document.getElementById('cl-empty')!.hidden = view.total > 0;
     chips.replaceChildren(chipEl('all', 'All', view.total), ...view.chips.map(c => chipEl(c.kind, c.label, c.count)));

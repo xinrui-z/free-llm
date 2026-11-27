@@ -716,7 +716,7 @@ html:not([data-has-latency]) [data-live-only="latency"] { display: none !importa
   /* ---------- footer ---------- */
   .foot { margin-top: 56px; border-top: 1px solid var(--border-default); }
   .foot-in { display: grid; gap: 24px; grid-template-columns: 1fr; padding-block: 28px 32px; font-size: var(--fs-caption); line-height: 18px; color: var(--text-muted); }
-  @media (min-width: 768px) { .foot-in { grid-template-columns: 1.1fr .8fr 1.6fr; } }
+  @media (min-width: 768px) { .foot-in { grid-template-columns: 2fr 1fr 1fr; } }
   .foot h2 { font: 600 var(--fs-caption)/16px var(--font-ui); color: var(--text-secondary); margin-bottom: 8px; }
   .foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .foot p { max-width: 34rem; line-height: 18px; }
